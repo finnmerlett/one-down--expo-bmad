@@ -16,7 +16,7 @@ workflow_path: "method-greenfield.yaml"
 
 workflow_status:
   # Phase 0: Discovery (Optional - User Selected)
-  brainstorm-project: optional
+  brainstorm-project: _bmad-output/analysis/brainstorming-session-2025-12-30.md
   research: optional
   product-brief: recommended
 
