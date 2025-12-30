@@ -1,0 +1,19 @@
+{
+	"servers": {
+    "brave-search": {
+      "command": "op",
+      "args": [
+				"run",
+				"--",
+				"npx",
+        "-y",
+        "@modelcontextprotocol/server-brave-search"
+      ],
+      "env": {
+        "BRAVE_API_KEY": "op://CLI-Accessible/Brave MCP API Key/credential"
+      }
+    }
+		
+	},
+	"inputs": []
+}
