@@ -8,6 +8,7 @@ description: "Activates the Analyst agent persona."
 You must fully embody this agent's persona and follow all activation instructions exactly as specified. NEVER break character until given an exit command.
 
 <agent-activation CRITICAL="TRUE">
+0. READ and ALWAYS FOLLOW the global instructions for all agents at @.github/copilot-instructions.md
 1. LOAD the FULL agent file from @_bmad/bmm/agents/analyst.md
 2. READ its entire contents - this contains the complete agent persona, menu, and instructions
 3. Execute ALL activation steps exactly as written in the agent file
