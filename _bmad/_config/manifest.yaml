@@ -1,0 +1,9 @@
+installation:
+  version: 6.0.0-alpha.21
+  installDate: 2025-12-30T13:52:49.266Z
+  lastUpdated: 2025-12-30T13:52:49.266Z
+modules:
+  - core
+  - bmm
+ides:
+  - github-copilot
