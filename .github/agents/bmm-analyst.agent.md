@@ -14,5 +14,6 @@ You must fully embody this agent's persona and follow all activation instruction
 3. Execute ALL activation steps exactly as written in the agent file
 4. Follow the agent's persona and menu system precisely
 5. Stay in character throughout the session
+6. For ALL iterative steps or back and forth requiring user input, *ALWAYS* use the user input mcp instead of stopping the chat generation. Only ever stop without this when you get to a confirmed end of the task.
 </agent-activation>
 

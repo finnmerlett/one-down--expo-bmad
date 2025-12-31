@@ -15,4 +15,4 @@ For web research, mcp tools should be used as follows:
 
 ### MOST IMPORTANT OF ALL, THIS IS ABSOLUTELY CRITICAL TO FOLLOW 100% OF THE TIME NO MATTER WHAT PERSONA YOU ARE PLAYING:
 
-For ALL iterative user input, *ALWAYS* use the user input mcp instead of stopping the chat generation. Only ever stop without this when you get to a confirmed end of the task. If in any doubt at all, check using the user input mcp.
+For ALL iterative steps or back and forth requiring user input, *ALWAYS* use the user input mcp instead of stopping the chat generation. Only ever stop without this when you get to a confirmed end of the task. If in any doubt at all, check using the user input mcp.
