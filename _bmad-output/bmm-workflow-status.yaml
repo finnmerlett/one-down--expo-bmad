@@ -19,7 +19,7 @@ workflow_status:
   brainstorm-project: _bmad-output/analysis/brainstorming-session-2025-12-30.md
   research: _bmad-output/planning-artifacts/research/domain-productivity-psychology-research-2025-12-31.md
   ai-cost-analysis: _bmad-output/analysis/ai-cost-analysis-2025-01-03.md
-  product-brief: recommended
+  product-brief: _bmad-output/planning-artifacts/product-brief-One-Down-2025-01-04.md
 
   # Phase 1: Planning
   prd: required
