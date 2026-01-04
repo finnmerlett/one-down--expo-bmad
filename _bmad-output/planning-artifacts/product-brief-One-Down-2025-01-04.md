@@ -181,6 +181,8 @@ Principles:
 
 ## MVP Scope
 
+> **Note for future agents:** The tables in this section represent initial brainstormed scope. The **Future Vision** section below contains the refined, reworked roadmap that should be treated as the authoritative version for planning purposes.
+
 ### MVP (v0.1) — Core Loop Validation
 
 **Goal:** Validate the core hypothesis: *Does one-card focus reduce anxiety and help users complete tasks?*
