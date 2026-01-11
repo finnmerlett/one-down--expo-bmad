@@ -1,5 +1,5 @@
 ---
-stepsCompleted: [1, 2, 3]
+stepsCompleted: [1, 2, 3, 4]
 inputDocuments:
   - product-brief-One-Down-2025-01-04.md
   - domain-productivity-psychology-research-2025-12-31.md
@@ -12,7 +12,7 @@ documentCounts:
   brainstorming: 2
   analysis: 1
 workflowType: 'prd'
-lastStep: 3
+lastStep: 4
 ---
 
 # Product Requirements Document - One Down
@@ -227,3 +227,201 @@ AI costs must NOT progressively eat into profit margin. This is a viability cons
 - Calendar integration UX that doesn't violate philosophy
 - Social features market research
 - **Marketing strategy:** Evaluate ADHD creator outreach (authentic story: "built this for myself"), viral social media content, App Store optimization. Authentic personal story may outperform paid acquisition for this product.
+
+---
+
+## User Journeys
+
+### Journey 1: Alex's First Open — "Maybe This One Will Be Different"
+
+**User:** Alex (31, freelance designer, ADHD)  
+**Scenario:** First time using One Down after discovering it on Reddit  
+**Emotional state:** Skeptical but hopeful — they've been hurt by todo apps before
+
+It's 11pm on a Tuesday. Alex is doom-scrolling Reddit when they see someone mention One Down: *"It only shows you one thing at a time. Changed my life."* 
+
+Against their better judgment (they've been hurt before), Alex downloads it.
+
+The app opens to a clean, empty screen with a single prompt: *"What's on your mind?"* No tutorials. No sign-up gates. No "let's set up your categories first."
+
+Alex hesitates, then types: *"return amazon package, renew passport, call mum, fix that thing on the website, prep for client call friday"*
+
+They hit enter. 
+
+A brief moment while the AI works, then a context selection appears: **Where are you? What do you have?** Toggles for *Home / Out & About / Phone / Laptop / Internet*. Alex taps *Home* and *Phone*. 
+
+The screen shifts — and there's a single card. **"Call mum"** with two small tags: *"quick win"* and *"phone"*. A small exclamation mark sits in the corner of the card.
+
+Below it, barely visible, the hint of another card in the stack.
+
+Alex feels... nothing. That's actually good. No dread. No "oh god, look at all that."
+
+Curious about the exclamation mark, Alex taps it. The card gently reveals an AI prompt: *"Is there a good time to call? Any topics you want to remember to bring up?"* Alex dismisses it for now — they're not ready to think that hard.
+
+They flick to the next card. **"Return Amazon package"** — tagged *"out & about"* and *"quick win"*. Another exclamation mark. They tap the card to flip it and see the question more prominently: *"Is there a deadline for this return?"* 
+
+Alex types "need to do it by Saturday" and the card absorbs the info without drama. The exclamation mark disappears — the AI has what it needs.
+
+They're not ready to actually *do* anything yet — it's 11pm — so they just close the app.
+
+The next morning, Alex opens One Down while waiting for coffee. Context selection appears again. They toggle *Home* and *Laptop*.
+
+A card appears: **"Fix that thing on the website"** — tagged *"laptop"* and *"internet"*. But Alex notices the *"Out & About"* toggle has a small exclamation icon beside it. They tap it.
+
+The context switches and a card appears with an urgent tag: **"Return Amazon package"** — *"needs action by Saturday"*. The AI is quietly tracking the deadline.
+
+Alex leaves the house that morning with one thing in mind. They actually return the package.
+
+Back home, they open the app. They tap *"Done"* on the card and watch a satisfying star animation as the card completes. A new card slides into view: **"Call mum"** — still a quick win, still waiting.
+
+*"Huh,"* they think. *"This might actually work."*
+
+**Requirements revealed:** Brain dump input, AI task parsing, context selection, one-card focus, AI-prompted refinement (deadlines), task size tags (quick win/big time), context requirement tags, deadline urgency tracking, completion rewards
+
+---
+
+### Journey 2: Alex's Core Loop — "The 5-Minute Productivity Burst"
+
+**User:** Alex (31, freelance designer, ADHD)  
+**Scenario:** Two weeks into using One Down, 10 minutes between client calls  
+**Emotional state:** Curious energy burst, willing to knock something out
+
+Alex's phone shows 10 minutes until their next call. Instead of doom-scrolling (their usual move), they open One Down. They're curious what they can knock out.
+
+Context selection: *Laptop* ✓ *Home* ✓ *Internet* ✓ — all available. No exclamation marks today, which means nothing urgent is lurking in other contexts. Good.
+
+A card appears: **"Review client contract changes"** — tagged *"laptop"* and *"big time"*. That's a 30-minute job. Not now.
+
+Alex flicks right. Next card: **"Reply to Sarah about Friday"** — *"quick win"*, *"internet"*. Perfect. They tap the card to flip it and see the task details. A small *"Start"* button sits at the bottom.
+
+They tap *Start*. The card expands smoothly to fill the screen — this is the **Task Running screen**. The task title is prominent, any notes they added are visible, and there's a *"Done"* button waiting.
+
+They fire off a quick Slack message to Sarah. Done. They tap *"Done"*.
+
+The screen rewards them: stars spiral into their collection counter, the card crumples and flies away, and the next card slides smoothly into view.
+
+**"Check car MOT date"** — *"quick win"*, *"phone"*. 
+
+Alex hesitates. They could check this, but they're not feeling it. They flick right instead.
+
+**"Book dentist appointment"** — *"quick win"*, *"phone"*. Nope, still not feeling phone calls.
+
+They flick again.
+
+**"Organize desktop files"** — *"quick win"*, *"laptop"*. 
+
+That's the one. Low stakes, low effort, satisfying. They tap *Start*, spend 5 minutes dragging folders around, and tap *Done*.
+
+More stars. The stack reshuffles. Alex closes the app with 2 minutes to spare, feeling genuinely accomplished.
+
+The key insight: Alex never saw a list of 25 tasks. They saw three cards, picked one, and left with momentum.
+
+**Requirements revealed:** Context filtering, curated card stack (not infinite list), quick wins vs big time modes, task running screen, flick to browse stack, completion animations, star rewards
+
+---
+
+### Journey 3: Alex's Avoidance Recovery — "Coming Back After Ghosting"
+
+**User:** Alex (31, freelance designer, ADHD)  
+**Scenario:** Hasn't opened One Down in 12 days after a rough patch  
+**Emotional state:** Dreading the guilt, expecting punishment from the app
+
+Alex stares at the One Down icon on their phone. They haven't opened it in 12 days. The familiar dread starts: *"There's probably 30 things in there now. Half of them are overdue. This is going to be brutal."*
+
+They tap the icon anyway.
+
+The app opens. No notification badges. No "You've been away!" guilt trip. Just a gentle card before context selection: **"Welcome back! Here's what happened while you were away."**
+
+They tap it. A simple summary appears:
+- **3 tasks** hit their deadlines (shown with a small ⚠️)
+- **12 tasks** are still waiting patiently
+- **1 task** was auto-suggested as "ready to cut loose?" (the passport renewal that's been sitting there for 6 months)
+
+No shame. No red badges. No "YOU MISSED 3 DEADLINES." Just facts.
+
+Alex feels something unexpected: relief. The app isn't mad at them.
+
+They tap *"Let's see what's up"* and land on context selection. They toggle *Home* and *Phone*.
+
+The first card isn't one of the overdue ones. It's a quick win: **"Water the plants"** — something easy, something achievable right now.
+
+Alex completes it. Stars. Satisfaction.
+
+They flick to the next card. **"Return Amazon package"** — marked with a small *"deadline passed"* label, but no screaming red. The card gently notes: *"This was due Saturday. Still want to try it?"*
+
+Alex sighs. They already returned it with a late fee. They tap *"Cut it loose"* — and a gentle animation releases the card. It floats away. No drama. No failure screen.
+
+The next card: **"Renew passport"** — with a soft prompt: *"This one's been waiting a while. Want to keep it, cut it loose, or break it down into smaller steps?"*
+
+Alex isn't ready to deal with the passport yet. They tap *"Keep it"* — the card stays, no judgment.
+
+After 5 minutes, they've completed 2 quick wins, released 1 expired task, and acknowledged 1 that needs attention later. They close the app feeling lighter, not heavier.
+
+The app did the worrying while they were away. It didn't punish them for coming back.
+
+**Philosophy note:** Allowing "cut loose" *after* a deadline normalizes cutting loose *before* deadlines too — reducing guilt when life gets overwhelming.
+
+**Requirements revealed:** Gentle return experience (no guilt), absence summary, overdue tasks shown softly, "cut it loose" action, stale task prompts, first card shown is achievable (not scary), keep/release/breakdown options
+
+---
+
+### Journey 4: Sam's Context Switching — "5 Minutes Between Meetings"
+
+**User:** Sam (38, product manager, neurotypical)  
+**Scenario:** 5 minutes between a Zoom call and picking up kids  
+**Emotional state:** Work brain fried, looking for a tiny win
+
+It's 3:25pm. Sam just ended a client call and has exactly 5 minutes before they need to leave to get the kids. Their work brain is fried, but there's a tiny window of energy.
+
+They pull out their phone and open One Down. Sam's been using it for about a month now — it's where "life stuff" lives, away from Jira and Slack.
+
+Context selection appears. Sam toggles: *Phone* ✓ *At Home* ✓ 
+
+A card appears: **"Cancel gym membership"** — *"quick win"*, *"phone"*, *"internet"*. 
+
+Sam's been avoiding this for weeks. But looking at it alone, without the 15 other things they've been ignoring, it suddenly seems... doable?
+
+Since this task has been skipped multiple times, the card shows a subtle prompt at the bottom: *"Try a micro-start?"*
+
+Sam taps it. The app suggests the tiniest possible first action: **"Open the phone dial-pad."**
+
+That's it. That's the whole micro-task.
+
+Sam almost laughs. But they tap the phone icon. The dialer opens.
+
+Now they're *in it*. They flip back to One Down, tap the card to see the notes section. There it is — Sam added this last time they were triaging: *"Call 0800-XXX-XXXX, membership #: 12345, expect 5 min hold."*
+
+They dial. Hold music. 2 minutes pass. Someone picks up. They cancel. It takes 4 minutes total.
+
+They tap *Done*. Stars spin. The card crumples and flies away.
+
+**"Book kids' haircuts"** slides into view — but Sam's already grabbing their keys. They close the app.
+
+One task. Done. Five minutes. Sam feels a tiny hit of accomplishment as they walk to the car.
+
+The key insight: The app didn't solve the task for Sam — it just broke the initiation barrier with a micro-task so small it felt silly *not* to do it.
+
+**Requirements revealed:** Works for neurotypical users (not ADHD-only), personal/work separation use case, auto-suggested micro-tasks for avoided tasks, notes section for user-added details, initiation barrier breaking, fast completion loop
+
+---
+
+### Journey Requirements Summary
+
+| Capability Area | Revealed By Journey |
+|-----------------|---------------------|
+| **Brain dump input** | Journey 1 |
+| **AI task parsing & extraction** | Journey 1 |
+| **Context selection (location/resources)** | All journeys |
+| **One-card focus UI** | All journeys |
+| **AI-prompted refinement (deadlines, details)** | Journey 1 |
+| **Task size tags (quick win / big time)** | Journey 1, 2 |
+| **Context requirement tags** | All journeys |
+| **Deadline urgency tracking** | Journey 1, 3 |
+| **Task running screen** | Journey 2, 4 |
+| **Completion animations & rewards** | Journey 2, 3, 4 |
+| **Curated stack (flick to browse)** | Journey 2 |
+| **Gentle return experience** | Journey 3 |
+| **"Cut it loose" action** | Journey 3 |
+| **Stale task prompts** | Journey 3 |
+| **Auto-suggested micro-tasks** | Journey 4 |
+| **Notes section (user-added details)** | Journey 4 |
