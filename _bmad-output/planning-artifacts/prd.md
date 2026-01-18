@@ -1,5 +1,5 @@
 ---
-stepsCompleted: [1, 2, 3, 4]
+stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8]
 inputDocuments:
   - product-brief-One-Down-2025-01-04.md
   - domain-productivity-psychology-research-2025-12-31.md
@@ -425,3 +425,234 @@ The key insight: The app didn't solve the task for Sam — it just broke the ini
 | **Stale task prompts** | Journey 3 |
 | **Auto-suggested micro-tasks** | Journey 4 |
 | **Notes section (user-added details)** | Journey 4 |
+---
+
+## Innovation & Novel Patterns
+
+### Philosophy as Product: The True Differentiator
+
+One Down's innovation isn't a technical breakthrough — it's philosophy embedded into design. The moat is the *feel* of every micro-decision, not features competitors can clone.
+
+**Core Innovation Insight:** Traditional todo apps treat tasks as a user's responsibility to organize and manage. One Down inverts this: the app becomes a *task caretaker* that handles the mental burden so users can focus on doing.
+
+### Detected Innovation Areas
+
+| Innovation | What It Challenges | Why It Matters |
+|------------|-------------------|----------------|
+| **One-card focus UI** | List-based interfaces | Eliminates decision fatigue at the design level — you can't be overwhelmed by one card |
+| **Task caretaker philosophy** | User-as-organizer model | The app does the worrying, tracking, and surfacing — users just act |
+| **"Cut it loose" as liberation** | Complete-or-fail binary | Celebrating task abandonment reduces guilt and cognitive load |
+| **Context-first surfacing** | Priority-first sorting | Shows what's actionable *right now* based on location and resources |
+| **Themeless gamification** | RPG/forest/fantasy themes | Universal appeal without alienating users who find themes juvenile |
+| **Anti-nagging philosophy** | Helpful reminders | No guilt-inducing notifications — only challenge, novelty, or genuine urgency |
+
+### Market Context
+
+The productivity app market is saturated with feature-rich todo apps that ultimately create more stress than they relieve. Research shows:
+- Procrastination is emotional, not lazy — traditional apps amplify negative feelings
+- Choice overload paralyzes — more options lead to worse decisions or no decision
+- Single-tasking beats multitasking — 40% faster completion with full focus
+
+One Down's innovation is *removing* rather than adding — stripping away the cognitive burden that makes todo apps feel like work.
+
+### Validation Approach
+
+These innovations are philosophical rather than technical, so validation is behavioral:
+
+| Signal | Measurement |
+|--------|-------------|
+| Users open without dread | App opens per week, session initiation patterns |
+| Reduced decision time | Time from app open to task engagement |
+| Liberation over guilt | "Cut it loose" usage patterns, return rates after cuts |
+| Context works | Completion rates for context-filtered tasks |
+| Rewards feel right | Engagement metrics, skip vs. complete ratios |
+
+### Risk Mitigation
+
+| Risk | Mitigation |
+|------|------------|
+| "One card" feels limiting | Small curated stack (3-5) with flick browsing — choice without overwhelm |
+| Philosophy doesn't translate | Early dogfooding, qualitative feedback loops |
+| Themeless gamification is boring | Focus on tactile satisfaction, premium feel over complexity |
+| Anti-nagging misses deadlines | Proactive but non-guilt deadline surfacing — "this needs action by X" |
+
+---
+
+## Mobile App Specific Requirements
+
+### Platform Overview
+
+**Framework:** React Native Expo (cross-platform iOS/Android)  
+**Primary Platforms:** iOS, Android  
+**Minimum OS Versions:** TBD during implementation (target modern versions only to leverage latest APIs)
+
+### Platform Requirements
+
+| Requirement | iOS | Android |
+|-------------|-----|---------|
+| Target versions | iOS 15+ | Android 10+ (API 29) |
+| Store | App Store | Google Play |
+| Framework | React Native Expo | React Native Expo |
+| Code sharing | ~95% shared code | ~95% shared code |
+
+### Device Features
+
+| Feature | MVP | Future | Notes |
+|---------|-----|--------|-------|
+| **Haptics/Vibration** | ❌ | v0.2+ | Deferred — core loop validation doesn't depend on haptics. Better to nail visual/interaction feel first, then layer in subtle haptics for completions, card interactions, rewards. |
+| **Voice Input** | ❌ | v0.2+ | Explore both OS transcription and Whisper.cpp for on-device offline (cost savings + offline capability) |
+| **Biometrics** | ❌ | ❌ | Not needed — no sensitive data requiring protection |
+| **Widgets** | ❌ | v1.x+ | Home screen quick capture and task view |
+| **Watch Companion** | ❌ | v1.x+ | Quick capture from wrist |
+
+### Offline Mode
+
+**Strategy:** Progressive offline capability
+
+| Phase | Capability |
+|-------|------------|
+| MVP | Online-only for AI features; basic task viewing works offline |
+| v0.3 | Cached AI decisions; rules-based prioritization when offline |
+| v0.3+ | Whisper.cpp on-device transcription for offline voice input (exploring for cost savings) |
+| v1.x+ | Pre-generated message variants for rich offline experience |
+
+**Critical Constraint:** Core task viewing must work offline. AI-powered features degrade gracefully with clear user feedback.
+
+### Push Notification Strategy
+
+**Philosophy:** Anti-nagging. Notifications only for:
+- ⏰ **Genuine urgency** — Deadline approaching for actionable task
+- 🎯 **Challenge/novelty** — "Quick 5 minutes?" invitation framing
+- 🏆 **Celebration** — Streak acknowledgments, milestone rewards
+
+**Never:**
+- "You haven't opened the app in 3 days"
+- "You have X tasks waiting"
+- Guilt-inducing reminders
+
+**Technical:**
+- iOS: APNs via Expo Notifications
+- Android: FCM via Expo Notifications
+- User controls frequency and types in settings
+
+### App Store Compliance
+
+**Subscription Model:**
+- In-app subscription only (no external payment prompts)
+- Apple App Store: 15% commission (small business program)
+- Google Play: 15% commission (first $1M/year)
+- Already factored into unit economics (see Success Criteria)
+
+**Store Guidelines:**
+- No regulatory concerns (general productivity app)
+- Standard app review process expected
+- No external purchase prompts that violate guidelines
+
+### Technical Stack Decisions
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Framework | React Native Expo | Fast iteration, cross-platform, familiar ecosystem |
+| Animation | Reanimated 3 | Smooth card physics, satisfying interactions |
+| State | TBD | Zustand likely for simplicity |
+| Backend | Fastify + Postgres | Familiar, performant, cost-effective |
+| AI | Gemini Flash 3 / Flash-Lite 2 | Premium initially, then higher usage → best cost/capability ratio per AI cost analysis |
+---
+
+## Functional Requirements
+
+> **Capability Contract:** These FRs define WHAT the product can do. UX designers will design only for these capabilities. Architects will support only these capabilities. Epics will implement only these capabilities. If it's not here, it won't exist.
+
+### Task Capture
+
+- **FR1:** User can enter free-text brain dump to capture multiple tasks at once
+- **FR2:** System can parse brain dump text and extract individual tasks using AI
+- **FR3:** User can add a single task via quick-add input
+- **FR4:** System can infer deadlines, task size, and context requirements from natural language (with confidence thresholds)
+- **FR5:** User can manually add or edit context requirements on a task (home, office, laptop, phone, internet, errand)
+
+### Task Card Stack
+
+- **FR6:** User can view a curated stack of actionable tasks as cards
+- **FR7:** System can curate the card stack based on current context selection and calculated importance/urgency
+- **FR8:** User can tap a card to flip it and see details, notes, and task start button
+- **FR9:** User can flick/swipe through the card stack to browse alternatives
+- **FR10:** User can see task size indicators on cards (quick win vs. big time)
+- **FR11:** User can see visual reward indicators on cards reflecting potential star value (more urgent/larger = more reward)
+- **FR12:** User can see a "missing info" indicator on cards that need context or deadline details
+
+### Context Selection
+
+- **FR13:** User can select current context (location and available resources) to filter the stack
+- **FR14:** System can filter tasks to show only those actionable in current context
+- **FR15:** User can see a visual indicator when other contexts have urgent tasks
+- **FR16:** User can switch contexts and see the stack update in real-time
+
+### Task Execution
+
+- **FR17:** User can start a task (card expands to task running screen, task gets "started" status)
+- **FR18:** User can continue a previously started task (card shows "Continue" instead of "Start")
+- **FR19:** User can view task details and any notes on the task running screen
+- **FR20:** User can add notes to a task during execution
+- **FR21:** User can request AI breakdown help from task details or task running screen
+- **FR22:** User can mark a task as complete
+- **FR23:** System can display satisfying completion feedback (animation, stars)
+
+### Task Management
+
+- **FR24:** User can edit task title, description, deadline, and context requirements
+- **FR25:** User can skip a task (defer to later without completing)
+- **FR26:** User can "cut loose" a task (remove without guilt)
+- **FR27:** System can display celebratory animation when user cuts a task loose
+- **FR28:** User can view a task overview list (all tasks, not just curated stack)
+- **FR29:** System can identify and flag stale tasks (long-running without action)
+- **FR30:** System can prompt user about stale tasks (keep, cut loose, or break down)
+
+### Quick Wins / Big Time Modes
+
+- **FR31:** User can toggle between Quick Wins mode and Big Time mode
+- **FR32:** System can curate Quick Wins stack to show easy, momentum-building tasks
+- **FR33:** System can curate Big Time stack to show challenging, substantial tasks
+
+### AI Task Intelligence
+
+- **FR34:** System can prompt user for missing deadline information when detecting time-sensitivity
+- **FR35:** System can suggest micro-tasks (smallest first step) for frequently skipped tasks
+- **FR36:** System can break down large tasks into smaller subtasks using AI
+- **FR37:** User can accept or reject AI-suggested task breakdowns
+- **FR38:** User can revise AI task breakdown by providing additional info (added to task notes and app context)
+
+### Rewards & Motivation
+
+- **FR39:** User can earn stars for completing tasks
+- **FR40:** User can earn more stars for completing relatively more urgent tasks from the list
+- **FR41:** User can earn more stars for completing larger tasks
+- **FR42:** User can earn bonus stars for completing tasks further before their deadline (up to a limit)
+- **FR43:** User can see accumulated stars count
+- **FR44:** User can view completed tasks in a "done box" area
+
+### Return Experience
+
+- **FR45:** System can present gentle welcome-back summary after absence (no guilt)
+- **FR46:** User can see what happened while away (deadlines passed, stale tasks)
+- **FR47:** System can present first card as an achievable quick win after absence
+
+### Push Notifications
+
+- **FR48:** User can receive deadline urgency notifications when tasks become time-critical
+- **FR49:** User can receive challenge/novelty notifications inviting engagement
+- **FR50:** User can configure notification preferences (types, frequency)
+- **FR51:** System will not send guilt-inducing reminder notifications
+
+### Account & Subscription
+
+- **FR52:** User can create an account
+- **FR53:** User can subscribe to premium via in-app purchase
+- **FR54:** User can use core features on free tier
+- **FR55:** User can access premium features when subscribed
+
+### Data & Sync
+
+- **FR56:** User can have tasks synced across devices
+- **FR57:** User can view tasks offline (core viewing capability)
+- **FR58:** System can gracefully degrade AI features when offline

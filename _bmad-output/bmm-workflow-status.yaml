@@ -22,7 +22,7 @@ workflow_status:
   product-brief: _bmad-output/planning-artifacts/product-brief-One-Down-2025-01-04.md
 
   # Phase 1: Planning
-  prd: required
+  prd: in-progress  # Step 9/11 - see prd.md and prd-step-in-progress.md
   create-ux-design: conditional  # if_has_ui - decide after PRD
 
   # Phase 2: Solutioning
