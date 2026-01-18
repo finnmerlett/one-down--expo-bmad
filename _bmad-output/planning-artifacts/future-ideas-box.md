@@ -78,3 +78,41 @@
 - Micro-tasks are the proven intervention for ADHD initiation barriers
 
 **Revisit when:** User feedback shows demand for deeper conversational assistance.
+
+---
+
+### Reduced Motion Mode
+
+**What:** Accessibility option to minimize animations for users with motion sensitivity or on older devices.
+
+**Why deferred:** Core loop validation first; animations are part of the tactile satisfaction we're testing.
+
+**Future implementation:**
+- System preference detection (prefers-reduced-motion)
+- In-app toggle in settings
+- Graceful fallback to simpler transitions
+
+---
+
+### Full Screen Reader Audit
+
+**What:** Comprehensive VoiceOver (iOS) and TalkBack (Android) testing and optimization.
+
+**MVP state:** UI components structured to support screen readers, but not formally tested.
+
+**Why deferred:** Prioritizing core loop validation; formal audit is time-intensive.
+
+**Future implementation:**
+- Manual testing with VoiceOver/TalkBack
+- Fix any navigation or labelling issues
+- Document accessibility patterns for future development
+
+---
+
+### AI-Powered Sync Conflict Resolution
+
+**What:** When sync conflicts occur (same task edited on multiple devices), use AI to intelligently merge changes rather than "last write wins."
+
+**Current policy:** Last-content-changed wins (simple, predictable).
+
+**Why deferred:** Low priority; conflicts should be rare for single-user app. Revisit if multi-device usage patterns show conflict frequency.

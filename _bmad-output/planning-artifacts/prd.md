@@ -1,5 +1,5 @@
 ---
-stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8]
+stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
 inputDocuments:
   - product-brief-One-Down-2025-01-04.md
   - domain-productivity-psychology-research-2025-12-31.md
@@ -579,7 +579,7 @@ These innovations are philosophical rather than technical, so validation is beha
 - **FR9:** User can flick/swipe through the card stack to browse alternatives
 - **FR10:** User can see task size indicators on cards (quick win vs. big time)
 - **FR11:** User can see visual reward indicators on cards reflecting potential star value (more urgent/larger = more reward)
-- **FR12:** User can see a "missing info" indicator on cards that need context or deadline details
+- **FR12:** User can see a "check needed" indicator on cards that need confirmation of AI-inferred info (dates, etc.) or have missing context/deadline details
 
 ### Context Selection
 
@@ -587,72 +587,128 @@ These innovations are philosophical rather than technical, so validation is beha
 - **FR14:** System can filter tasks to show only those actionable in current context
 - **FR15:** User can see a visual indicator when other contexts have urgent tasks
 - **FR16:** User can switch contexts and see the stack update in real-time
+- **FR17:** System can display empty context state with message prompting user to check other contexts
+- **FR18:** User can see greyed-out context options when those contexts have no actionable tasks
 
 ### Task Execution
 
-- **FR17:** User can start a task (card expands to task running screen, task gets "started" status)
-- **FR18:** User can continue a previously started task (card shows "Continue" instead of "Start")
-- **FR19:** User can view task details and any notes on the task running screen
-- **FR20:** User can add notes to a task during execution
-- **FR21:** User can request AI breakdown help from task details or task running screen
-- **FR22:** User can mark a task as complete
-- **FR23:** System can display satisfying completion feedback (animation, stars)
+- **FR19:** User can start a task (card expands to task running screen, task gets "started" status)
+- **FR20:** User can continue a previously started task (card shows "Continue" instead of "Start")
+- **FR21:** User can view task details and any notes on the task running screen
+- **FR22:** User can add notes to a task during execution
+- **FR23:** User can request AI breakdown help from task details or task running screen
+- **FR24:** User can mark a task as complete
+- **FR25:** System can display satisfying completion feedback (animation, stars)
 
 ### Task Management
 
-- **FR24:** User can edit task title, description, deadline, and context requirements
-- **FR25:** User can skip a task (defer to later without completing)
-- **FR26:** User can "cut loose" a task (remove without guilt)
-- **FR27:** System can display celebratory animation when user cuts a task loose
-- **FR28:** User can view a task overview list (all tasks, not just curated stack)
-- **FR29:** System can identify and flag stale tasks (long-running without action)
-- **FR30:** System can prompt user about stale tasks (keep, cut loose, or break down)
+- **FR26:** User can edit task title, description, deadline, and context requirements
+- **FR27:** User can skip a task (defer to later without completing)
+- **FR28:** User can "cut loose" a task (remove without guilt)
+- **FR29:** System can display celebratory animation when user cuts a task loose
+- **FR30:** User can view a task overview list (all tasks, not just curated stack)
+- **FR31:** User can bulk-select tasks in overview for delete or archive (via multi-select mode)
+- **FR32:** System can identify and flag stale tasks (long-running without action OR frequently swiped past)
+- **FR33:** System can prompt user about stale tasks (keep, cut loose, or break down)
 
 ### Quick Wins / Big Time Modes
 
-- **FR31:** User can toggle between Quick Wins mode and Big Time mode
-- **FR32:** System can curate Quick Wins stack to show easy, momentum-building tasks
-- **FR33:** System can curate Big Time stack to show challenging, substantial tasks
+- **FR34:** User can toggle between Quick Wins mode and Big Time mode
+- **FR35:** System can curate Quick Wins stack to show easy, momentum-building tasks
+- **FR36:** System can curate Big Time stack to show challenging, substantial tasks
 
 ### AI Task Intelligence
 
-- **FR34:** System can prompt user for missing deadline information when detecting time-sensitivity
-- **FR35:** System can suggest micro-tasks (smallest first step) for frequently skipped tasks
-- **FR36:** System can break down large tasks into smaller subtasks using AI
-- **FR37:** User can accept or reject AI-suggested task breakdowns
-- **FR38:** User can revise AI task breakdown by providing additional info (added to task notes and app context)
+- **FR37:** System can prompt user for missing deadline information when detecting time-sensitivity
+- **FR38:** System can prompt user to confirm AI-inferred critical information (deadlines, due dates)
+- **FR39:** System can suggest micro-tasks (smallest first step) for frequently skipped tasks
+- **FR40:** System can break down large tasks into smaller subtasks using AI
+- **FR41:** User can accept or reject AI-suggested task breakdowns
+- **FR42:** User can revise AI task breakdown by providing additional info (added to task notes and app context)
 
 ### Rewards & Motivation
 
-- **FR39:** User can earn stars for completing tasks
-- **FR40:** User can earn more stars for completing relatively more urgent tasks from the list
-- **FR41:** User can earn more stars for completing larger tasks
-- **FR42:** User can earn bonus stars for completing tasks further before their deadline (up to a limit)
-- **FR43:** User can see accumulated stars count
-- **FR44:** User can view completed tasks in a "done box" area
+- **FR43:** User can earn stars for completing tasks
+- **FR44:** User can earn more stars for completing relatively more urgent tasks from the list
+- **FR45:** User can earn more stars for completing larger tasks
+- **FR46:** User can earn bonus stars for completing tasks further before their deadline (up to a limit)
+- **FR47:** User can earn small rewards for confirming AI-inferred info or adding identified missing info
+- **FR48:** User can see accumulated stars count
+- **FR49:** User can view completed tasks in a "done box" area
 
 ### Return Experience
 
-- **FR45:** System can present gentle welcome-back summary after absence (no guilt)
-- **FR46:** User can see what happened while away (deadlines passed, stale tasks)
-- **FR47:** System can present first card as an achievable quick win after absence
+- **FR50:** System can present gentle welcome-back summary after absence (no guilt)
+- **FR51:** User can see what happened while away (deadlines passed, stale tasks) and enter triage mode for fast keep/cut/defer decisions
+- **FR52:** System can present first card as an achievable quick win after absence
 
 ### Push Notifications
 
-- **FR48:** User can receive deadline urgency notifications when tasks become time-critical
-- **FR49:** User can receive challenge/novelty notifications inviting engagement
-- **FR50:** User can configure notification preferences (types, frequency)
-- **FR51:** System will not send guilt-inducing reminder notifications
+- **FR53:** User can receive deadline urgency notifications when tasks become time-critical
+- **FR54:** User can receive challenge/novelty notifications inviting engagement
+- **FR55:** User can configure notification preferences (types, frequency)
+- **FR56:** System will not send guilt-inducing reminder notifications
 
 ### Account & Subscription
 
-- **FR52:** User can create an account
-- **FR53:** User can subscribe to premium via in-app purchase
-- **FR54:** User can use core features on free tier
-- **FR55:** User can access premium features when subscribed
+- **FR57:** User can create an account
+- **FR58:** User can subscribe to premium via in-app purchase
+- **FR59:** User can use core features on free tier
+- **FR60:** User can access premium features when subscribed
+- **FR61:** User can tap a premium discovery icon (sparkle) to view premium features page
 
 ### Data & Sync
 
-- **FR56:** User can have tasks synced across devices
-- **FR57:** User can view tasks offline (core viewing capability)
-- **FR58:** System can gracefully degrade AI features when offline
+- **FR62:** User can have tasks synced across devices
+- **FR63:** User can view tasks offline (core viewing capability)
+- **FR64:** User can create tasks manually offline (basic entry without AI parsing)
+- **FR65:** System can gracefully degrade AI features when offline
+
+---
+
+## Non-Functional Requirements
+
+> **Quality Attributes:** These NFRs define HOW WELL the system must perform. Only categories relevant to One Down are included.
+
+### Performance
+
+| ID | Requirement | Notes |
+|----|-------------|-------|
+| **NFR-P1** | Animations maintain 50+ FPS on devices from 2020 (e.g., Pixel 5) | Smooth feel on mid-range; allows headroom |
+| **NFR-P2** | Cold start to usable state in <2 seconds (target), <⁠3 seconds (acceptable) | First card visible within this window |
+| **NFR-P3** | AI parsing/breakdown responds within 3 seconds (target <2s for snappy feel) | Loading indicator fades in after 1s wait, fades out on completion; "taking a bit longer" message after 4s |
+| **NFR-P4** | Card interactions (flip, flick, complete) feel instant (<100ms response) | Critical for tactile satisfaction |
+
+### Accessibility
+
+| ID | Requirement | Notes |
+|----|-------------|-------|
+| **NFR-A1** | Core flows designed following WCAG AA patterns | Not a formal audit; enables future compliance |
+| **NFR-A2** | UI components support screen readers structurally | Basic VoiceOver/TalkBack compatibility enabled; testing post-MVP |
+| **NFR-A3** | Reduced motion mode available | **Deferred to post-MVP** |
+| **NFR-A4** | ADHD-first design patterns throughout (low cognitive load, clear focus, minimal distractions) | Core philosophy; already embedded |
+
+### Reliability
+
+| ID | Requirement | Notes |
+|----|-------------|-------|
+| **NFR-R1** | Core task viewing works offline | Covered by FR63 |
+| **NFR-R2** | Manual task creation works offline (basic entry without AI) | Covered by FR64; fallback required |
+| **NFR-R3** | AI features gracefully degrade when offline (clear feedback, no silent failure) | Covered by FR65 |
+| **NFR-R4** | Sync conflicts resolved by last-content-changed wins | Simple policy; AI merge resolution deferred |
+| **NFR-R5** | Data sync completes within 5 seconds of connection restoration | Quick catch-up on reconnect |
+
+### Security
+
+| ID | Requirement | Notes |
+|----|-------------|-------|
+| **NFR-S1** | User credentials stored securely (device keychain / secure storage) | Standard practice |
+| **NFR-S2** | API communications use TLS 1.2+ | Industry standard |
+| **NFR-S3** | No sensitive task content logged or transmitted to analytics | User privacy |
+
+### Scalability
+
+| ID | Requirement | Notes |
+|----|-------------|-------|
+| **NFR-SC1** | Architecture supports 25k MAU without major redesign | Target viability threshold |
+| **NFR-SC2** | Database schema supports future multi-device sync expansion | Plan ahead |
