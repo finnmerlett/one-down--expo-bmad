@@ -1,1 +1,5 @@
-{}
+{
+  "chat.agentSkillsLocations": {
+    ".claude/skills": false
+  }
+}
