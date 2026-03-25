@@ -116,3 +116,25 @@
 **Current policy:** Last-content-changed wins (simple, predictable).
 
 **Why deferred:** Low priority; conflicts should be rare for single-user app. Revisit if multi-device usage patterns show conflict frequency.
+
+---
+
+### Customizable Star Weights (Power Users)
+
+**What:** Allow power users to customize the star reward weights — e.g. increase reward for cutting loose, decrease for subtasks, or tune deadline bonuses.
+
+**Why interesting:** Different users have different motivational profiles. Someone struggling with letting go of tasks might benefit from higher cut-loose rewards. Someone who avoids big tasks might want bigger rewards for Big Time completions.
+
+**Implementation:** Star weights already centralized in config. Expose as a settings screen with sliders or presets (e.g. "Liberation mode", "Challenge mode", "Balanced").
+
+---
+
+### Subtask Star Routing: Direct vs. Bucket
+
+**Question:** Should subtask star rewards go directly to the user's total star count, or accumulate in a "bucket" on the parent task card and only be collected when the parent task is completed?
+
+**Direct (current):** Stars go to total immediately. Simple, instant gratification.
+
+**Bucket:** Stars accumulate visually on the card and get paid out on task completion. Creates anticipation and a bigger reward moment when the parent task is Done. Risk: if user cuts loose the parent, do bucket stars get lost? (Probably should still pay out.)
+
+**Explore during dogfooding:** Which approach feels more motivating in practice?
