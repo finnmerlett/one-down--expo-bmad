@@ -13,6 +13,10 @@ documentCounts:
   analysis: 1
 workflowType: 'prd'
 lastStep: 4
+lastEdited: '2026-03-25'
+editHistory:
+  - date: '2026-03-25'
+    changes: 'Post-validation alignment: Android-only MVP scope, Reanimated 4, TalkBack-only NFR, push strategy reorder, added Required Permissions subsection'
 ---
 
 # Product Requirements Document - One Down
@@ -61,7 +65,7 @@ The moat is philosophy, not features. The *feel* of every micro-decision — no 
 
 ## Project Classification
 
-**Technical Type:** Mobile App (React Native Expo, cross-platform iOS/Android)  
+**Technical Type:** Mobile App (React Native Expo, Android-only MVP; iOS post-MVP)  
 **Domain:** General (productivity/task management, no regulated data)  
 **Complexity:** Low (standard requirements, basic security, UX-focused)  
 **Project Context:** Greenfield — new project
@@ -482,18 +486,27 @@ These innovations are philosophical rather than technical, so validation is beha
 
 ### Platform Overview
 
-**Framework:** React Native Expo (cross-platform iOS/Android)  
-**Primary Platforms:** iOS, Android  
+**Framework:** React Native Expo  
+**MVP Platform:** Android only  
+**Future Platform:** iOS (post-MVP)  
 **Minimum OS Versions:** TBD during implementation (target modern versions only to leverage latest APIs)
 
 ### Platform Requirements
 
-| Requirement | iOS | Android |
-|-------------|-----|---------|
-| Target versions | iOS 15+ | Android 10+ (API 29) |
-| Store | App Store | Google Play |
+| Requirement | Android (MVP) | iOS (post-MVP) |
+|-------------|---------------|----------------|
+| Target versions | Android 10+ (API 29) | iOS 15+ |
+| Store | Google Play | App Store |
 | Framework | React Native Expo | React Native Expo |
 | Code sharing | ~95% shared code | ~95% shared code |
+
+### Required Permissions (Android MVP)
+
+| Permission | Purpose |
+|---|---|
+| `INTERNET` | API communication, AI features, sync |
+| `POST_NOTIFICATIONS` | Push notifications (deadline urgency, challenges) |
+| `RECEIVE_BOOT_COMPLETED` | Reschedule notifications after device restart |
 
 ### Device Features
 
@@ -531,8 +544,8 @@ These innovations are philosophical rather than technical, so validation is beha
 - Guilt-inducing reminders
 
 **Technical:**
-- iOS: APNs via Expo Notifications
-- Android: FCM via Expo Notifications
+- Android (MVP): FCM via Expo Notifications
+- iOS (post-MVP): APNs via Expo Notifications
 - User controls frequency and types in settings
 
 ### App Store Compliance
@@ -553,7 +566,7 @@ These innovations are philosophical rather than technical, so validation is beha
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
 | Framework | React Native Expo | Fast iteration, cross-platform, familiar ecosystem |
-| Animation | Reanimated 3 | Smooth card physics, satisfying interactions |
+| Animation | Reanimated 4 | Smooth card physics, satisfying interactions; requires New Architecture (Fabric) |
 | State | TBD | Zustand likely for simplicity |
 | Backend | Fastify + Postgres | Familiar, performant, cost-effective |
 | AI | Gemini Flash 3 / Flash-Lite 2 | Premium initially, then higher usage → best cost/capability ratio per AI cost analysis |
@@ -684,7 +697,7 @@ These innovations are philosophical rather than technical, so validation is beha
 | ID | Requirement | Notes |
 |----|-------------|-------|
 | **NFR-A1** | Core flows designed following WCAG AA patterns | Not a formal audit; enables future compliance |
-| **NFR-A2** | UI components support screen readers structurally | Basic VoiceOver/TalkBack compatibility enabled; testing post-MVP |
+| **NFR-A2** | UI components support screen readers structurally | Basic TalkBack compatibility enabled (Android MVP); VoiceOver post-MVP |
 | **NFR-A3** | Reduced motion mode available | **Deferred to post-MVP** |
 | **NFR-A4** | ADHD-first design patterns throughout (low cognitive load, clear focus, minimal distractions) | Core philosophy; already embedded |
 
