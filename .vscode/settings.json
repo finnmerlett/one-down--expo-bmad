@@ -1,5 +1,13 @@
 {
   "chat.agentSkillsLocations": {
     ".claude/skills": false
-  }
+  },
+  "cSpell.words": [
+    "Actionsheet",
+    "gluestack",
+    "Oxfmt",
+    "Oxlint",
+    "posthog",
+    "Supabase"
+  ]
 }

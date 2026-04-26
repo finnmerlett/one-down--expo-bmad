@@ -201,6 +201,7 @@ AI costs must NOT progressively eat into profit margin. This is a viability cons
 - **"Yesterday's wins on open"** — Start sessions positive, see recent accomplishments
 - **Richer "done box"** — Visual accumulation of completed tasks, momentum tracking
 - **Feature request consolidation** — View mode for requested features (paired with feedback system)
+- **Enhanced logging & traceability** — Build out more thorough logging and observability on top of MVP baseline (NFR-L1)
 
 ### Vision (v1.0+)
 
@@ -616,28 +617,28 @@ These innovations are philosophical rather than technical, so validation is beha
 ### Task Management
 
 - **FR26:** User can edit task title, description, deadline, and context requirements
-- **FR27:** User can skip a task (defer to later without completing)
+- **FR27:** User can swipe past a task in the card stack to see other options (implicit skip/defer)
 - **FR28:** User can "cut loose" a task (remove without guilt)
 - **FR29:** System can display celebratory animation when user cuts a task loose
 - **FR30:** User can view a task overview list (all tasks, not just curated stack)
-- **FR31:** User can bulk-select tasks in overview for delete or archive (via multi-select mode)
-- **FR32:** System can identify and flag stale tasks (long-running without action OR frequently swiped past)
-- **FR33:** System can prompt user about stale tasks (keep, cut loose, or break down)
+- **FR31:** User can bulk-select tasks in overview for archive (via multi-select mode); permanent delete is only available from the archive/recycle bin as a further action
+- **FR32:** System can identify and flag stale or avoided tasks (long-running without action OR frequently swiped past)
+- **FR33:** System can prompt user about stale or avoided tasks (keep, cut loose, or break down)
 
 ### Quick Wins / Big Time Modes
 
-- **FR34:** User can toggle between Quick Wins mode and Big Time mode
-- **FR35:** System can curate Quick Wins stack to show easy, momentum-building tasks
-- **FR36:** System can curate Big Time stack to show challenging, substantial tasks
+- **FR34:** User can toggle between Quick Wins mode and Big Time mode; pressing the active mode again toggles it off (both types show in the stack)
+- **FR35:** System can filter the stack to show only tasks assigned as small/quick win size (AI-auto assigned, then human-reviewed in triage/curation)
+- **FR36:** System can filter the stack to show only tasks assigned as big time size (AI-auto assigned, then human-reviewed in triage/curation)
 
 ### AI Task Intelligence
 
 - **FR37:** System can prompt user for missing deadline information when detecting time-sensitivity
 - **FR38:** System can prompt user to confirm AI-inferred critical information (deadlines, due dates)
 - **FR39:** System can suggest micro-tasks (smallest first step) for frequently skipped tasks
-- **FR40:** System can break down large tasks into smaller subtasks using AI
+- **FR40:** System can break down large tasks into smaller subtasks using AI — default is generating just the first few steps to get started, with option to generate full list
 - **FR41:** User can accept or reject AI-suggested task breakdowns
-- **FR42:** User can revise AI task breakdown by providing additional info (added to task notes and app context)
+- **FR42:** User can revise AI task breakdown via a dedicated feedback input ("why this misses the mark"); AI distills useful info into the task notes and retries the breakdown
 
 ### Rewards & Motivation
 
@@ -646,8 +647,8 @@ These innovations are philosophical rather than technical, so validation is beha
 - **FR45:** User can earn more stars for completing larger tasks
 - **FR46:** User can earn bonus stars for completing tasks further before their deadline (up to a limit)
 - **FR47:** User can earn small rewards for confirming AI-inferred info or adding identified missing info
-- **FR48:** User can see accumulated stars count
-- **FR49:** User can view completed tasks in a "done box" area
+- **FR48:** User can see accumulated stars count (grand total + daily amount displayed together)
+- **FR49:** User can tap star count to open star activity log (chronological list of all star transactions with today/all-time filter); completed tasks appear as a dedicated section at the top of the full task list view (scroll position on entry shows a couple of done tasks, user can scroll up to see more)
 
 ### Return Experience
 
@@ -724,4 +725,10 @@ These innovations are philosophical rather than technical, so validation is beha
 | ID | Requirement | Notes |
 |----|-------------|-------|
 | **NFR-SC1** | Architecture supports 25k MAU without major redesign | Target viability threshold |
+
+### Logging & Traceability
+
+| ID | Requirement | Notes |
+|----|-------------|-------|
+| **NFR-L1** | Basic logging and traceability in both app client and server side | MVP baseline; build out more thorough logging in v0.2+ |
 | **NFR-SC2** | Database schema supports future multi-device sync expansion | Plan ahead |

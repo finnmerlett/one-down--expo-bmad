@@ -94,7 +94,7 @@ The user's only real decision: "Do I want to do this one?" Everything else — p
 1. **One card, one decision** — Never present a list when a card will do. Every screen should have one clear action.
 2. **The app does the worrying** — Prioritization, deadline tracking, staleness detection — all invisible to the user until action is needed.
 3. **Calm over urgent** — Default emotional tone is calm competence. Urgency only for genuinely time-critical items, and even then, paired with actionable help.
-4. **Reward doing, don't punish not-doing** — Stars for completion, gentle prompts for stale tasks, zero guilt for absence or cutting loose.
+4. **Reward doing, don't punish not-doing** — Stars for completion, gentle prompts for stale or avoided tasks, zero guilt for absence or cutting loose.
 5. **Functional before beautiful** — Get all mechanisms working first. Layout and interaction correctness over any visual polish. Animations and theming are separate future design passes.
 
 ## Desired Emotional Response
@@ -123,7 +123,7 @@ The user's only real decision: "Do I want to do this one?" Everything else — p
 1. **Factual over emotional** — Summaries state facts ("3 tasks hit deadlines") not feelings ("you missed 3 deadlines!")
 2. **Agency without burden** — User always has control (edit, skip, cut loose, keep) but never *has* to decide right now
 3. **Achievement framing** — Show what's been done (stars earned, tasks completed) not what remains
-4. **Gentle nudging** — Stale task prompts offer options (keep/cut/break down), never demand action
+4. **Gentle nudging** — Stale or avoided task prompts offer options (keep/cut/break down), never demand action
 5. **Urgency without panic** — Deadline proximity is communicated clearly and visually, but always paired with actionable next steps. The tone is "this needs doing soon" not "you failed to do this"
 
 ## UX Pattern Analysis & Inspiration
@@ -146,7 +146,7 @@ The user's only real decision: "Do I want to do this one?" Everything else — p
 | Card-as-primary-UI | SwipeTask, Tinder | Task card is the core interface, not a list |
 | Context toggles | Google Maps (transport modes) | Tap to select current context, filters update immediately |
 | Pull-to-refresh / add | Many mobile apps | Natural gesture for "I want to add something" |
-| Tab bar navigation | iOS conventions | Card view, task overview, brain dump input, settings |
+| Tab bar navigation | iOS conventions | Top bar icons + floating add button (no bottom tab bar) |
 | Empty states with guidance | Stripe, Linear | When no tasks exist, guide user to brain dump |
 
 ### Anti-Patterns to Avoid
@@ -162,7 +162,7 @@ The user's only real decision: "Do I want to do this one?" Everything else — p
 
 ### Design Inspiration Strategy
 
-**Adopt:** Single-field brain dump capture, card as primary UI unit, tab bar navigation, generous spacing, empty state guidance.
+**Adopt:** Single-field brain dump capture, card as primary UI unit, top bar icon navigation, generous spacing, empty state guidance.
 
 **Adapt:** Context toggles (simpler than transport mode selectors — just icon buttons). Star rewards (simpler than gamification apps — just a counter that goes up).
 
@@ -192,7 +192,7 @@ The user's only real decision: "Do I want to do this one?" Everything else — p
 
 - Install gluestack-ui v3 + NativeWind in the Expo project
 - Use default theme as-is — no custom tokens initially
-- Build screens with gluestack components (Box, Text, Button, Pressable, Card, Input, etc.)
+- Copy in gluestack components only as needed per story (`npx gluestack-ui add <component>`) — see `docs/gluestack-ui-v3-components.md` for full reference
 - Customise generic styling with Tailwind utility classes
 - Use the gluestack-ui v3 MCP server (https://github.com/DerianAndre/Gluestack-UI-V3-MCP-Server) for component reference — may need bug-fixes as it's a community fork
 - Extract app-specific composite components (TaskCard, ContextToggle, etc.) as patterns emerge
@@ -268,7 +268,7 @@ Users bring a **"what should I do?"** mental model. Current solutions force them
 - Indicator disappears once key info is confirmed
 
 **3c. Triage Mode (Dedicated)**
-- Accessible from tab bar or card view (e.g. a "Triage" button when cards need attention)
+- Accessible from card view (e.g. a "Triage" button when cards need attention)
 - Surfaces a dedicated stack of only cards that have incomplete/unconfirmed info
 - Blueprint-style aesthetic — visually distinct from the main card stack to signal "organising mode" vs. "doing mode"
 - User works through the triage stack: confirm info, add missing details, set deadlines
@@ -284,11 +284,11 @@ Users bring a **"what should I do?"** mental model. Current solutions force them
 - If user leaves mid-task, card shows "Continue" on return
 
 **4b. AI Task Breakdown ("Help me with this")**
-- Tap "Help me with this" → AI generates a few small actionable next steps
+- Tap "Help me with this" → default: AI generates just the first few steps to get started (option to generate full list available)
 - Steps appear as a subtask list above the notes area
 - Each subtask has a tickbox — tap to mark done (item fades, reversible). Completing a subtask earns a very small star reward
 - Subtasks can be deleted — deleting a completed subtask removes its star addition from the total
-- If the AI got it wrong, user can tap to regenerate with feedback ("That's not right — I need to..."). Already completed subtasks are not modified.
+- If the AI got it wrong, user can tap to regenerate with a dedicated feedback input ("why this misses the mark"). AI distils useful info from the feedback into the task notes and retries the breakdown. Already completed subtasks are not modified.
 - Subtask list and notes are both sent as context when requesting new help
 - Subtasks are part of the parent task — completing all subtasks doesn't auto-complete the parent. User still taps Done on the main task when finished
 
@@ -296,7 +296,7 @@ Users bring a **"what should I do?"** mental model. Current solutions force them
 - Tap Done → star counter increments
 - Completed task is removed from stack
 - Next card appears immediately
-- Done box accumulates completed tasks (viewable separately)
+- Completed tasks appear as a dedicated section at the top of the full task list view (scroll position on entry shows a couple of done tasks, user can scroll up to see more)
 
 **6. Cut Loose (Release)**
 - From card back or task running screen, tap Cut Loose
@@ -309,12 +309,12 @@ Users bring a **"what should I do?"** mental model. Current solutions force them
 - Full scrolling list of all tasks, grouped or sortable by status, deadline, context, size
 - Allows bulk actions: multi-select via long-press or checkbox to delete, cut loose, change context, or change size
 - This is the "peek behind the curtain" — reassurance that nothing is lost
-- Not the default view, not in the tab bar — deliberately a secondary access point
+- Not the default view — deliberately a secondary access point via the top bar list icon
 
 **8. Welcome Back (Absence Return)**
 - If user hasn't opened app in >3 days, show a summary screen before card view
 - Summary: factual, not emotional. "3 tasks hit deadlines. 12 tasks waiting. 1 suggested to cut loose."
-- Options: "Let's see what's up" (goes to card view) or triage mode for quick keep/cut/defer decisions
+- Options: "Let's see what's up" (goes to card view) or "Go to main deck" (goes directly to card stack)
 - First card after absence is always a quick win
 
 **9. Star Reward System (Configuration)**
@@ -328,7 +328,8 @@ Users bring a **"what should I do?"** mental model. Current solutions force them
 - Tap the star counter to open the activity log
 - Shows a chronological list of star transactions: earned and spent/removed
 - Each entry shows: timestamp, action (completed task / cut loose / subtask / triage / subtask deleted), task name, star amount (+/-)
-- Simple scrollable list — no filtering needed for MVP
+- Filter: today or all-time
+- Simple scrollable list
 
 ## Visual Design Foundation
 
@@ -340,7 +341,7 @@ Users bring a **"what should I do?"** mental model. Current solutions force them
 - **Typography:** System fonts at default gluestack sizes
 - **Spacing:** gluestack/Tailwind default spacing scale
 - **Icons:** A standard icon set (Lucide, Heroicons, or similar — decided during implementation)
-- **Layout:** Standard mobile patterns — full-width cards, tab bar navigation, generous touch targets
+- **Layout:** Standard mobile patterns — full-width cards, top bar navigation, generous touch targets
 
 ### What a Future Design Pass Adds
 
@@ -381,7 +382,7 @@ flowchart TD
     A[App opens] --> B{"Absent<br/>> 3 days?"}
     B -->|Yes| C["Welcome back<br/>summary screen"]
     B -->|No| D["Context selection<br/>last-used pre-selected"]
-    C --> E["Tap 'Let's see<br/>what's up' or<br/>enter triage"]
+    C --> E["Tap 'Let's see<br/>what's up' or<br/>'Go to main deck'"]
     E --> D
     D --> F["Card stack loads<br/>for context"]
     F --> G[Top card displayed]
@@ -452,22 +453,23 @@ flowchart TD
 flowchart TD
     A["Card view<br/>current mode"] --> B[Tap mode toggle]
     B --> C{Which mode?}
-    C -->|Quick Wins| D["Stack re-curated<br/>easy, low-effort<br/>tasks prioritized"]
-    C -->|Big Time| E["Stack re-curated<br/>challenging tasks<br/>prioritized"]
-    D --> F["Top card from<br/>new stack"]
-    E --> F
+    C -->|Quick Wins| D["Stack filtered<br/>small/quick win<br/>tasks only"]
+    C -->|Big Time| E["Stack filtered<br/>big time<br/>tasks only"]
+    C -->|Same as current<br/>toggle off| F["Stack shows<br/>both types<br/>no filter"]
+    D --> G["Top card from<br/>new stack"]
+    E --> G
+    F --> G
 ```
 
 ### Flow 6: Task List View (Full Visibility)
 
 ```mermaid
 flowchart TD
-    A["Tap list icon<br/>in top bar"] --> B["Task list view<br/>active tasks tab"]
-    B --> C["Scrolling list<br/>grouped by status"]
+    A["Tap list icon<br/>in top bar"] --> B["Task list view<br/>done section at top"]
+    B --> C["Scrolling list<br/>done tasks visible"]
     C --> D{User action?}
     D -->|Tap task| E["Task detail view<br/>edit inline"]
     D -->|Long-press / checkbox| F["Multi-select mode<br/>activated"]
-    D -->|Sort / group| G["Change grouping:<br/>status, deadline,<br/>context, size"]
     D -->|Tap Recycle Bin tab| H["Recycle bin view<br/>cut-loose tasks"]
     D -->|Back| I[Return to card view]
     E --> J{Edit action?}
@@ -485,7 +487,6 @@ flowchart TD
     O --> C
     P -->|"Was on active tab"| C
     P -->|"Was on recycle bin"| H
-    G --> C
     H --> Q{Recycle bin action?}
     Q -->|Restore task| R["Task returns<br/>to active stack"]
     Q -->|Delete permanently| L
@@ -507,13 +508,14 @@ flowchart TD
 
 ### gluestack-ui v3 Coverage
 
-Components available out of the box that map directly to One Down's needs:
+**Full component reference:** `docs/gluestack-ui-v3-components.md` — install only as needed via `npx gluestack-ui add <component>`.
+
+Key components anticipated for One Down (install per story, not upfront):
 
 | Need | gluestack Component | Notes |
 |------|---------------------|-------|
 | Buttons (Start, Done, Submit, Cut Loose) | `Button` | Various sizes/variants |
 | Text input (brain dump, notes, inline edit) | `Textarea`, `Input` | Standard text entry |
-| Tab navigation | `Tabs` or custom tab bar | Bottom tab bar pattern |
 | Modals / overlays | `Modal`, `Actionsheet` | Confirmation dialogs if needed |
 | Toast notifications | `Toast` | Brief acknowledgments ("Released", star awards) |
 | Loading states | `Spinner` | AI processing indicators |
@@ -525,7 +527,7 @@ Components available out of the box that map directly to One Down's needs:
 | Checkboxes | `Checkbox` | Subtask tickboxes |
 | Toggle / switch | `Switch` | Quick Wins / Big Time toggle |
 | Dividers | `Divider` | Section separation |
-| Avatars / indicators | `Avatar`, `Badge` | Star counter display |
+| Bottom panel | `BottomSheet` | Draggable overlay panel |
 
 ### Custom Components Needed
 
@@ -558,8 +560,8 @@ These are One Down-specific composites that don't exist in gluestack — built f
 
 **Purpose:** Switch between Quick Wins and Big Time task curation.
 **Content:** Two-option toggle labelled "Quick Wins" / "Big Time".
-**States:** One option active at a time. Stack re-curates on switch.
-**Interaction:** Tap to switch. Could be a segmented control or simple toggle.
+**States:** One option active at a time, or neither active (both types show in stack). Stack re-curates on switch.
+**Interaction:** Tap to activate a mode. Tap the currently active mode again to deactivate it (returns to mixed stack showing both types). Could be a segmented control or simple toggle.
 
 #### TaskRunningScreen
 
@@ -586,7 +588,7 @@ These are One Down-specific composites that don't exist in gluestack — built f
 #### StarCounter
 
 **Purpose:** Persistent display of accumulated stars.
-**Content:** Star icon + count number.
+**Content:** Star icon + grand total count + daily amount.
 **States:** Default, incrementing (brief highlight on award), tappable.
 **Interaction:** Tap to open StarActivityLog. Increments visibly when stars are awarded.
 
@@ -595,12 +597,13 @@ These are One Down-specific composites that don't exist in gluestack — built f
 **Purpose:** Chronological record of all star transactions.
 **Content:** List of entries — each showing timestamp, action type, task name, star amount (+/-).
 **States:** Populated, empty (impossible in practice — first action creates first entry).
-**Interaction:** Simple scroll. No filtering for MVP.
+**Filter:** Today or all-time.
+**Interaction:** Simple scroll. Filter toggle between today and all-time.
 
 #### WelcomeBackSummary
 
 **Purpose:** Calm re-entry screen after 3+ days of absence.
-**Content:** Factual summary — tasks that hit deadlines, total tasks waiting, suggestions to cut loose. Two action buttons: "Let's see what's up" (→ card view), enter triage mode.
+**Content:** Factual summary — tasks that hit deadlines, total tasks waiting, suggestions to cut loose. Two action buttons: "Let's see what's up" (→ card view with triage focus), "Go to main deck" (→ card stack directly).
 **States:** Single state — shown only when absence threshold is met.
 **Interaction:** Tap either action button to proceed.
 
@@ -620,19 +623,19 @@ These are One Down-specific composites that don't exist in gluestack — built f
 
 #### TaskListView
 
-**Purpose:** Full task list for trust building — the "peek behind the curtain" so users can see everything the app is managing. Has two views: active tasks and recycle bin.
-**Content:** Scrolling list of tasks, grouped or sortable by status, deadline, context, or size. Toggle between active tasks and recycle bin (cut-loose tasks).
-**Access:** Tap server/list icon in the top bar (next to star counter).
+**Purpose:** Full task list for trust building — the "peek behind the curtain" so users can see everything the app is managing. Has two views: active tasks (with completed section at top) and recycle bin.
+**Content:** Scrolling list of tasks. Completed tasks appear as a dedicated section at the top (scroll position on entry shows a couple of done tasks, user can scroll up to see more). Toggle between active tasks and recycle bin (cut-loose tasks). Grouping/sorting by status, deadline, context, or size deferred to v0.2+.
+**Access:** Tap list icon in the top bar (top left).
 **States:** Populated (normal), empty (guides to brain dump). Recycle bin empty shows "Nothing here — everything's active."
 **Views:**
-- **Active tasks** (default) — All current tasks. Bulk actions: delete permanently, cut loose, change context, change size.
+- **Active tasks** (default) — Completed tasks section at top, then all current tasks. Bulk actions: archive (moves to recycle bin), change context, change size. Permanent delete is only available from the recycle bin.
 - **Recycle bin** — Tasks that have been cut loose. Can be restored (returns to active stack) or permanently deleted.
 **Delete behaviour:** Permanent delete is only available from the task list view (not from card view or task running). Confirmation dialog: "Delete [task]? This is permanent and can't be undone." Dialog includes a toggle: "Keep stars" / "Retract stars" (greyed out with "no stars awarded" text if the task never earned stars). Cut-loose tasks in the recycle bin can also be permanently deleted.
 **Interaction:** Scroll through tasks. Tap individual task to view/edit details. Long-press or checkbox to enter multi-select mode. Tab/toggle to switch between active and recycle bin views. This is not the default or primary view — it's a utility screen for when users want full visibility or need to do housekeeping.
 
 ### Implementation Approach
 
-1. **Build from gluestack primitives** — gluestack-ui v3 uses a copy-paste model (like shadcn/ui). Components are copied into the project, not imported from a package. Every custom component is composed from copied gluestack primitives (`Box`, `Text`, `Pressable`, `Badge`, `Card`, etc.). Full component list: Accordion, Actionsheet, Alert, AlertDialog, Avatar, Badge, Box, Button, Card, Center, Checkbox, Divider, Drawer, Fab, FormControl, Grid, Heading, HStack, Icon, Image, Input, Link, Menu, Modal, Popover, Portal, Pressable, Progress, Radio, Select, Skeleton, Slider, Spinner, Switch, Table, Text, Textarea, Toast, Tooltip, VStack.
+1. **Build from gluestack primitives** — gluestack-ui v3 uses a copy-paste model (like shadcn/ui). Components are copied into the project, not imported from a package. Every custom component is composed from copied gluestack primitives (`Box`, `Text`, `Pressable`, `Badge`, `Card`, etc.). Full component list (verified against GitHub repo): Accordion, Actionsheet, Alert, AlertDialog, Avatar, Badge, BottomSheet, Box, Button, Card, Center, Checkbox, Divider, Drawer, Fab, FormControl, Grid, Heading, HStack, Icon, Image, Input, Link, Menu, Modal, Popover, Portal, Pressable, Progress, Radio, Select, Skeleton, Slider, Spinner, Switch, Table, Text, Textarea, Toast, Tooltip, VStack. RN primitive wrappers also available: FlatList, GluestackUIProvider, ImageBackground, InputAccessoryView, KeyboardAvoidingView, RefreshControl, SafeAreaView, ScrollView, SectionList, StatusBar, View, VirtualizedList.
 2. **Gesture library for CardStack** — `react-native-gesture-handler` + `react-native-reanimated` v4 for swipe interaction. Reanimated 4 requires New Architecture (Fabric). Use worklets for gesture-driven card movement; use new CSS animation/transition API for state-driven transitions (card appearing, rewards). Babel config: `react-native-worklets/plugin` (must be listed last).
 3. **Extract patterns early** — TaskCard, ContextToggleBar, and StarCounter appear on multiple screens. Extract as shared components from the first use.
 4. **Composable, not monolithic** — TaskCard front/back are the same component with a `mode` prop, not separate components. TriageCard extends TaskCard with additional prompt UI.
@@ -693,9 +696,9 @@ These are One Down-specific composites that don't exist in gluestack — built f
 
 ### Navigation Patterns
 
-**Primary navigation** — Bottom tab bar. Tabs: Card View (home), Brain Dump (add), Settings. Triage accessible from card view as a button (not a tab) — greyed out with stamp when no triage needed.
+**Primary navigation** — No bottom tab bar. Top bar layout: task list icon (top left), star box (top second-to-left), settings icon (top right). Floating add button in bottom right corner. Triage accessible from card view as a button — greyed out with stamp when no triage needed.
 
-**Top bar** — Star counter (tappable → activity log) + task list icon (tappable → TaskListView). Persistent across card view and task running screens.
+**Top bar** — Task list icon (top left, tappable → TaskListView), star box (top second-to-left, shows grand total + daily amount, tappable → star activity log), settings icon (top right). Persistent across card view and task running screens.
 
 **Screen transitions** — Simple push/pop navigation. Card view → task running is a forward push. Task list is a modal overlay or push. No custom transition animations for MVP.
 
@@ -776,7 +779,7 @@ These are One Down-specific composites that don't exist in gluestack — built f
 | Screen reader support | TalkBack (Android) | All interactive elements have accessibility labels. Card stack announces current card. Star counter announces total. VoiceOver (iOS) deferred to iOS release |
 | Reduce motion | Respect system setting | When "Reduce Motion" is enabled, card transitions use instant cuts instead of slides. Reanimated animations check `AccessibilityInfo.isReduceMotionEnabled` |
 | Dynamic type | Respect system font size | Text scales with system accessibility font size settings. Layouts must not break at larger sizes |
-| Focus order | Logical reading order | Tab/focus order follows visual layout: top bar → context toggles → current card → tab bar |
+| Focus order | Logical reading order | Tab/focus order follows visual layout: top bar (task list, star box, settings) → context toggles → current card → floating add button |
 | Semantic labels | Descriptive, not visual | "Complete task: Buy groceries" not "Done button". "3 of 5 cards" not "card stack" |
 | Announcements | State changes announced | VoiceOver/TalkBack announce: card transitions, star awards, task completion, mode changes |
 

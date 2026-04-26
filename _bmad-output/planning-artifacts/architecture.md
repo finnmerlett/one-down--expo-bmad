@@ -47,6 +47,7 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 | Security | TLS 1.2+, secure storage, no PII in analytics | Standard patterns, no special crypto or compliance concerns |
 | Scalability | 25k MAU | Modest — single Postgres instance, horizontal API scaling if needed |
 | Sync | Last-content-changed wins | Simple conflict resolution, no CRDTs needed |
+| Logging | NFR-L1: Basic logging/traceability client + server | MVP baseline via PostHog + pino; enhanced observability in v0.2+ |
 
 **Scale & Complexity:**
 - Primary domain: Mobile app (React Native Expo) + API backend (Fastify + Postgres)
@@ -651,7 +652,7 @@ Star weights live in `packages/shared/src/constants/star-weights.ts` — importa
 | Task Management (FR26-33) | `task/overview.tsx`, `task/[id].tsx` | — (local CRUD, synced) |
 | Quick Wins/Big Time (FR34-36) | `stores/app-store.ts`, `services/curation.ts` | — (runs on-device) |
 | AI Intelligence (FR37-42) | `task/[id].tsx` | `routers/ai.ts`, `services/ai-service.ts` |
-| Rewards (FR43-49) | `star-display.tsx`, `services/star-calculator.ts` | — (calculated on-device, synced) |
+| Rewards (FR43-49) | `star-display.tsx`, `star-activity-log.tsx`, `services/star-calculator.ts`, `task/overview.tsx` (done section) | — (calculated on-device, synced) |
 | Return Experience (FR50-52) | `triage.tsx`, `hooks/use-absence-check.ts` | `routers/sync.ts` (pull latest on return) |
 | Push Notifications (FR53-56) | `settings.tsx` | `routers/notification.ts` |
 | Account/Subscription (FR57-61) | `(auth)/*`, `settings.tsx` | `routers/subscription.ts`, `middleware/auth.ts` |
