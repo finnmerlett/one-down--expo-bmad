@@ -7,6 +7,6 @@ See [.github/commit-conventions.md](./commit-conventions.md) for the full commit
 
 ### Communication Style
 
-- **Just add new code to files** then ask for review. Don't past large chunks of code to the chat.
+- **DO NOT paste proposed md file sections to chat** when asking for approval. Just add the section directly to the file then ask.
 - **Stage new code** once the requested review is complete and the user has confirmed they are happy
 
