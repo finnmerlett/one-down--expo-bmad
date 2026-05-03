@@ -10,6 +10,28 @@
 
 ## v0.2+ Ideas
 
+### Schedule a Time for Tasks
+
+**Idea:** Instead of just swiping past stale/avoided tasks, give users the option to "schedule a time" — a positive action that hides the task (without using the putting-things-off language of delaying or snoozing, rather the positive action of scheduling) until a chosen date/time, then re-surfaces it.
+
+**Potential Implementations:**
+- As an option when dealing with stale/avoided tasks (alongside keep, cut loose, break down)
+- As a general action available on any card (swipe gesture or card back button)
+- Date/time picker with smart defaults ("Tomorrow morning", "This weekend", "Next week")
+- Scheduled tasks hidden from stack until their time arrives
+
+**Why this matters:**
+- Turns avoidance into positive scheduling — better for ADHD users than guilt-inducing "you skipped this again"
+- Reduces stack noise — tasks that aren't relevant right now disappear until they are
+- Creates intentionality without the overhead of a full calendar integration
+
+**Open questions:**
+- Does this overlap with deadline functionality too much?
+- Should scheduled tasks earn a small star reward for the scheduling action itself? (probably not)
+- How does this interact with context filtering?
+
+---
+
 ### Star Momentum Visualization
 
 **Idea:** Track star acquisition over time to build the feeling of momentum and tasks getting done.
