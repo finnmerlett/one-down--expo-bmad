@@ -47,13 +47,13 @@ This document provides the complete epic and story breakdown for One Down, decom
 - FR22: User can add notes to a task during execution
 - FR23: User can request AI breakdown help from task details or task running screen
 - FR24: User can mark a task as complete
-- FR25: System can display satisfying completion feedback (animation, stars)
+- FR25: System can display satisfying completion feedback (toast confirmation, stars awarded)
 
 **Task Management (FR26–FR33)**
 - FR26: User can edit task title, description, deadline, and context requirements
 - FR27: User can swipe past a task in the card stack to see other options (implicit skip/defer)
 - FR28: User can "cut loose" a task (remove without guilt)
-- FR29: System can display celebratory animation when user cuts a task loose
+- FR29: System can display positive feedback when user cuts a task loose (toast acknowledgment)
 - FR30: User can view a task overview list (all tasks, not just curated stack)
 - FR31: User can bulk-select tasks in overview for archive (via multi-select mode); permanent delete is only available from the archive/recycle bin as a further action
 - FR32: System can identify and flag stale or avoided tasks (long-running without action OR frequently swiped past)
@@ -78,6 +78,7 @@ This document provides the complete epic and story breakdown for One Down, decom
 - FR45: User can earn more stars for completing larger tasks
 - FR46: User can earn bonus stars for completing tasks further before their deadline (up to a limit)
 - FR47: User can earn small rewards for confirming AI-inferred info or adding identified missing info
+- FR66: User can earn a small star reward for cutting a task loose (liberation is a positive action)
 - FR48: User can see accumulated stars count (grand total + daily amount displayed together)
 - FR49: User can tap star count to open star activity log (chronological list of all star transactions with today/all-time filter); completed tasks appear as a dedicated section at the top of the full task list view (scroll position on entry shows a couple of done tasks, user can scroll up to see more)
 
@@ -133,6 +134,7 @@ This document provides the complete epic and story breakdown for One Down, decom
 
 **Scalability**
 - NFR-SC1: Architecture supports 25k MAU without major redesign
+- NFR-SC2: Database schema supports future multi-device sync expansion
 
 **Logging & Traceability**
 - NFR-L1: Basic logging and traceability in both app client and server side for MVP; build out more thorough logging in v0.2+
@@ -234,11 +236,11 @@ This document provides the complete epic and story breakdown for One Down, decom
 | FR22 | 2 | Add notes during execution |
 | FR23 | 6 | Request AI breakdown from running screen |
 | FR24 | 2 | Mark task complete |
-| FR25 | 2 | Completion feedback (animation, stars placeholder) |
+| FR25 | 2 | Completion feedback (toast, stars) |
 | FR26 | 1 | Edit task properties |
 | FR27 | 1 | Swipe past = implicit skip (covered by Story 1.3 swipe mechanic) |
 | FR28 | 2 | Cut loose a task |
-| FR29 | 2 | Cut loose celebration animation |
+| FR29 | 2 | Cut loose positive feedback (toast) |
 | FR30 | 1 | Full task overview list |
 | FR31 | 7 | Bulk-archive, delete from archive only |
 | FR32 | 7 | Flag stale or avoided tasks |
@@ -256,7 +258,7 @@ This document provides the complete epic and story breakdown for One Down, decom
 | FR44 | 4 | More stars for urgent tasks |
 | FR45 | 4 | More stars for larger tasks |
 | FR46 | 4 | Bonus stars for early completion |
-| FR47 | 4 | Small rewards for confirming AI info |
+| FR47 | 6 | Small rewards for confirming AI info |
 | FR48 | 4 | Star count (grand total + daily) |
 | FR49 | 4 | Star activity log + done section in task list |
 | FR50 | 7 | Welcome-back summary |
@@ -275,6 +277,7 @@ This document provides the complete epic and story breakdown for One Down, decom
 | FR63 | 5 | Offline task viewing |
 | FR64 | 5 | Offline manual task creation |
 | FR65 | 5 | Graceful offline AI degradation |
+| FR66 | 2 | Cut-loose earns small star reward |
 
 ### NFR Coverage
 
@@ -286,6 +289,7 @@ This document provides the complete epic and story breakdown for One Down, decom
 | R4–R5 | Epic 5 | Sync conflict resolution |
 | S1–S3 | Epic 5 | Security requirements |
 | SC1 | Epic 5 | Scalability architecture |
+| SC2 | Epic 5 | Schema supports multi-device sync expansion |
 | L1 | Cross-cutting | Basic logging (PostHog + pino) |
 
 ### UX-DR Coverage
@@ -332,7 +336,7 @@ Users can manually add tasks, view them as a swipeable card deck, flip cards for
 ### Epic 2: Task Execution
 Users can start working on tasks, track in-progress state, add notes, mark tasks complete, and cut loose unwanted tasks.
 
-**FRs:** 19, 20, 21, 22, 24, 25, 28, 29
+**FRs:** 19, 20, 21, 22, 24, 25, 28, 29, 66
 **UX-DRs:** 6 (TaskRunningScreen — "Help me" button placeholder for Epic 6), 21
 
 ---
@@ -348,7 +352,7 @@ Users can filter tasks by context, toggle Quick Wins / Big Time mode, and see a 
 ### Epic 4: Rewards & Motivation
 Users earn stars for completing tasks, see progress via star counter (grand total + daily), view star activity log, and see completed tasks in a dedicated "done" section.
 
-**FRs:** 43, 44, 45, 46, 47, 48, 49
+**FRs:** 43, 44, 45, 46, 48, 49
 **UX-DRs:** 9, 10
 
 ---
@@ -365,7 +369,7 @@ Users can create accounts, authenticate, sync tasks across devices, and use core
 ### Epic 6: AI Intelligence
 Users can brain dump thoughts and have AI parse them into tasks, confirm AI-inferred info via triage cards, request AI task breakdowns, and provide feedback to improve results.
 
-**FRs:** 1, 2, 4, 12, 23, 37, 38, 39, 40, 41, 42
+**FRs:** 1, 2, 4, 12, 23, 37, 38, 39, 40, 41, 42, 47
 **UX-DRs:** 7, 8, 12, 20
 **Infrastructure:** Gemini Flash AI service via tRPC
 
@@ -412,6 +416,52 @@ Epic 5: (Account & Sync) → Epic 6: (AI Intelligence) → Epic 7: (Task Health 
 
 ### Epic 1: Core Task Loop
 
+#### Story 1.0: Project Scaffold & Development Foundation
+
+As a developer,
+I want the monorepo, mobile app, and server project scaffolded with core dependencies installed,
+So that all subsequent stories have a working development environment to build on.
+
+**Acceptance Criteria:**
+
+**Given** the project is being initialized from scratch
+**When** the scaffold is complete
+**Then** a Bun workspaces monorepo exists with `apps/mobile`, `apps/server`, and `packages/shared` directories
+**And** each workspace has a valid `package.json` and TypeScript configuration
+
+**Given** the mobile workspace (`apps/mobile`)
+**When** initialized via `bun create expo-app --template default@sdk-55`
+**Then** the Expo app starts successfully on an Android emulator or device
+**And** New Architecture (Fabric) is enabled by default
+**And** Expo Router is configured with typed routes
+
+**Given** the server workspace (`apps/server`)
+**When** initialized as a manual Fastify + TypeScript scaffold with Bun
+**Then** `bun run dev` starts the Fastify server
+**And** a health-check endpoint (`GET /health`) returns a success response
+
+**Given** the shared workspace (`packages/shared`)
+**When** set up
+**Then** it exports TypeScript types importable by both `apps/mobile` and `apps/server`
+**And** a placeholder Drizzle schema file exists for future table definitions
+
+**Given** all workspaces
+**When** the developer runs `bun install` from the repo root
+**Then** all dependencies resolve correctly across workspaces
+
+**Given** the project scaffold
+**When** the developer runs the mobile app
+**Then** it renders the default Expo template screen (no custom UI yet)
+
+**Given** the monorepo tooling
+**When** Oxlint and Prettier (Oxfmt) are configured
+**Then** `bun run lint` and `bun run format:check` scripts pass on the scaffold code
+**And** TypeScript strict mode is enabled and `bun run typecheck` passes across all workspaces
+
+*Note: This story creates the development foundation only. No custom UI, no domain logic, no database tables beyond stubs. Full CI pipeline (GitHub Actions, EAS Build, Railway deploy) is deferred to Epic 5 when the server exists and there is meaningful code to gate. Subsequent stories build on this scaffold.*
+
+---
+
 #### Story 1.1: App Shell & Navigation
 
 As a user,
@@ -427,7 +477,8 @@ So that I have a usable app foundation.
 **And** the app is locked to portrait orientation
 **And** the layout uses NativeWind/Tailwind CSS utilities with safe area insets
 
-**Infrastructure:** Bun monorepo (apps/mobile, packages/shared), Expo SDK 55, gluestack-ui v3, NativeWind, react-native-gesture-handler, Reanimated 4, Babel config (worklets plugin last)
+**Dependencies:** Story 1.0 scaffold complete
+**Infrastructure:** gluestack-ui v3, NativeWind, react-native-gesture-handler, Reanimated 4, Babel config (worklets plugin last)
 **UX-DRs:** 1, 15, 23, 24, 25
 
 ---
@@ -633,11 +684,14 @@ So that I can keep my task list clean without feeling bad.
 **Given** the user is on the card back or task running screen
 **When** they tap the Cut Loose button
 **Then** the card disappears
-**And** an acknowledgment toast shows briefly ("Released" ~2s)
+**And** a small star reward is earned (less than task completion — configured via shared star weights)
+**And** an acknowledgment toast shows briefly ("Released" ~2s) including the star amount
 **And** the task is archived in local storage
 **And** the view returns to the card stack with the next card shown
 
-**FRs:** 28, 29
+*Note: All star reward amounts (completion, urgency bonus, size bonus, deadline bonus, cut-loose, AI confirmation, subtask completion) are defined as centralized constants in `packages/shared/src/constants/star-weights.ts` per architecture. These defaults can be updated over-the-air via server sync in a future version.*
+
+**FRs:** 28, 29, 66
 **UX-DRs:** 21 (toast)
 
 ---
@@ -731,7 +785,7 @@ So that I see what matters without the stack feeling repetitive or overwhelming.
 **When** the user is viewing a different context
 **Then** a visual indicator shows on the relevant context button(s)
 
-*Note: The curation algorithm is an initial best-guess implementation. Exact weighting and randomness tuning to be refined through dogfooding, then alpha tester feedback in later versions.*
+*Note: The curation algorithm is an initial best-guess implementation. Exact scoring weights, ordering rules, and randomness bounds will be determined collaboratively during implementation and refined through dogfooding. The algorithm lives in `services/curation.ts` (per architecture) as a pure, testable function — making it straightforward to adjust. QA baseline: the stack should feel purposeful — momentum-building tasks (quick wins) should appear early to get the user going, and more urgent or important tasks should surface in the mix. Some randomness is expected and desirable (not a strict sort), but the selection should never feel arbitrary.*
 
 **FRs:** 7, 11, 15
 
@@ -777,12 +831,8 @@ So that I feel rewarded and motivated to keep going.
 **Then** stars are awarded based on: base amount for completion, bonus for relative urgency (deadline proximity), bonus for larger task size, bonus for completing before deadline (up to a limit)
 **And** a toast shows at the top of the screen with the star amount earned
 
-**Given** the user confirms AI-inferred info or adds identified missing info (once Epic 6 is live)
-**When** they complete a triage action
-**Then** a small star reward is earned
-
 *Creates: Star calculation logic, star transaction schema (local DB), star earning hooks*
-**FRs:** 43, 44, 45, 46, 47
+**FRs:** 43, 44, 45, 46
 
 ---
 
@@ -861,28 +911,44 @@ So that I can see what I've accomplished today.
 
 ### Epic 5: Account & Cloud Sync
 
-#### Story 5.1: Backend API Foundation
+#### Story 5.0: Backend API Scaffold
 
-As a user,
-I want my app to connect to a backend server,
-So that my data can be synced and features can be extended.
+As a developer,
+I want the backend server scaffolded with database connectivity,
+So that server-side features have a working foundation.
 
 **Acceptance Criteria:**
 
 **Given** the server project is scaffolded (apps/server with Fastify 5 + TypeScript + Bun)
-**When** the server starts
-**Then** a health check endpoint responds successfully
+**When** the server starts via `bun run dev`
+**Then** a health check endpoint (`GET /health`) responds successfully
 **And** tRPC router is configured with Fastify adapter
 **And** server Drizzle ORM connects to PostgreSQL (Railway)
 **And** server-side task schema mirrors the local schema (via packages/shared)
 
-**Given** the mobile app
-**When** it initializes
+*Infrastructure: apps/server scaffold, tRPC + Fastify, PostgreSQL + Drizzle (server), packages/shared schemas*
+**NFRs:** SC1
+
+---
+
+#### Story 5.1: Mobile-to-Server Connection
+
+As a user,
+I want my app to connect to the backend server,
+So that my data can be synced across devices.
+
+**Acceptance Criteria:**
+
+**Given** the backend from Story 5.0 is running
+**When** the mobile app initializes
 **Then** a tRPC client is configured and can reach the server
 
-*Infrastructure: apps/server scaffold, tRPC + Fastify, PostgreSQL + Drizzle (server), packages/shared schemas*
+**Given** the tRPC connection is established
+**When** the app calls the health check
+**Then** the response confirms end-to-end connectivity
+
+**Dependencies:** Story 5.0 backend scaffold complete
 **FRs:** (infrastructure for 62-65)
-**NFRs:** SC1
 
 ---
 
@@ -910,6 +976,18 @@ So that my tasks are associated with me and can sync across devices.
 **Given** the user is not authenticated
 **When** they use the app
 **Then** core features work in local-only mode (free tier)
+
+**Given** the user enters invalid credentials
+**When** they try to log in
+**Then** an inline error message is shown (no modal) with a retry option
+
+**Given** a network error occurs during signup or login
+**When** the request fails
+**Then** an inline error message explains the issue and suggests retrying
+
+**Given** the user initiates Google OAuth
+**When** they cancel the OAuth flow
+**Then** they return to the login screen with no error (cancellation is not an error)
 
 *Infrastructure: Supabase Auth integration, JWT middleware, expo-secure-store*
 **FRs:** 57, 59
@@ -943,6 +1021,11 @@ So that I can access my tasks anywhere.
 **Given** task IDs
 **When** created on the client
 **Then** they use crypto.randomUUID() and are permanent (no server-side ID reassignment)
+
+**Given** the sync layer encounters a network error
+**When** a sync attempt fails
+**Then** the app retries automatically on next connectivity change
+**And** the user sees a subtle sync status indicator (not intrusive) when sync is pending or retrying
 
 *Infrastructure: Custom timestamp-based sync layer, conflict resolution*
 **FRs:** 62, 63, 64
@@ -1131,6 +1214,10 @@ So that I can clean up my task list efficiently.
 **When** it returns to the active list
 **Then** stars previously removed are NOT restored (kept simple — no reverse tracking)
 
+**Given** the user sees a confirmation dialog (archival warning or permanent delete)
+**When** they cancel/dismiss the dialog
+**Then** no action is taken and their selection is preserved
+
 *FRs: 31*
 *UX-DRs: 14 (bulk actions, recycle bin)*
 
@@ -1144,17 +1231,19 @@ So that I can decide whether to keep, cut loose, or break them down.
 
 **Acceptance Criteria:**
 
-**Given** a task has been in the system for a long time without action
-**When** the system detects it as stale
+**Given** a task has had no action (no start, no edit, no note) for 7+ days (configurable default)
+**When** the system evaluates task health
 **Then** it is flagged as stale
 
-**Given** a task has been frequently swiped past in the card stack
-**When** the system detects the avoidance pattern
+**Given** a task has been swiped past 5+ times within 7 days (configurable defaults)
+**When** the system evaluates avoidance patterns
 **Then** it is flagged as avoided
 
 **Given** a task is flagged as stale or avoided
 **When** the user encounters it
 **Then** the system prompts with options: keep, cut loose, or break down (via AI if Epic 6 is complete)
+
+*Note: Stale and avoided thresholds are defined as configurable constants in shared config. The defaults (7 days / 5 skips) are initial guesses and will be refined through dogfooding. Swipe-past count resets when the user takes a meaningful action on the task (start, edit, add note).*
 
 *FRs: 32, 33*
 
@@ -1168,7 +1257,7 @@ So that I can re-engage without feeling guilty about missed tasks.
 
 **Acceptance Criteria:**
 
-**Given** the user opens the app after a significant absence
+**Given** the user opens the app after 4+ days of absence (configurable default, refined through dogfooding)
 **When** the welcome back screen appears
 **Then** it shows a factual summary: number of tasks waiting, any deadlines that passed, suggestions to cut loose stale tasks
 **And** the tone is supportive and guilt-free
@@ -1216,63 +1305,108 @@ So that I stay on track without feeling nagged or guilty.
 **When** they open notification preferences in settings
 **Then** they can configure notification types and frequency
 
+**Given** the user denies notification permission
+**When** the app requests push notification access
+**Then** the app continues to function without notifications
+**And** a non-intrusive prompt in settings explains how to enable notifications later
+
 *Infrastructure: FCM via Expo Notifications (Android)*
 *FRs: 53, 54, 55, 56*
 
 ---
 
-#### Story 8.2: Premium Subscription & Feature Gating
+#### Story 8.2a: Premium Discovery & Feature Gating
 
 As a user,
-I want to discover and subscribe to premium features,
-So that I can unlock enhanced capabilities when I'm ready.
+I want to see which features are premium and browse what's available,
+So that I can decide whether to upgrade.
 
 **Acceptance Criteria:**
 
 **Given** the user is on the free tier
-**When** they see a premium feature
+**When** they encounter a premium feature
 **Then** a sparkle icon indicates premium availability
 
 **Given** the user taps the sparkle icon
 **When** the premium features page opens
-**Then** they see a list of premium features and subscription options
-
-**Given** the user wants to subscribe
-**When** they initiate an in-app purchase
-**Then** the subscription is processed via RevenueCat (Google Play)
-
-**Given** the user has an active subscription
-**When** they use the app
-**Then** premium features are unlocked and accessible
+**Then** they see a list of premium features with descriptions and a subscribe CTA
 
 **Given** the user does not subscribe
 **When** they use the app
 **Then** all core features continue to work on the free tier
 
-*Infrastructure: RevenueCat, Google Play billing*
-*FRs: 58, 60, 61*
+**Given** the user has an active subscription (from Story 8.2b)
+**When** they use the app
+**Then** premium features are unlocked and the sparkle icon is no longer shown on those features
+
+*FRs: 59, 61*
 
 ---
 
-#### Story 8.3: Analytics Integration
+#### Story 8.2b: Subscription Purchase & Entitlements
 
-As a user (and product owner),
-I want usage analytics to understand how the app is being used,
-So that we can make data-driven improvements.
+As a user,
+I want to subscribe to premium via in-app purchase,
+So that I can unlock enhanced capabilities.
+
+**Acceptance Criteria:**
+
+**Given** the user taps the subscribe CTA on the premium features page
+**When** they initiate an in-app purchase
+**Then** the subscription flow is handled via RevenueCat (Google Play)
+
+**Given** the purchase completes successfully
+**When** the entitlement is granted
+**Then** premium features are immediately unlocked
+**And** the user sees a confirmation
+
+**Given** the user cancels the purchase flow
+**When** they return to the app
+**Then** they remain on the free tier with no error or disruption
+
+**Given** the purchase fails (network error, payment declined, etc.)
+**When** the error occurs
+**Then** a clear error message is shown with a retry option
+
+**Given** a user who previously subscribed (on another device or after reinstall)
+**When** they tap "Restore Purchases"
+**Then** RevenueCat restores their entitlement and premium features unlock
+
+**Given** the app launches
+**When** it checks subscription status
+**Then** RevenueCat entitlements are refreshed to ensure current status is accurate
+
+*Infrastructure: RevenueCat, Google Play billing*
+*FRs: 58, 60*
+
+---
+
+#### Story 8.3: Analytics & Logging Foundation
+
+As a product owner,
+I want anonymized usage analytics and basic logging in place,
+So that I can make data-driven product decisions and debug issues in production.
 
 **Acceptance Criteria:**
 
 **Given** the app is running
 **When** the user performs key actions (task creation, completion, cut loose, brain dump, etc.)
-**Then** anonymized events are tracked via PostHog
+**Then** anonymized events are tracked via PostHog React Native SDK
 
 **Given** the server processes requests
 **When** tRPC endpoints are called
 **Then** server-side analytics are captured via posthog-node + posthog-trpc middleware
+**And** server-side operational logs are captured via pino
 
-**Given** privacy requirements
-**When** analytics are captured
-**Then** no sensitive task content is logged or transmitted (NFR-S3)
+**Given** privacy requirements (NFR-S3)
+**When** analytics events are captured
+**Then** no sensitive task content (titles, descriptions, notes) is logged or transmitted
+**And** only structural event data (action type, timestamp, task count) is sent
 
-*Infrastructure: PostHog React Native SDK (client), posthog-node + posthog-trpc middleware (server)*
-*NFRs: S3, L1*
+**Given** the mobile app in production
+**When** it runs
+**Then** console output is stripped from production builds
+**And** PostHog is the sole client-side logging mechanism
+
+*Infrastructure: PostHog React Native SDK (client), posthog-node + posthog-trpc middleware (server), pino (server ops)*
+*NFRs: L1 (basic logging/traceability), S3 (no sensitive content in analytics)*

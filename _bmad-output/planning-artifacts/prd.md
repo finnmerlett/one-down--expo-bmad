@@ -612,14 +612,14 @@ These innovations are philosophical rather than technical, so validation is beha
 - **FR22:** User can add notes to a task during execution
 - **FR23:** User can request AI breakdown help from task details or task running screen
 - **FR24:** User can mark a task as complete
-- **FR25:** System can display satisfying completion feedback (animation, stars)
+- **FR25:** System can display satisfying completion feedback (toast confirmation, stars awarded)
 
 ### Task Management
 
 - **FR26:** User can edit task title, description, deadline, and context requirements
 - **FR27:** User can swipe past a task in the card stack to see other options (implicit skip/defer)
 - **FR28:** User can "cut loose" a task (remove without guilt)
-- **FR29:** System can display celebratory animation when user cuts a task loose
+- **FR29:** System can display positive feedback when user cuts a task loose (toast acknowledgment)
 - **FR30:** User can view a task overview list (all tasks, not just curated stack)
 - **FR31:** User can bulk-select tasks in overview for archive (via multi-select mode); permanent delete is only available from the archive/recycle bin as a further action
 - **FR32:** System can identify and flag stale or avoided tasks (long-running without action OR frequently swiped past)
@@ -647,6 +647,7 @@ These innovations are philosophical rather than technical, so validation is beha
 - **FR45:** User can earn more stars for completing larger tasks
 - **FR46:** User can earn bonus stars for completing tasks further before their deadline (up to a limit)
 - **FR47:** User can earn small rewards for confirming AI-inferred info or adding identified missing info
+- **FR66:** User can earn a small star reward for cutting a task loose (liberation is a positive action)
 - **FR48:** User can see accumulated stars count (grand total + daily amount displayed together)
 - **FR49:** User can tap star count to open star activity log (chronological list of all star transactions with today/all-time filter); completed tasks appear as a dedicated section at the top of the full task list view (scroll position on entry shows a couple of done tasks, user can scroll up to see more)
 

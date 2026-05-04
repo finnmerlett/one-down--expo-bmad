@@ -66,7 +66,7 @@ The user's only real decision: "Do I want to do this one?" Everything else — p
 - **Touch-first** — All primary interactions are tap and swipe. No typing required for core loop.
 - **Offline-capable** — Core task viewing works offline. AI features degrade gracefully.
 - **Performance targets:** <2s cold start, <100ms card interactions.
-- **No animations in v1** — All transitions are instant state changes. Animations and theming added in subsequent design passes.
+- **No polish animations in v1** — Gesture-driven card physics (swipe, fly-off, snap-back via Reanimated 4) are functional and included. Screen transitions are instant state changes. Celebratory animations, transition effects, and visual theming are deferred to subsequent design passes.
 - **Barebones visual approach** — Structural clarity, good spacing, system fonts. No colors/fonts/theming.
 
 ### Effortless Interactions
@@ -307,7 +307,7 @@ Users bring a **"what should I do?"** mental model. Current solutions force them
 **7. Task List View (Trust Building)**
 - Accessible via list/server icon in the top bar (next to star counter)
 - Full scrolling list of all tasks, grouped or sortable by status, deadline, context, size
-- Allows bulk actions: multi-select via long-press or checkbox to delete, cut loose, change context, or change size
+- Allows bulk actions: multi-select via long-press or checkbox to archive tasks. Permanent delete is only available from the archive/recycle bin as a further action. *(Bulk cut-loose, change context, and change size are deferred to post-MVP.)*
 - This is the "peek behind the curtain" — reassurance that nothing is lost
 - Not the default view — deliberately a secondary access point via the top bar list icon
 
@@ -628,7 +628,7 @@ These are One Down-specific composites that don't exist in gluestack — built f
 **Access:** Tap list icon in the top bar (top left).
 **States:** Populated (normal), empty (guides to brain dump). Recycle bin empty shows "Nothing here — everything's active."
 **Views:**
-- **Active tasks** (default) — Completed tasks section at top, then all current tasks. Bulk actions: archive (moves to recycle bin), change context, change size. Permanent delete is only available from the recycle bin.
+- **Active tasks** (default) — Completed tasks section at top, then all current tasks. Bulk action: archive (moves to recycle bin). Permanent delete is only available from the recycle bin. *(Bulk change context and change size deferred to post-MVP.)*
 - **Recycle bin** — Tasks that have been cut loose. Can be restored (returns to active stack) or permanently deleted.
 **Delete behaviour:** Permanent delete is only available from the task list view (not from card view or task running). Confirmation dialog: "Delete [task]? This is permanent and can't be undone." Dialog includes a toggle: "Keep stars" / "Retract stars" (greyed out with "no stars awarded" text if the task never earned stars). Cut-loose tasks in the recycle bin can also be permanently deleted.
 **Interaction:** Scroll through tasks. Tap individual task to view/edit details. Long-press or checkbox to enter multi-select mode. Tab/toggle to switch between active and recycle bin views. This is not the default or primary view — it's a utility screen for when users want full visibility or need to do housekeeping.
