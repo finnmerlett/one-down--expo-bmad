@@ -269,7 +269,7 @@ bun add -d drizzle-kit typescript @types/node
 
 **Linter:** Oxlint (OXC) — Rust-powered, 50-100x faster than ESLint. No plugin ecosystem needed; built-in rules cover ESLint core, TypeScript, and OXC-specific checks.
 
-**Formatter:** Prettier (via Oxfmt, which uses Prettier-compatible config). Formatting is the formatter's job, not the linter's — clear separation of concerns.
+**Formatter:** Oxfmt — Rust-powered, Faster, Prettier-compatible formatter from the Oxc project (same ecosystem as Oxlint). Formatting is the formatter's job, not the linter's — clear separation of concerns.
 
 **Configuration:**
 
@@ -481,7 +481,7 @@ one-down/
 │   ├── brain-dump-flow.yaml
 │   └── task-complete-flow.yaml
 ├── .oxlintrc.json                    # Oxlint config (monorepo root)
-├── .oxfmtrc.json                     # Prettier/Oxfmt config (monorepo root)
+├── .oxfmtrc.json                     # Oxfmt formatter config (Prettier-compatible format)
 ├── package.json                      # Bun workspaces root
 ├── bun.lock
 ├── tsconfig.base.json                # Shared TS config extended by workspaces
@@ -693,7 +693,7 @@ RevenueCat → webhook → subscription router → entitlement update
 
 ### Coherence Validation ✅
 
-**Decision Compatibility:** All technology choices are version-compatible and work together without conflicts. Expo SDK 55 + Fabric + Reanimated 4, Bun + Fastify 5, tRPC end-to-end, Drizzle on both sides with shared schemas, Zustand + TanStack Query complementary state split, PostHog + posthog-trpc analytics layer, Supabase Auth JWT + tRPC middleware, Oxlint + Prettier separation.
+**Decision Compatibility:** All technology choices are version-compatible and work together without conflicts. Expo SDK 55 + Fabric + Reanimated 4, Bun + Fastify 5, tRPC end-to-end, Drizzle on both sides with shared schemas, Zustand + TanStack Query complementary state split, PostHog + posthog-trpc analytics layer, Supabase Auth JWT + tRPC middleware, Oxlint + Oxfmt separation.
 
 **Pattern Consistency:** Naming conventions consistent across all layers. Co-located test pattern consistent across all workspaces. Offline-first principle consistently reflected in routes, structure, and FR mapping. Enforcement rules align with all documented patterns.
 

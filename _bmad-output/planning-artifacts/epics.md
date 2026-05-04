@@ -159,7 +159,7 @@ This document provides the complete epic and story breakdown for One Down, decom
 - Billing: RevenueCat for Google Play subscription management
 
 **Tooling & Process**
-- Linting: Oxlint + Prettier (Oxfmt) with enforcement rules
+- Linting & Formatting: Oxlint + Oxfmt (Prettier-compatible) with enforcement rules
 - Testing: Jest + react-native-testing-library (unit/integration), Maestro (E2E)
 - CI/CD: EAS Build (mobile), Railway auto-deploy (API), GitHub Actions (CI)
 - IDs: crypto.randomUUID() for both client and server (client-generated UUIDs are permanent)
@@ -454,7 +454,7 @@ So that all subsequent stories have a working development environment to build o
 **Then** it renders the default Expo template screen (no custom UI yet)
 
 **Given** the monorepo tooling
-**When** Oxlint and Prettier (Oxfmt) are configured
+**When** Oxlint and Oxfmt are configured
 **Then** `bun run lint` and `bun run format:check` scripts pass on the scaffold code
 **And** TypeScript strict mode is enabled and `bun run typecheck` passes across all workspaces
 
