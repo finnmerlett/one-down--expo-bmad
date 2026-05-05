@@ -45,7 +45,7 @@ development_status:
   # Epic 1: Core Task Loop
   epic-1: in-progress
   1-0-project-scaffold-and-development-foundation: done
-  1-1-app-shell-and-navigation: backlog
+  1-1-app-shell-and-navigation: done
   1-2-quick-add-a-task: backlog
   1-3-task-card-stack-and-swiping: backlog
   1-4-card-front-back-and-inline-editing: backlog

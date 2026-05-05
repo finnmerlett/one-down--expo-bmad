@@ -14,7 +14,7 @@
     "mobile": "bun --cwd apps/mobile start",
     "mobile:android": "bun --cwd apps/mobile android",
     "server:dev": "bun --cwd apps/server dev",
-    "test": "bun --cwd packages/shared test && bun --cwd apps/server test",
+    "test": "bun --cwd packages/shared test && bun --cwd apps/server test && bun --cwd apps/mobile test",
     "typecheck": "bun --cwd packages/shared typecheck && bun --cwd apps/server typecheck && bun --cwd apps/mobile typecheck"
   },
   "devDependencies": {
