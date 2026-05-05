@@ -1,4 +1,5 @@
 import { AppShell } from '@/components/app-shell/app-shell';
+import { ConnectionStatus } from '@/components/connection-status';
 import {
   QuickAddSheet,
   type QuickAddSubmitInput,
@@ -46,6 +47,9 @@ export default function HomeScreen() {
       >
         <Box className="flex-1 items-center justify-center px-4">
           <TaskPreview />
+        </Box>
+        <Box className="items-center pb-3">
+          <ConnectionStatus />
         </Box>
       </AppShell>
       <QuickAddSheet isOpen={isOpen} onClose={close} onSubmit={handleSubmit} />

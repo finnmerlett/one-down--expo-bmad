@@ -1,5 +1,10 @@
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react-native';
+import { httpBatchLink } from '@trpc/client';
+import type { ReactNode } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+import { trpc } from '@/lib/trpc';
 
 const mockDb = { __mock: 'db' } as const;
 
@@ -21,6 +26,7 @@ jest.mock('@/services/tasks-repository', () => ({
 }));
 
 import { useQuickAddStore } from '@/stores/quick-add-store';
+
 import HomeScreen from './index';
 
 const initialMetrics = {
@@ -28,27 +34,61 @@ const initialMetrics = {
   insets: { top: 0, left: 0, right: 0, bottom: 0 },
 };
 
+function makeWrapper() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const trpcClient = trpc.createClient({
+    links: [httpBatchLink({ url: 'http://test.local/trpc' })],
+  });
+
+  function Wrapper({ children }: { children: ReactNode }) {
+    return (
+      <SafeAreaProvider initialMetrics={initialMetrics}>
+        <trpc.Provider client={trpcClient} queryClient={queryClient}>
+          <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        </trpc.Provider>
+      </SafeAreaProvider>
+    );
+  }
+
+  return { Wrapper };
+}
+
 function renderHome() {
+  const { Wrapper } = makeWrapper();
   return render(
-    <SafeAreaProvider initialMetrics={initialMetrics}>
+    <Wrapper>
       <HomeScreen />
-    </SafeAreaProvider>,
+    </Wrapper>,
   );
 }
 
 describe('HomeScreen', () => {
+  const originalFetch = globalThis.fetch;
+
   beforeEach(() => {
     useQuickAddStore.setState({ isOpen: false });
     mockCreateTask.mockReset();
     mockMostRecent.mockReset();
     mockMostRecent.mockReturnValue(undefined);
+    globalThis.fetch = jest.fn(
+      () => new Promise<Response>(() => undefined),
+    ) as unknown as typeof globalThis.fetch;
   });
 
-  test('renders the empty placeholder and the add task button when no tasks exist', () => {
+  afterEach(() => {
+    cleanup();
+    globalThis.fetch = originalFetch;
+  });
+
+  test('renders the empty placeholder, the add task button, and the connection status indicator when no tasks exist', () => {
     renderHome();
     expect(screen.getByText('Your tasks will appear here')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Add task' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Open task list' })).toBeTruthy();
+    expect(screen.getByText('Checking…')).toBeTruthy();
+    expect(screen.getByLabelText('Checking server connection')).toBeTruthy();
   });
 
   test('renders the most recent task title when one exists', () => {

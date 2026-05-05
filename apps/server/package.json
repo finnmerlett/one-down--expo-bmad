@@ -3,6 +3,12 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/routers/index.ts",
+      "default": "./src/routers/index.ts"
+    }
+  },
   "scripts": {
     "db:generate": "drizzle-kit generate",
     "dev": "bun --hot src/index.ts",
