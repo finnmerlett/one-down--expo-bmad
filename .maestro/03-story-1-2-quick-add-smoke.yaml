@@ -1,0 +1,44 @@
+appId: com.onedown.mobile
+name: "03 - Story 1.2 quick-add smoke: create task and verify it persists"
+onFlowStart:
+  - runFlow: shared/launch.yaml
+---
+
+# Open quick-add sheet
+- tapOn: "Add task"
+- waitForAnimationToEnd
+- assertVisible: "Task title"
+
+# Enter task title
+- tapOn: "Task title"
+- inputText: "Maestro smoke test task"
+
+# Save the task (tapping the button dismisses the keyboard naturally)
+- tapOn: "Save task"
+
+# Wait for save to complete (sheet stays open, input clears)
+- extendedWaitUntil:
+    notVisible: "Maestro smoke test task"
+    timeout: 5000
+
+# Close the sheet
+- tapOn: "Close add task"
+- waitForAnimationToEnd
+
+# Relaunch the app (without clearing state) to verify task persists in SQLite
+- launchApp
+
+# Wait for the app to render and verify the task appears
+- extendedWaitUntil:
+    visible: "Maestro smoke test task"
+    timeout: 15000
+- assertVisible: "Maestro smoke test task"
+- assertVisible: "Top card"
+
+# Check for any uncaught errors surfacing
+- assertNotVisible:
+    text: "Unhandled"
+- assertNotVisible:
+    text: "uncaught"
+- assertNotVisible:
+    text: "error occurred"

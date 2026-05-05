@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-04
-last_updated: 2026-05-05
+last_updated: 2026-05-05T08:40
 project: one-down--expo-bmad
 project_key: OD
 tracking_system: file-system
@@ -45,6 +45,7 @@ development_status:
   # Epic 1: Core Task Loop
   epic-1: in-progress
   1-0-project-scaffold-and-development-foundation: done
+  1-0-1-maestro-e2e-test-foundation: done
   1-1-app-shell-and-navigation: done
   1-2-quick-add-a-task: done
   1-3-task-card-stack-and-swiping: backlog

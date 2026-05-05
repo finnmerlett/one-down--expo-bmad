@@ -11,7 +11,7 @@ let dbInstance: AppDatabase | undefined;
 
 export function getLocalDb(): AppDatabase {
   if (!dbInstance) {
-    dbInstance = drizzle(openDatabaseSync('one-down.db'), { schema });
+    dbInstance = drizzle(openDatabaseSync('one-down.db', { enableChangeListener: true }), { schema });
   }
   return dbInstance;
 }

@@ -1,4 +1,5 @@
 import { type LocalTask, type NewLocalTask, tasks } from '@one-down/shared/schema-local';
+import { randomUUID } from 'expo-crypto';
 import { desc, eq } from 'drizzle-orm';
 
 import type { AppDatabase } from '@/lib/local-db';
@@ -21,7 +22,7 @@ export function createTask(db: AppDatabase, input: CreateTaskInput): LocalTask {
       ? input.details.trim()
       : null;
 
-  const id = crypto.randomUUID();
+  const id = randomUUID();
   if (!UUID_RE.test(id)) {
     throw new Error('Generated task id is not a valid UUID');
   }

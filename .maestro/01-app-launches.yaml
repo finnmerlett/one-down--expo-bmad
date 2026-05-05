@@ -1,0 +1,10 @@
+appId: com.onedown.mobile
+name: "01 - App launches and shell elements render"
+onFlowStart:
+  - runFlow: shared/launch.yaml
+---
+
+- assertVisible: "Open task list"
+- assertVisible: "View star activity"
+- assertVisible: "Open settings"
+- assertVisible: "Add task"

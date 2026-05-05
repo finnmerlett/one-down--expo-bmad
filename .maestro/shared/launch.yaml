@@ -1,0 +1,14 @@
+appId: com.onedown.mobile
+---
+# Shared setup: Launch the One Down app with clean state.
+#
+# Uses a release build — no dev tools, no overlays.
+# After this flow completes, the app is visible and ready for interaction.
+
+- launchApp:
+    clearState: true
+
+# Wait for the app shell to render
+- extendedWaitUntil:
+    visible: "Add task"
+    timeout: 30000

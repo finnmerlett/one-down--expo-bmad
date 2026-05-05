@@ -1,0 +1,27 @@
+appId: com.onedown.mobile
+name: "02 - Story 1.1 shell smoke: tap each shell control without crash"
+onFlowStart:
+  - runFlow: shared/launch.yaml
+---
+
+# Tap task list button
+- tapOn: "Open task list"
+- waitForAnimationToEnd
+
+# Tap star activity button
+- tapOn: "View star activity"
+- waitForAnimationToEnd
+
+# Tap settings button
+- tapOn: "Open settings"
+- waitForAnimationToEnd
+
+# Tap add task FAB — opens the quick-add sheet
+- tapOn: "Add task"
+- waitForAnimationToEnd
+- assertVisible: "Task title"
+
+# Close the quick-add sheet
+- tapOn: "Close add task"
+- waitForAnimationToEnd
+- assertVisible: "Add task"

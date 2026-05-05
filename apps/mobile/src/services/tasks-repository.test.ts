@@ -86,6 +86,10 @@ jest.mock('drizzle-orm', () => {
   };
 });
 
+jest.mock('expo-crypto', () => ({
+  randomUUID: () => crypto.randomUUID(),
+}));
+
 describe('tasks-repository.createTask', () => {
   test('rejects empty title', () => {
     const { db, inserts } = makeFakeDb();
