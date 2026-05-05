@@ -1,8 +1,7 @@
 import { expect, test } from 'bun:test';
 
-import { DRIZZLE_SCHEMA_PLACEHOLDER, PROJECT_PACKAGE_NAME } from './index';
+import { PROJECT_PACKAGE_NAME } from './index';
 
-test('exports scaffold placeholders', () => {
+test('exports the workspace package name', () => {
   expect(PROJECT_PACKAGE_NAME).toBe('@one-down/shared');
-  expect(DRIZZLE_SCHEMA_PLACEHOLDER).toEqual({});
 });
