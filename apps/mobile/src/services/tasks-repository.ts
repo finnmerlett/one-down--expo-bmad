@@ -7,6 +7,9 @@ import type { AppDatabase } from '@/lib/local-db';
 export type CreateTaskInput = {
   title: string;
   details?: string | null;
+  size?: string | null;
+  contexts?: string | null;
+  deadline?: Date | null;
 };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -32,6 +35,9 @@ export function createTask(db: AppDatabase, input: CreateTaskInput): LocalTask {
     id,
     title: trimmedTitle,
     details: trimmedDetails,
+    size: input.size ?? null,
+    contexts: input.contexts ?? null,
+    deadline: input.deadline ?? null,
     createdAt: now,
     updatedAt: now,
   };
@@ -42,6 +48,14 @@ export function createTask(db: AppDatabase, input: CreateTaskInput): LocalTask {
     throw new Error('Task insert succeeded but row was not retrievable');
   }
   return inserted;
+}
+
+export function listPendingTasksQuery(db: AppDatabase) {
+  return db.select().from(tasks).where(eq(tasks.status, 'pending')).orderBy(desc(tasks.createdAt));
+}
+
+export function listPendingTasks(db: AppDatabase): LocalTask[] {
+  return listPendingTasksQuery(db).all();
 }
 
 export function listTasksQuery(db: AppDatabase) {

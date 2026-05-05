@@ -12,10 +12,11 @@ jest.mock('@/hooks/use-local-db', () => ({
   useLocalDb: () => mockDb,
 }));
 
-const mockMostRecent = jest.fn();
+const mockCuratedTasks = jest.fn();
 jest.mock('@/hooks/use-tasks', () => ({
   useTasks: () => [],
-  useMostRecentTask: () => mockMostRecent(),
+  useCuratedTasks: () => mockCuratedTasks(),
+  useMostRecentTask: () => undefined,
 }));
 
 const mockCreateTask = jest.fn();
@@ -70,8 +71,8 @@ describe('HomeScreen', () => {
   beforeEach(() => {
     useQuickAddStore.setState({ isOpen: false });
     mockCreateTask.mockReset();
-    mockMostRecent.mockReset();
-    mockMostRecent.mockReturnValue(undefined);
+    mockCuratedTasks.mockReset();
+    mockCuratedTasks.mockReturnValue([]);
     globalThis.fetch = jest.fn(
       () => new Promise<Response>(() => undefined),
     ) as unknown as typeof globalThis.fetch;
@@ -82,26 +83,33 @@ describe('HomeScreen', () => {
     globalThis.fetch = originalFetch;
   });
 
-  test('renders the empty placeholder, the add task button, and the connection status indicator when no tasks exist', () => {
+  test('renders the empty state, add task button, and connection status when no tasks exist', () => {
     renderHome();
-    expect(screen.getByText('Your tasks will appear here')).toBeTruthy();
+    expect(screen.getByText('No tasks yet')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Add task' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Open task list' })).toBeTruthy();
     expect(screen.getByText('Checking…')).toBeTruthy();
     expect(screen.getByLabelText('Checking server connection')).toBeTruthy();
   });
 
-  test('renders the most recent task title when one exists', () => {
-    mockMostRecent.mockReturnValue({
-      id: 'a',
-      title: 'walk the dog',
-      details: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+  test('renders the card stack with task titles when tasks exist', () => {
+    mockCuratedTasks.mockReturnValue([
+      {
+        id: 'a',
+        title: 'walk the dog',
+        details: null,
+        status: 'pending',
+        size: null,
+        contexts: null,
+        deadline: null,
+        hasCheckNeeded: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
     renderHome();
     expect(screen.getByText('walk the dog')).toBeTruthy();
-    expect(screen.queryByText('Your tasks will appear here')).toBeNull();
+    expect(screen.queryByText('No tasks yet')).toBeNull();
   });
 
   test('tapping the FAB opens the quick-add sheet', () => {
