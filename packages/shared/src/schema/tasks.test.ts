@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { getTableConfig } from 'drizzle-orm/pg-core';
 
-import { tasks, type NewTask, type Task } from './tasks';
+import { type NewTask, type Task, tasks } from './tasks';
 
 describe('tasks schema', () => {
   test('table is named "tasks"', () => {
@@ -14,17 +14,19 @@ describe('tasks schema', () => {
     const byName = Object.fromEntries(config.columns.map((column) => [column.name, column]));
 
     expect(Object.keys(byName).sort()).toEqual([
-      'content',
       'created_at',
+      'details',
       'id',
       'status',
+      'title',
       'updated_at',
       'user_id',
     ]);
 
     expect(byName['id']?.primary).toBe(true);
     expect(byName['user_id']?.notNull).toBe(true);
-    expect(byName['content']?.notNull).toBe(true);
+    expect(byName['title']?.notNull).toBe(true);
+    expect(byName['details']?.notNull).toBe(false);
     expect(byName['status']?.notNull).toBe(true);
     expect(byName['created_at']?.notNull).toBe(true);
     expect(byName['updated_at']?.notNull).toBe(true);
@@ -34,7 +36,8 @@ describe('tasks schema', () => {
     const example: Task = {
       id: '00000000-0000-0000-0000-000000000000',
       userId: '00000000-0000-0000-0000-000000000001',
-      content: 'sample',
+      title: 'sample',
+      details: null,
       status: 'pending',
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -43,11 +46,11 @@ describe('tasks schema', () => {
     const draft: NewTask = {
       id: '00000000-0000-0000-0000-000000000002',
       userId: '00000000-0000-0000-0000-000000000003',
-      content: 'sample',
+      title: 'sample',
       status: 'pending',
     };
 
     expect(example.id).toBe('00000000-0000-0000-0000-000000000000');
-    expect(draft.content).toBe('sample');
+    expect(draft.title).toBe('sample');
   });
 });

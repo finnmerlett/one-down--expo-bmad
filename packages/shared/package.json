@@ -11,6 +11,10 @@
     "./schema": {
       "types": "./src/schema/index.ts",
       "default": "./src/schema/index.ts"
+    },
+    "./schema-local": {
+      "types": "./src/schema-local/index.ts",
+      "default": "./src/schema-local/index.ts"
     }
   },
   "scripts": {

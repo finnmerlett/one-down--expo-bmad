@@ -3,7 +3,8 @@ import { pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 export const tasks = pgTable('tasks', {
   id: uuid('id').primaryKey(),
   userId: uuid('user_id').notNull(),
-  content: text('content').notNull(),
+  title: text('title').notNull(),
+  details: text('details'),
   status: text('status').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
