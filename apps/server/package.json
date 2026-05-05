@@ -18,6 +18,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@fastify/cors": "^11.2.0",
     "@one-down/shared": "workspace:*",
     "@trpc/server": "^11.17.0",
     "drizzle-orm": "^0.45.2",

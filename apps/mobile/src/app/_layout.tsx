@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { AuthProvider } from '@/lib/auth-provider';
 import { runInitialMigrations } from '@/lib/local-db';
 import { TrpcProvider } from '@/lib/trpc-provider';
 
@@ -24,9 +25,11 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <TrpcProvider>
-          {migrated ? <Stack screenOptions={{ headerShown: false }} /> : null}
-        </TrpcProvider>
+        <AuthProvider>
+          <TrpcProvider>
+            {migrated ? <Stack screenOptions={{ headerShown: false }} /> : null}
+          </TrpcProvider>
+        </AuthProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

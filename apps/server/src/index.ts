@@ -1,3 +1,4 @@
+import cors from '@fastify/cors';
 import { fastifyTRPCPlugin } from '@trpc/server/adapters/fastify';
 import Fastify, { type FastifyServerOptions } from 'fastify';
 
@@ -16,6 +17,7 @@ declare module 'fastify' {
 
 export type BuildServerOptions = FastifyServerOptions & {
   db?: Database;
+  corsOrigin?: string;
 };
 
 export function buildServer(options: BuildServerOptions = {}) {
@@ -28,6 +30,10 @@ export function buildServer(options: BuildServerOptions = {}) {
   if (db) {
     server.decorate('db', db);
   }
+
+  server.register(cors, {
+    origin: options.corsOrigin ?? '*',
+  });
 
   server.get('/health', async () => ({
     service: 'one-down-api',
@@ -49,7 +55,7 @@ export function buildServer(options: BuildServerOptions = {}) {
 if (import.meta.main) {
   const env = loadEnv();
   const { db } = createDbClient(env.DATABASE_URL);
-  const server = buildServer({ db });
+  const server = buildServer({ db, corsOrigin: env.CORS_ORIGIN });
 
   try {
     await server.listen({ host: env.HOST, port: env.PORT });

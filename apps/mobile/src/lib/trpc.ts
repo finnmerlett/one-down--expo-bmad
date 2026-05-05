@@ -3,6 +3,8 @@ import { QueryClient } from '@tanstack/react-query';
 import { httpBatchLink } from '@trpc/client';
 import { createTRPCReact } from '@trpc/react-query';
 
+import { supabase } from './supabase';
+
 const DEFAULT_API_URL = 'http://localhost:3000';
 const REQUEST_TIMEOUT_MS = 5_000;
 
@@ -40,6 +42,12 @@ export function createTrpcClient() {
       httpBatchLink({
         url: `${getApiBaseUrl()}/trpc`,
         fetch: timeoutFetch,
+        async headers() {
+          if (!supabase) return {};
+          const { data } = await supabase.auth.getSession();
+          const token = data.session?.access_token;
+          return token ? { Authorization: `Bearer ${token}` } : {};
+        },
       }),
     ],
   });

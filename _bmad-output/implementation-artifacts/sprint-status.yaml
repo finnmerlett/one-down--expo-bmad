@@ -80,7 +80,7 @@ development_status:
   epic-5: in-progress
   5-0-backend-api-scaffold: done
   5-1-mobile-to-server-connection: done
-  5-2-user-registration-and-authentication: backlog
+  5-2-user-registration-and-authentication: done
   5-3-cloud-sync-layer: backlog
   epic-5-retrospective: optional
 
