@@ -1,4 +1,52 @@
-# Commit Message Conventions
+# Commit & Branch Conventions
+
+## Branch Naming
+
+Story branches follow the pattern: `story/<story-id>-<slug>`
+
+Examples:
+- `story/1.1-app-shell-navigation`
+- `story/2.0-supabase-auth-setup`
+- `story/1.3-design-system-theme`
+
+The slug matches the story filename (without `.md`). The story ID uses dot notation (e.g., `1.0`, `1.1`). Each story is developed on its own branch, then squash-merged into `main`.
+
+### Squash-Merge Commit Format
+
+When squash-merging a story branch into main, use:
+
+```
+story(X.Y): emoji short description
+
+- Key implementation details
+- ...
+
+Story: X-Y-story-slug
+```
+
+Example:
+```
+story(1.0): 🎉 scaffold monorepo with Expo SDK 55, Fastify 5, and shared workspace
+
+- Initialized Bun workspaces: apps/mobile, apps/server, packages/shared
+- Configured Oxlint 1.62, Oxfmt 0.47, TypeScript 5.9/6.0
+- All gates pass: lint, format, typecheck, tests
+
+Story: 1-0-project-scaffold-and-development-foundation
+```
+
+### Branch Cleanup
+
+After a squash-merge, delete the story branch both locally and on the remote:
+
+```bash
+git branch -D story/X.Y-slug
+git push origin --delete story/X.Y-slug
+```
+
+---
+
+## Commit Messages
 
 Commit messages follow the **conventional commit format with gitmojis**. 
 
