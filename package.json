@@ -1,0 +1,29 @@
+{
+  "name": "one-down",
+  "version": "0.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "format": "oxfmt package.json tsconfig.base.json .oxlintrc.json .oxfmtrc.json apps packages",
+    "format:check": "oxfmt --check package.json tsconfig.base.json .oxlintrc.json .oxfmtrc.json apps packages",
+    "lint": "oxlint .",
+    "lint:check": "bun run lint && bun run format:check",
+    "mobile": "bun --cwd apps/mobile start",
+    "mobile:android": "bun --cwd apps/mobile android",
+    "server:dev": "bun --cwd apps/server dev",
+    "test": "bun --cwd packages/shared test && bun --cwd apps/server test",
+    "typecheck": "bun --cwd packages/shared typecheck && bun --cwd apps/server typecheck && bun --cwd apps/mobile typecheck"
+  },
+  "devDependencies": {
+    "oxfmt": "^0.47.0",
+    "oxlint": "^1.62.0",
+    "typescript": "^6.0.3"
+  },
+  "engines": {
+    "node": "^24.3.0"
+  },
+  "packageManager": "bun@1.2.13"
+}

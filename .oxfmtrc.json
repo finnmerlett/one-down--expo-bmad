@@ -1,0 +1,23 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "ignorePatterns": [
+    ".claude/**",
+    ".cline/**",
+    ".cursor/**",
+    ".expo/**",
+    ".github/skills/**",
+    "_bmad/**",
+    "_bmad-output/**",
+    "android/**",
+    "coverage/**",
+    "design-artifacts/**",
+    "dist/**",
+    "docs/**",
+    "ios/**",
+    "node_modules/**"
+  ],
+  "printWidth": 100,
+  "semi": true,
+  "singleQuote": true,
+  "trailingComma": "all"
+}
