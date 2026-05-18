@@ -40,7 +40,7 @@ For each story:
 3. Create a detailed story file in `_bmad-output/implementation-artifacts/` before implementing
 4. Implement against the story acceptance criteria
 5. Run code review before marking done
-6. Commit with conventional commits per `.github/commit-conventions.md`
+6. Commit with conventional commits per `.github/commit-conventions.md`. ALWAYS check this file before committing.
 
 ### Epic Dependency Order
 ```
@@ -55,6 +55,9 @@ Epics 1-4 and 5-8 are two parallel tracks. Within each track, stories should be 
 - **Epic 5 stories** (5.0 → 5.1 → 5.2 → 5.3) are sequential
 - **Epic 1 track and Epic 5 track can run in parallel** (mobile vs server)
 - When creating convoys, group stories that can be parallelized across different agents
+
+### General Structure Notes
+- If additional interleaving stories are needed, use sub-numbers (e.g. 1.2.1). Sub-numbers in filenames should use `·` (e.g. `1-2·1-new-story.md`) to keep correct file ordering.
 
 ## Build & Test
 
@@ -149,10 +152,38 @@ packages/shared/src/
 
 **UI patterns:**
 - gluestack-ui v3 components installed per-story via `npx gluestack-ui add <component>`
-- NativeWind/Tailwind CSS for styling (utility-first)
+- NativeWind/Tailwind CSS for styling (utility-first) — always use `className`, never `StyleSheet.create`
 - Reanimated 4 for animations (worklets plugin must be LAST in babel.config.js)
 - Portrait-only, 320pt–430pt width target
 
 **File naming:** kebab-case for files, PascalCase for components
 
 **IDs:** crypto.randomUUID() — client-generated, permanent (no server reassignment)
+
+## Testing & Quality Methodology
+
+### Testing Levels
+
+- **Unit tests** for algorithmic pure functions eg. curation, star calculation, conflict resolution.
+- **Local integration tests** for real collaborations across mobile layers (DB + service + hook) using in-memory SQLite.
+- **Server integration tests** for tRPC procedures against a real test Postgres instance with real JWT tokens.
+- **Storybook UI tests** for visual components and screens.
+- **Maestro E2E tests**  for user journeys on-device.
+
+### Philosophy
+
+- **Don't test the framework.** Ensure tests genuinely check written logic, not that a library's internals functions correctly.
+- **Don't test mocks.** If the mock is getting heavy, use an in-memory real instance or pre-built solution. Research online the standard way of testing for that layer
+- **Only test meaningful logic.** Every test should validate non-trivial handwritten code. Skip placeholder tests and checking simple pass-through or obvious single-line logic
+- **Integration over isolation.** Test real collaborations (DB + service + hook) rather than isolated units behind mock walls, unless specific complex logic needs to be verified.
+
+### UI Storybook Tests
+
+All UI component testing uses **React Native Storybook**, not Jest render tests. Grouped by:
+- Base UI components (button, input, textarea, etc.)
+- Feature sections (app-shell, card-stack, quick-add-sheet, auth), with individual component + full screen stories
+
+### Integration Tests
+
+- **Mobile:** Real flows against in-memory SQLite
+- **Server:** tRPC procedures against a real test Postgres instance with real JWT tokens.

@@ -462,6 +462,58 @@ So that all subsequent stories have a working development environment to build o
 
 ---
 
+#### Story 1.0.2: Replace Component Unit Tests with Storybook
+
+As a developer,
+I want UI components validated via Storybook instead of mock-heavy Jest render tests,
+So that component testing reflects real on-device behavior.
+
+**Acceptance Criteria:**
+
+**Given** the mobile app
+**When** React Native Storybook is installed and configured
+**Then** it runs alongside the app on the Android emulator
+**And** all existing UI component Jest tests are replaced with Storybook stories
+**And** stories are grouped by base UI components and feature sections (with sub-groupings for individual components and screens)
+
+**Given** the migration is complete
+**Then** all components render correctly on-device
+**And** previous mock-heavy Jest render tests are deleted
+**And** `CLAUDE.md` documents Storybook as the approach for visual component testing
+
+*Does NOT remove tests for real logic (services, middleware). Only removes render tests relying on heavy mocks.*
+
+**Dependencies:** Story 1.0 scaffold complete
+
+---
+
+#### Story 1.0.3: Integration Tests & Test Quality Cleanup
+
+As a developer,
+I want meaningful integration tests and trivial tests removed,
+So that the test suite provides genuine confidence.
+
+**Acceptance Criteria:**
+
+**Given** the current test suite
+**When** audited
+**Then** trivial tests (obvious state, fake DB tests) are removed or replaced with real integration tests where it actually adds value
+
+**Given** the mobile app
+**When** integration tests are added
+**Then** task creation → curation → rendering is tested against a real in-memory SQLite database (no mocked DB)
+
+**Given** the server
+**When** integration tests are added
+**Then** tRPC procedures are tested against a real test PostgreSQL instance with real JWT tokens
+
+**Given** the cleanup is complete
+**Then** `CLAUDE.md` testing methodology section is up-to-date with the approach
+
+**Dependencies:** Story 1.0.2 (Storybook replaces render tests before they're deleted here)
+
+---
+
 #### Story 1.1: App Shell & Navigation
 
 As a user,
@@ -543,6 +595,28 @@ So that I can browse tasks one at a time in a focused way.
 
 ---
 
+#### Story 1.3.1: Card Stack Cycling
+
+As a user,
+I want the card stack to loop back to the beginning after I've swiped through all cards,
+So that I can keep browsing without hitting a dead end.
+
+**Acceptance Criteria:**
+
+**Given** the user swipes past the last card in the stack
+**When** the dismiss animation completes
+**Then** the stack wraps around to the first card (cycling continuously)
+
+**Given** the stack is cycling
+**When** the user adds or removes tasks
+**Then** the cycle updates to reflect the current task list without resetting position
+
+**Note:** The empty state should only show when there are genuinely zero tasks. If tasks exist, the stack always cycles.
+**Architecture:** Backpropagate card-cycling behavior into `_bmad-output/planning-artifacts/architecture.md` — the CardStack component section should document the wrap-around index logic.
+**Parent:** Story 1.3
+
+---
+
 #### Story 1.4: Card Front/Back & Inline Editing
 
 As a user,
@@ -599,6 +673,23 @@ So that I can get a complete view of my task backlog.
 
 **FRs:** 30
 **UX-DRs:** 14 (basic list view)
+
+---
+
+#### Story 1.5.1: Review CLAUDE.md for Domain Sub-file Split
+
+As a developer,
+I want to assess whether CLAUDE.md has grown large enough to benefit from splitting into domain-scoped sub-files,
+So that AI agents can load only relevant context sections on demand.
+
+**Acceptance Criteria:**
+
+**Given** Epic 1 is complete and patterns are established
+**When** this story is picked up
+**Then** review CLAUDE.md size and section count
+**And** decide: either split into domain files (e.g. `claude/testing.md`, `claude/conventions.md`, `claude/architecture.md`) or defer further
+
+**Note:** This is a checkpoint, not a guaranteed action. If CLAUDE.md is still manageable (< ~300 lines, < 8 sections), defer and re-evaluate after Epic 2.
 
 ---
 
@@ -1032,6 +1123,12 @@ So that I can access my tasks anywhere.
 **NFRs:** R1, R2, R3, R4, R5
 
 *Note: FR63 (offline viewing) and FR64 (offline creation) are inherently satisfied by Epic 1's local-first architecture but sync behavior is validated here. FR65 (AI graceful degradation) is handled in Epic 6.*
+
+**Implementation Note — Schema Unification (added 2026-05-15):**
+Before implementing sync, unify the local (`schema-local/`) and cloud (`schema/`) task schemas around a single canonical set of types. Currently the cloud schema is missing `size`, `contexts`, `deadline`, and `hasCheckNeeded` fields that exist locally. For clean 1:1 backup and synchronization, both schemas should represent the same task shape — a shared canonical type (e.g. `TaskData`) should define what fields a task has, with each Drizzle table definition mapping to/from it for its respective database engine (SQLite vs PostgreSQL). This avoids information duplication and ensures schema drift doesn't break sync.
+
+**Implementation Note — JWT Verification Refactor (added 2026-05-15):**
+Replace the manual HS256 JWT verification in `apps/server/src/middleware/auth.ts` with the `jose` library using Supabase's JWKS endpoint (asymmetric keys). Supabase explicitly recommends against hand-rolled HS256 verification and shared secrets. The refactor: (1) install `jose`, (2) use `createRemoteJWKSet` + `jwtVerify` to verify against Supabase's public keys at `https://<project-id>.supabase.co/auth/v1/.well-known/jwks.json`, (3) remove the `SUPABASE_JWT_SECRET` env var from the server. This is more secure (public keys can't forge tokens), follows Supabase's recommended practice, and reduces hand-rolled crypto from ~60 lines to ~10.
 
 ---
 
