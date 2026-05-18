@@ -5,3 +5,18 @@ node_modules
 .DS_Store
 *.tsbuildinfo
 dist/
+
+# Gas Town runtime
+mayor/
+deacon/
+daemon/
+witness/
+onedown/
+events/
+logs/
+.runtime/
+.beads/
+.dolt-data/
+.events.jsonl
+.events.jsonl.lock
+state.json
