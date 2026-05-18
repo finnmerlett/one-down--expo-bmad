@@ -1,6 +1,6 @@
 import { Link } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,17 +42,17 @@ export default function LoginScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <VStack style={styles.form}>
-        <Text style={styles.title}>Welcome Back</Text>
+    <View className="flex-1 justify-center p-6">
+      <VStack className="w-full max-w-[400px] self-center gap-4">
+        <Text className="text-3xl font-bold text-center mb-2">Welcome Back</Text>
 
         {error ? (
-          <Text testID="login-error" style={styles.error}>
+          <Text testID="login-error" className="text-red-600 text-sm text-center">
             {error}
           </Text>
         ) : null}
 
-        <VStack style={styles.inputs}>
+        <VStack className="gap-2">
           <Input
             testID="email-input"
             placeholder="Email"
@@ -82,7 +82,7 @@ export default function LoginScreen() {
         </Button>
 
         <Link href="/(auth)/signup" asChild>
-          <Text testID="signup-link" style={styles.link}>
+          <Text testID="signup-link" className="text-center text-blue-600 text-sm">
             Don't have an account? Sign up
           </Text>
         </Link>
@@ -90,36 +90,3 @@ export default function LoginScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 24,
-  },
-  form: {
-    width: '100%',
-    maxWidth: 400,
-    alignSelf: 'center',
-    gap: 16,
-  },
-  inputs: {
-    gap: 8,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  error: {
-    color: '#dc2626',
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  link: {
-    textAlign: 'center',
-    color: '#2563eb',
-    fontSize: 14,
-  },
-});

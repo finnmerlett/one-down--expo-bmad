@@ -4,12 +4,12 @@ import { Dimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   type SharedValue,
-  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { Box } from '@/components/ui/box';
 import { TaskCard } from '@/components/task-card/task-card';
@@ -41,7 +41,7 @@ export function CardStack({ cards }: CardStackProps) {
       if (Math.abs(event.translationX) > SWIPE_THRESHOLD) {
         const direction = event.translationX > 0 ? 1 : -1;
         translateX.value = withTiming(direction * DISMISS_X, { duration: 250 }, () => {
-          runOnJS(advanceCard)();
+          scheduleOnRN(advanceCard);
         });
       } else {
         translateX.value = withSpring(0, { damping: 20, stiffness: 200 });
