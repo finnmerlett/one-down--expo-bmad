@@ -25,22 +25,35 @@ One Down is a mobile task management app built for people with ADHD. It uses a c
 - Sprint status at `_bmad-output/implementation-artifacts/sprint-status.yaml`
 
 ### BMad Workflow for Story Implementation
-This project uses the BMad methodology.
+This project uses the BMad methodology, enforced by the `mol-polecat-bmad-story` formula.
 
-Each BMAD stage (create-story, dev-story, code-review, ship) MUST be run with a **fresh context**. Do NOT carry conversation state between stages. The only inputs to each stage are:
-- The BMAD workflow documentation in `_bmad/bmm/workflows/`
+**MANDATORY:** All story work MUST use formula `mol-polecat-bmad-story` (not `mol-polecat-work`).
+When the mayor dispatches story work to polecats, attach this formula:
+```bash
+gt mol attach mol-polecat-bmad-story --vars "base_branch=main"
+```
+
+The formula enforces 4 BMad stages with mandatory fresh-context handoffs between each:
+
+1. **create-story** — Create story file from BMad workflow docs, epics, PRD, architecture, UX → HANDOFF
+2. **dev-story** — Implement against story acceptance criteria using BMad dev-story workflow → HANDOFF
+3. **code-review** — Independent adversarial review in a FRESH context (reviewer did NOT write the code) → HANDOFF
+4. **ship** — Final verification, squash commit, submit to merge queue
+
+Each stage starts with a completely clean context. The ONLY inputs to each stage are:
+- The BMad workflow documentation in `_bmad/bmm/workflows/4-implementation/`
 - The implementation artifacts in `_bmad-output/`
-- The code itself
+- The code and git diff
+- Structured state markers in bead notes (`bmad-stage:` field)
 
-This ensures each stage evaluates the work independently, not influenced by prior reasoning or assumptions.
+This ensures each stage evaluates the work independently, not influenced by prior reasoning.
 
-For each story:
-1. Read the story definition from `_bmad-output/planning-artifacts/epics.md`
-2. Follow the BMad dev-story skill workflow (`.github/skills/bmad-dev-story/SKILL.md`)
-3. Create a detailed story file in `_bmad-output/implementation-artifacts/` before implementing
-4. Implement against the story acceptance criteria
-5. Run code review before marking done
-6. Commit with conventional commits per `.github/commit-conventions.md`. ALWAYS check this file before committing.
+**Stage state** is tracked via `bmad-stage:` in bead notes. Between stages, the polecat
+runs `gt handoff -y` which kills the session. The next session reads the stage marker
+and routes to the correct step.
+
+**Non-story work** (bug fixes, reviews, audits) can still use `mol-polecat-work`.
+Only epic story implementation requires the BMad formula.
 
 ### Epic Dependency Order
 ```
