@@ -733,3 +733,154 @@ These innovations are philosophical rather than technical, so validation is beha
 |----|-------------|-------|
 | **NFR-L1** | Basic logging and traceability in both app client and server side | MVP baseline; build out more thorough logging in v0.2+ |
 | **NFR-SC2** | Database schema supports future multi-device sync expansion | Plan ahead |
+
+---
+
+## Appendix: Implementation Learnings (Reverted Gas Town Pipeline Run)
+
+> **Provenance.** An automated orchestration pipeline ("Gas Town") implemented Epic 1 stories
+> (1.0, 1.0·1, 1.1, 1.2, 1.3) and Epic 5 stories (5.0, 5.1, 5.2) in May 2026. On 2026-06-07
+> these implementations were **reverted from `main`** to be re-done with human oversight. The
+> original code is preserved on branch **`midway-gas-town`**. The technical knowledge discovered
+> during that run is digested below so re-implementation benefits from it. These are concrete,
+> non-obvious findings — not a restatement of acceptance criteria. Treat them as strong defaults,
+> not gospel: a few were never validated on a real device (see "Unverified" notes).
+
+### Cross-Cutting Technical Learnings
+
+1. **Reanimated 4 Babel plugin is renamed.** Use `react-native-worklets/plugin` (NOT
+   `react-native-reanimated/plugin` — Reanimated 4 renamed it; the old name silently fails). It
+   **must be LAST** in `babel.config.js` plugins. Versions that worked: Reanimated 4.2.1 +
+   worklets 0.7.4.
+2. **React Native has no `crypto.randomUUID()`.** Use `expo-crypto`'s `randomUUID()`. The original
+   `tasks-repository` shipped with `crypto.randomUUID()` and it was a latent runtime bug.
+3. **`useLiveQuery` reactivity requires `enableChangeListener: true`** on the expo-sqlite database.
+   Without it the live query never re-runs (silent — looks like a state bug).
+4. **Two-schema split is foundational.** Server (Postgres) schema at `@one-down/shared/schema`
+   (`pgTable`); mobile (SQLite) schema at `@one-down/shared/schema-local` (`sqliteTable`). The
+   mobile bundle must **never** import `drizzle-orm/pg-core`. The main `.` barrel of
+   `@one-down/shared` re-exports neither. Use `title` + nullable `details` column naming from the
+   start (an earlier `content` name had to be migrated). Local schema is a strict subset of pg.
+5. **Cross-workspace imports must be type-only:** `import type { AppRouter } from '@one-down/server'`.
+   The server `package.json` `exports` map points `types` and `default` at the `.ts` source (server
+   is consumed type-only, never transpiled/published). A value import forces Metro to bundle
+   Fastify/drizzle/postgres-js into the RN app.
+6. **Mobile migrations are hand-rolled raw SQL.** `runInitialMigrations()` uses
+   `CREATE TABLE IF NOT EXISTS` + `PRAGMA table_info` / `ALTER TABLE ADD COLUMN` for backward-compatible
+   upgrades. drizzle-kit was deliberately kept out of the mobile runtime. Standing plan: switch to
+   `useMigrations(db, migrations)` once schema churn justifies it.
+7. **Drizzle server client must lazy-connect** — server boot must succeed with a fake
+   `DATABASE_URL` (no network call at import). Verified via stub-URL smoke test.
+8. **`@testing-library/react-native` v12 `getByRole(role, { name })` matches *descendant*
+   accessibility names.** Wrapper `Pressable`s with `accessibilityRole`/label pollute name queries —
+   mark non-essential wrappers `accessible={false}`.
+9. **Recurring Jest + RN mocking traps:** Reanimated needs a *manual* mock (not
+   `react-native-reanimated/mock`) to avoid worklets native init; gesture-handler needs a
+   chainable-proxy mock for `Gesture.Pan()` + `GestureDetector`; the Supabase SDK needs a global
+   `jest.setup.js` mock for ESM transform issues; `jest.mock` factories cannot contain TypeScript
+   annotations and are hoisted above variable declarations (declare mocks inside the factory or use
+   a module-level const + proxy). The TanStack Query "A worker process has failed to exit gracefully"
+   warning is **benign**.
+10. **gluestack v3 API gaps:** `VStack` has no `space` prop (use `style={{ gap }}`); `Button` has no
+    `variant="outline"` (use `"secondary"`). The project abandoned the gluestack CLI for base
+    primitives and hand-rolled thin NativeWind wrappers in `components/ui/` (`box`, `hstack`,
+    `vstack`, `pressable`, `text`, `icon`) — import paths match what `npx gluestack-ui add` produces
+    so they can be swapped later. **No `GluestackUIProvider` is mounted** — the first real gluestack
+    component must add it.
+11. **Server `process.env` discipline:** confine all reads to `apps/server/src/lib/env.ts`
+    (`loadEnv()` with Zod). Accepted exceptions: `drizzle.config.ts` (CLI tooling) and the auth
+    middleware's `SUPABASE_JWT_SECRET` read.
+12. **`EXPO_PUBLIC_*` env vars are inlined at Metro bundle time** — restart Metro after changing
+    them. The Android emulator reaches the host server at `http://10.0.2.2:3000`, **not** `localhost`.
+13. **`superjson` must be wired symmetrically** on client + server simultaneously (tRPC v11 enforces
+    transformer symmetry at the type level — a one-sided transformer is a compile error). Defer until
+    the first non-JSON-native (Date) procedure lands (planned for sync, Story 5.3).
+14. **On-device visual verification was never performed** by the pipeline (no live emulator in the
+    sandbox) on any mobile story. Treat layout details as *unverified*: `KeyboardAvoidingView`, sheet
+    positioning, FAB clearance above the Android gesture bar, safe-area insets, and `ConnectionStatus`
+    state transitions all need real-device confirmation.
+15. **E2E must run against a custom dev build, not Expo Go.** Maestro `clearState` against Expo Go
+    lands on its home screen. Use a dev build `com.onedown.mobile` via `expo run:android` +
+    `expo-dev-client`. Flows live in `.maestro/` named `<seq>-story-<epic>-<story>-<name>.yaml`, share
+    a `launch.yaml`, and `scripts/maestro-test.sh` captures `ReactNativeJS` console logs. Text typed
+    into an input is not committed to React state until the keyboard is dismissed — add an explicit
+    `hideKeyboard` step before tapping Save.
+
+### Pinned Versions & Stack Choices (validated to build together)
+
+- Node `^24.3.0` (constraint via `engines` only — Finn uses `fnm`; no `.nvmrc`). Bun `1.2.13`.
+- Expo SDK 55 (New Architecture / Fabric-only; Expo Router root at **`src/app`**, `typedRoutes: true`).
+  Scaffold via `bun create expo-app apps/mobile --template default@sdk-55 --no-install`
+  (`--no-agents-md` is unsupported). Delete the template's `AppTabs`/bottom-tabs + Welcome UI.
+- **NativeWind v4** (`^4.2.3`) + **Tailwind v3** (`^3.4.0`) — the only combo compatible with React 19
+  + RN 0.83 + SDK 55. Do NOT use Tailwind v4 or NativeWind v2. `metro.config.js` wraps
+  `withNativeWind(config, { input: "./src/global.css" })`. NativeWind auto-generates
+  `nativewind-env.d.ts` on first Metro start.
+- Icons: `lucide-react-native` + `react-native-svg@15.15.3`.
+- State/data: `zustand@^5.0.13` (UI only — task data lives in SQLite, never mirrored),
+  `drizzle-orm@^0.45.2`, `expo-sqlite@^55.0.15`.
+- Server: `@trpc/server@11.17.0`, `postgres@3.4.9` (postgres.js v3), `drizzle-kit@0.31.10` (dev),
+  **`zod@4.4.3`** (Zod 4, not 3).
+- Client tRPC: `@trpc/client@11.17.0`, `@trpc/react-query@11.17.0`, `@tanstack/react-query@5.100.9`.
+- Tests: `jest@^29`, `jest-expo@^55.0.16`, `@testing-library/react-native@^12`,
+  `react-test-renderer@19.2.0`. Root `test` script chains `shared && server && mobile`.
+
+### Domain / Schema Facts
+
+- **Local `tasks` columns** (SQLite, load-bearing): `id`, `title`, `details` (nullable),
+  `status TEXT NOT NULL DEFAULT 'pending'` (`pending | in_progress | completed | cut_loose`),
+  `size TEXT` (`quick_win | big_time | null`), `contexts TEXT` (JSON array string e.g.
+  `'["home","phone"]'`), `deadline INTEGER` (epoch ms), `has_check_needed INTEGER DEFAULT 0` (0/1),
+  `createdAt`/`updatedAt` (`integer({ mode: 'timestamp_ms' })`).
+- **Server `tasks`** mirrors this with `userId` (uuid NN, ready for Supabase user IDs) and pg-native
+  `timestamp with time zone`. Both serialize as ISO 8601 on the wire. pg `tasks.id` has **no**
+  `defaultRandom()` — IDs are client-generated UUIDs accepted as-is.
+- Curation is a **pure function** `curateTasks(tasks, activeContexts?)` in `services/curation.ts`:
+  filter to `status === 'pending'`, optional context-overlap filter, sort deadline-soonest-first then
+  `createdAt desc`. CardStack renders the top 3. Story 3.3 will add weighted scoring — keep the
+  interface stable.
+
+### Architecture / Wiring Facts
+
+- **Provider hierarchy (exact order):** `GestureHandlerRootView` → `SafeAreaProvider` →
+  `AuthProvider` → `TrpcProvider` → `{migrated ? <Stack/> : null}`. `AuthProvider` wraps **outside**
+  `TrpcProvider` so the JWT is available to the tRPC client. tRPC mounts before SQLite migration
+  completes (no dependency on local-DB readiness). `SafeAreaView` uses
+  `edges={['top','left','right','bottom']}`; the bottom edge keeps the FAB above the Android gesture bar.
+- **No bottom tab bar** (per UX spec). Single `expo-router` `Stack`, `headerShown: false`.
+- tRPC: single `httpBatchLink` mounted at `/trpc`; `timeoutFetch` wraps `fetch` with a 5s
+  `AbortController` and forwards external `signal` aborts. `QueryClient`: `retry: 1`,
+  `staleTime: 30s`. Client + QueryClient instantiated once via `useState` in `TrpcProvider`.
+- Two health endpoints by design: Fastify-native `GET /health` (liveness) and a tRPC `health` query
+  (end-to-end client check) with contract `{ status: 'ok', service, sharedPackage, timestamp }`.
+  Truth test is `data.status === 'ok'`, so the payload can evolve.
+- `ConnectionStatus` uses `accessibilityLiveRegion="polite"` (RN `AccessibilityRole` has no
+  `'status'` value — that's web-only).
+
+### Auth (Story 5.2) — Specifics & Known Weaknesses
+
+- JWT verified **locally** with Node's built-in `crypto` (HS256, timing-safe compare) against
+  `SUPABASE_JWT_SECRET` — **no external JWT library**, no Supabase call per request.
+- Token storage is **`expo-secure-store`, not AsyncStorage** (NFR-S1) via a custom adapter
+  implementing Supabase's `SupportedStorage` interface. **Supabase is auth-only** — app data lives in
+  (Railway) Postgres via Drizzle.
+- Auth boundary is a **tRPC middleware**, not a Fastify hook. `publicProcedure` stays public (health
+  unauthenticated); `protectedProcedure = publicProcedure.use(authMiddleware)` throws `UNAUTHORIZED`.
+  tRPC client injects the JWT via the `httpBatchLink` `headers` callback and **omits the
+  `Authorization` header entirely when no session** (enables local-only free tier). `@fastify/cors`
+  is registered with origin from `CORS_ORIGIN` (default `*` in dev).
+- **Known weaknesses to fix on re-implementation:**
+  (a) Google OAuth used `signInWithOAuth({ provider:'google', options:{ skipBrowserRedirect:true } })`,
+  which **will not complete on a real device** — RN needs `expo-auth-session` / `expo-web-browser` to
+  handle the redirect. (b) **No Maestro E2E coverage** for the new login/signup screens (violates the
+  project's E2E requirement). (c) Auth-aware navigation gating was a **no-op** (marked done but no
+  redirect logic wired). (d) The login/signup screen *unit* tests fully mock `useAuth` and assert the
+  mock is called — they verify wiring, not behavior. (e) Original screens used `StyleSheet.create`
+  (violated the NativeWind convention; later refactored).
+
+### Scope Deferrals Recorded by the Pipeline
+
+- Reanimated/NativeWind/gluestack setup → 1.1. Production console stripping (Metro/Terser
+  `drop_console`) → deferred. CI / EAS Build / Railway deploy → Epic 5.
+- Server auth/JWT → 5.2; sync router + first DB migration + `superjson` → 5.3; AI → Epic 6;
+  `@fastify/rate-limit` → not in 5.2 ACs (file separately); PostHog/analytics → later.

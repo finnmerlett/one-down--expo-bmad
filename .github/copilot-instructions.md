@@ -1,6 +1,6 @@
 ## General Instructions | applicable to ALL AGENTS AT ALL TIMES
 
-**Commit Message Format** - See [.github/commit-conventions.md](./commit-conventions.md) for the full commit message conventions including format, scopes, and gitmoji reference.
+**Commit Message Format** - See [.github/commit-conventions.md](./commit-conventions.md) for the full commit message conventions including format, scopes, and gitmoji reference. ALWAYS check this before committing.
 
 **Commit Regularly** - As soon as any reasonably cohesive sub-section is complete and approved, commit the changes
 
