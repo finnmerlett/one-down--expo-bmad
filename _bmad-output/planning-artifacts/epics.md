@@ -483,6 +483,8 @@ So that component testing reflects real on-device behavior.
 
 *Does NOT remove tests for real logic (services, middleware). Only removes render tests relying on heavy mocks.*
 
+**Note:** Use Portable Stories (`composeStories` from `@storybook/react`) to run stories headlessly in Jest — validates they render without crashing, no device needed. This gives CI coverage over story files.
+
 **Dependencies:** Story 1.0 scaffold complete
 
 ---
