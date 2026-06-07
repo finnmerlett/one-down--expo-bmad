@@ -458,61 +458,16 @@ So that all subsequent stories have a working development environment to build o
 **Then** `bun run lint` and `bun run format:check` scripts pass on the scaffold code
 **And** TypeScript strict mode is enabled and `bun run typecheck` passes across all workspaces
 
-*Note: This story creates the development foundation only. No custom UI, no domain logic, no database tables beyond stubs. Full CI pipeline (GitHub Actions, EAS Build, Railway deploy) is deferred to Epic 5 when the server exists and there is meaningful code to gate. Subsequent stories build on this scaffold.*
+**Given** the testing foundation
+**When** it is established alongside the scaffold
+**Then** React Native Storybook is installed and runs on-device (Android emulator) as the approach for visual/component testing — no mock-heavy Jest render tests
+**And** Portable Stories (`composeStories` from `@storybook/react`) run stories headlessly in Jest for crash-free CI coverage
+**And** a mobile integration-test harness against a real in-memory SQLite database is available (no mocked DB)
+**And** a Maestro E2E foundation exists — a custom dev build (`expo run:android` + `expo-dev-client`, package `com.onedown.mobile`), a shared launch flow, an "app launches" smoke test, and `scripts/maestro-test.sh` to capture console logs
+**And** the suite avoids trivial/fake-DB pass-through tests — only meaningful logic and real collaborations are tested
+**And** `CLAUDE.md` documents this testing methodology
 
----
-
-#### Story 1.0.2: Replace Component Unit Tests with Storybook
-
-As a developer,
-I want UI components validated via Storybook instead of mock-heavy Jest render tests,
-So that component testing reflects real on-device behavior.
-
-**Acceptance Criteria:**
-
-**Given** the mobile app
-**When** React Native Storybook is installed and configured
-**Then** it runs alongside the app on the Android emulator
-**And** all existing UI component Jest tests are replaced with Storybook stories
-**And** stories are grouped by base UI components and feature sections (with sub-groupings for individual components and screens)
-
-**Given** the migration is complete
-**Then** all components render correctly on-device
-**And** previous mock-heavy Jest render tests are deleted
-**And** `CLAUDE.md` documents Storybook as the approach for visual component testing
-
-*Does NOT remove tests for real logic (services, middleware). Only removes render tests relying on heavy mocks.*
-
-**Note:** Use Portable Stories (`composeStories` from `@storybook/react`) to run stories headlessly in Jest — validates they render without crashing, no device needed. This gives CI coverage over story files.
-
-**Dependencies:** Story 1.0 scaffold complete
-
----
-
-#### Story 1.0.3: Integration Tests & Test Quality Cleanup
-
-As a developer,
-I want meaningful integration tests and trivial tests removed,
-So that the test suite provides genuine confidence.
-
-**Acceptance Criteria:**
-
-**Given** the current test suite
-**When** audited
-**Then** trivial tests (obvious state, fake DB tests) are removed or replaced with real integration tests where it actually adds value
-
-**Given** the mobile app
-**When** integration tests are added
-**Then** task creation → curation → rendering is tested against a real in-memory SQLite database (no mocked DB)
-
-**Given** the server
-**When** integration tests are added
-**Then** tRPC procedures are tested against a real test PostgreSQL instance with real JWT tokens
-
-**Given** the cleanup is complete
-**Then** `CLAUDE.md` testing methodology section is up-to-date with the approach
-
-**Dependencies:** Story 1.0.2 (Storybook replaces render tests before they're deleted here)
+*Note: This story creates the development and testing foundation. No custom UI, no domain logic, no database tables beyond stubs. The mobile testing foundation (Storybook, in-memory SQLite integration harness, Maestro E2E foundation) is set up here; feature stories then add their own integration and E2E coverage, and the server-side integration harness (real test PostgreSQL + JWT) lands with the backend in Epic 5. Full CI pipeline (GitHub Actions, EAS Build, Railway deploy) is deferred to Epic 5. Consolidates former stories 1.0.1 (Maestro E2E foundation), 1.0.2 (Storybook), and 1.0.3 (integration tests & test-quality cleanup) — corrective stories created mid-implementation, now folded in so it is done right from the start.*
 
 ---
 
@@ -587,35 +542,19 @@ So that I can browse tasks one at a time in a focused way.
 **When** they let go
 **Then** the card smoothly animates back to its original position
 
-**Given** no tasks exist
-**When** the user views the main screen
-**Then** an empty state message is shown
-
-**Creates:** TaskCard (front side), CardStack with Reanimated 4 worklets + gesture handler
-**FRs:** 6, 9, 10, 27
-**UX-DRs:** 2, 3
-
----
-
-#### Story 1.3.1: Card Stack Cycling
-
-As a user,
-I want the card stack to loop back to the beginning after I've swiped through all cards,
-So that I can keep browsing without hitting a dead end.
-
-**Acceptance Criteria:**
-
 **Given** the user swipes past the last card in the stack
 **When** the dismiss animation completes
-**Then** the stack wraps around to the first card (cycling continuously)
+**Then** the stack wraps around to the first card and cycles continuously (no dead end)
+**And** adding or removing tasks updates the cycle without resetting the current position
 
-**Given** the stack is cycling
-**When** the user adds or removes tasks
-**Then** the cycle updates to reflect the current task list without resetting position
+**Given** zero tasks exist
+**When** the user views the main screen
+**Then** an empty state message is shown (the empty state appears only when there are genuinely no tasks; if any tasks exist, the stack always cycles)
 
-**Note:** The empty state should only show when there are genuinely zero tasks. If tasks exist, the stack always cycles.
-**Architecture:** Backpropagate card-cycling behavior into `_bmad-output/planning-artifacts/architecture.md` — the CardStack component section should document the wrap-around index logic.
-**Parent:** Story 1.3
+**Creates:** TaskCard (front side), CardStack with Reanimated 4 worklets + gesture handler + wrap-around index
+**FRs:** 6, 9, 10, 27
+**UX-DRs:** 2, 3
+**Note:** Document the CardStack wrap-around index logic in `architecture.md` when implementing.
 
 ---
 
