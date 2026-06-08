@@ -142,7 +142,7 @@ This document provides the complete epic and story breakdown for One Down, decom
 ### Additional Requirements
 
 **Starter Template & Project Scaffold**
-- Architecture specifies Expo SDK 55 default template: `bun create expo-app one-down --template default@sdk-55` — impacts Epic 1 Story 1
+- Architecture specifies Expo SDK 56 default template: `bun create expo-app one-down --template default@sdk-56` — impacts Epic 1 Story 1
 - Backend: Manual Fastify + TypeScript scaffold with Bun
 - Monorepo: Bun workspaces (apps/mobile, apps/server, packages/shared)
 
@@ -154,7 +154,7 @@ This document provides the complete epic and story breakdown for One Down, decom
 - Server DB: PostgreSQL + Drizzle ORM (server-side) on Railway
 - Shared schemas: packages/shared with Drizzle schema + Zod validation (drizzle-zod) + TypeScript types
 - Sync: Custom timestamp-based sync layer ("last-content-changed wins")
-- AI: Gemini Flash via @google/generative-ai SDK, centralized AI service exposed via tRPC
+- AI: Gemini Flash (`gemini-2.5-flash`) via the `@google/genai` SDK (the older `@google/generative-ai` is end-of-life), centralized AI service exposed via tRPC
 - Analytics: PostHog React Native SDK (client) + posthog-node + posthog-trpc middleware (server)
 - Billing: RevenueCat for Google Play subscription management
 
@@ -430,7 +430,7 @@ So that all subsequent stories have a working development environment to build o
 **And** each workspace has a valid `package.json` and TypeScript configuration
 
 **Given** the mobile workspace (`apps/mobile`)
-**When** initialized via `bun create expo-app --template default@sdk-55`
+**When** initialized via `bun create expo-app --template default@sdk-56`
 **Then** the Expo app starts successfully on an Android emulator or device
 **And** New Architecture (Fabric) is enabled by default
 **And** Expo Router is configured with typed routes
@@ -1102,7 +1102,7 @@ So that I can capture everything on my mind without organizing it myself.
 **When** tasks are created
 **Then** each task has AI-inferred title, and optionally inferred size, context, and deadline (with confidence thresholds)
 
-*Creates: AI service (Gemini Flash via @google/generative-ai), tRPC AI router, BrainDumpInput component*
+*Creates: AI service (Gemini Flash `gemini-2.5-flash` via `@google/genai`), tRPC AI router, BrainDumpInput component*
 *FRs: 1, 2, 4, 65*
 *UX-DRs: 12, 20*
 

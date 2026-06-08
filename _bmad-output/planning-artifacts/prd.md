@@ -750,8 +750,8 @@ These innovations are philosophical rather than technical, so validation is beha
 
 1. **Reanimated 4 Babel plugin is renamed.** Use `react-native-worklets/plugin` (NOT
    `react-native-reanimated/plugin` — Reanimated 4 renamed it; the old name silently fails). It
-   **must be LAST** in `babel.config.js` plugins. Versions that worked: Reanimated 4.2.1 +
-   worklets 0.7.4.
+   **must be LAST** in `babel.config.js` plugins. On Expo SDK 56 use Reanimated 4.3.1 +
+   worklets 0.8.3 (they must move in lockstep); both are New-Architecture-only, which SDK 56 mandates.
 2. **React Native has no `crypto.randomUUID()`.** Use `expo-crypto`'s `randomUUID()`. The original
    `tasks-repository` shipped with `crypto.randomUUID()` and it was a latent runtime bug.
 3. **`useLiveQuery` reactivity requires `enableChangeListener: true`** on the expo-sqlite database.
@@ -808,22 +808,47 @@ These innovations are philosophical rather than technical, so validation is beha
 
 ### Pinned Versions & Stack Choices (validated to build together)
 
-- Node `^24.3.0` (constraint via `engines` only — Finn uses `fnm`; no `.nvmrc`). Bun `1.2.13`.
-- Expo SDK 55 (New Architecture / Fabric-only; Expo Router root at **`src/app`**, `typedRoutes: true`).
-  Scaffold via `bun create expo-app apps/mobile --template default@sdk-55 --no-install`
+> **Re-validated against latest stable on 2026-06-08.** The original pipeline ran on Expo SDK 55.
+> Expo **SDK 56** went GA on 2026-05-21 (same React 19.2, RN 0.83 → 0.85.3, Hermes v1 default), so a
+> fresh build should start there. Versions below are the SDK-56-aligned set. Install native/`expo-*`
+> modules via `npx expo install` (not `npm`/`bun add`) so they resolve to the SDK-56-pinned ranges
+> automatically. Where a version is not pinned here, take the current latest at build time.
+
+- Node `^24.3.0` (still Active LTS; do not jump to 26 yet — constraint via `engines` only, Finn uses
+  `fnm`, no `.nvmrc`). Bun `1.3.14`.
+- **TypeScript `~6.0.3`** across **all** workspaces (TS 6 is GA; reconcile any older `~5.9.x` pin to
+  this). TS 7 (the Go-native `tsgo`) ships only as the preview package `@typescript/native-preview` —
+  do **not** adopt as the typechecker yet; optionally wire `tsgo` as a fast pre-check.
+- **Expo SDK 56** (New Architecture / Fabric-only; Hermes v1 default; Expo Router root at
+  **`src/app`**, `typedRoutes: true`). Scaffold via
+  `bun create expo-app apps/mobile --template default@sdk-56 --no-install`
   (`--no-agents-md` is unsupported). Delete the template's `AppTabs`/bottom-tabs + Welcome UI.
-- **NativeWind v4** (`^4.2.3`) + **Tailwind v3** (`^3.4.0`) — the only combo compatible with React 19
-  + RN 0.83 + SDK 55. Do NOT use Tailwind v4 or NativeWind v2. `metro.config.js` wraps
-  `withNativeWind(config, { input: "./src/global.css" })`. NativeWind auto-generates
-  `nativewind-env.d.ts` on first Metro start.
-- Icons: `lucide-react-native` + `react-native-svg@15.15.3`.
-- State/data: `zustand@^5.0.13` (UI only — task data lives in SQLite, never mirrored),
-  `drizzle-orm@^0.45.2`, `expo-sqlite@^55.0.15`.
-- Server: `@trpc/server@11.17.0`, `postgres@3.4.9` (postgres.js v3), `drizzle-kit@0.31.10` (dev),
-  **`zod@4.4.3`** (Zod 4, not 3).
-- Client tRPC: `@trpc/client@11.17.0`, `@trpc/react-query@11.17.0`, `@tanstack/react-query@5.100.9`.
-- Tests: `jest@^29`, `jest-expo@^55.0.16`, `@testing-library/react-native@^12`,
-  `react-test-renderer@19.2.0`. Root `test` script chains `shared && server && mobile`.
+  React `19.2.0`, react-native `0.85.3`. After the bump, exercise runtime tests — Hermes v1 is the
+  main behavioral risk.
+- Mobile native modules (install via `npx expo install`): `react-native-reanimated@4.3.1` +
+  `react-native-worklets@0.8.3` (lockstep), `react-native-gesture-handler@~2.31.1`,
+  `react-native-safe-area-context@~5.7.0`, `react-native-svg@15.15.4`.
+- **NativeWind v4** (`^4.2.5`) + **Tailwind v3** (`^3.4`) — still the only production combo. Do **NOT**
+  use Tailwind v4 / NativeWind v5 (NativeWind v5 is the only Tailwind-v4-capable line and remains a
+  preview). `metro.config.js` wraps `withNativeWind(config, { input: "./src/global.css" })`. NativeWind
+  auto-generates `nativewind-env.d.ts` on first Metro start.
+- Icons: `lucide-react-native@^1.17.0`.
+- State/data (mobile): `zustand@^5.0.13` (UI only — task data lives in SQLite, never mirrored),
+  `drizzle-orm@^0.45.2` (stay on 0.45.x; carries a SQL-injection fix — v1 is still beta),
+  `expo-sqlite@~56` (via `expo install`), `expo-secure-store@~56`.
+- Server: `fastify@^5.8.5`, `@fastify/cors@^11.2.0`, `@trpc/server@11.17.0`, `postgres@3.4.9`
+  (postgres.js v3), `drizzle-kit@0.31.10` (dev), **`zod@4.4.3`** (Zod 4, not 3). No v6/v12/v5 majors
+  exist for these as of mid-2026.
+- Client tRPC: `@trpc/client@11.17.0`, `@trpc/react-query@11.17.0`, `@tanstack/react-query@^5.101.0`.
+  (tRPC now recommends the newer `@trpc/tanstack-react-query` integration for new projects, but it is
+  still **beta** — stay on classic `@trpc/react-query` unless beta churn is acceptable.)
+- Auth/AI: `@supabase/supabase-js@^2.107.0`; **AI SDK = `@google/genai@^2.8.0`** (the old
+  `@google/generative-ai` is end-of-life — see Architecture). Target model **`gemini-2.5-flash`**.
+- Tests: `jest-expo@56.0.4` (governs `jest` — pulls jest 30; do **not** pin `jest` directly),
+  `@testing-library/react-native@^14` (v14 drops `react-test-renderer` for the new lightweight
+  `test-renderer` package — **do not** add `react-test-renderer`). React Native Storybook
+  `@storybook/react-native@^10` with Portable Stories (`composeStories`); Maestro CLI `2.4.x`. Root
+  `test` script chains `shared && server && mobile`.
 
 ### Domain / Schema Facts
 

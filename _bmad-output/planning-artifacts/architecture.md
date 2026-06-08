@@ -101,7 +101,7 @@ Mobile app (Expo / React Native) + API backend (Fastify + PostgreSQL) — two st
 
 | Option | Template | Pros | Cons |
 |--------|----------|------|------|
-| **Expo Default (SDK 55)** | `bun create expo-app --template default@sdk-55` | Official, minimal, New Architecture mandatory (no config), Expo Router + TypeScript, well-documented | Requires manual addition of production tooling |
+| **Expo Default (SDK 56)** | `bun create expo-app --template default@sdk-56` | Official, minimal, New Architecture mandatory (no config), Expo Router + TypeScript, well-documented | Requires manual addition of production tooling |
 | Community Starter (Bun + Drizzle + SQLite) | GitHub expo-starter (557★) | Batteries-included, Bun-native, has Drizzle | SDK 54 (needs upgrade), TailwindCSS conflicts with gluestack-ui |
 | Obytes Expo Starter | Production template | Testing, CI/CD, env management out of box | Heavy opinionation, UI conflicts, overhead to strip |
 
@@ -115,14 +115,14 @@ Mobile app (Expo / React Native) + API backend (Fastify + PostgreSQL) — two st
 
 ### Selected Starters
 
-#### Mobile App: Expo Default Template (SDK 55)
+#### Mobile App: Expo Default Template (SDK 56)
 
-**Rationale:** SDK 55 makes New Architecture mandatory — which is exactly what we need for Reanimated 4. The official template provides a clean foundation with Expo Router and TypeScript. Community starters conflict with gluestack-ui v3's copy-paste model and would require stripping more than they save.
+**Rationale:** SDK 56 (GA 2026-05-21) makes New Architecture mandatory — which is exactly what we need for Reanimated 4 — and defaults to the Hermes v1 engine. The official template provides a clean foundation with Expo Router and TypeScript. Community starters conflict with gluestack-ui v3's copy-paste model and would require stripping more than they save.
 
 **Initialization Command:**
 
 ```bash
-bun create expo-app one-down --template default@sdk-55
+bun create expo-app one-down --template default@sdk-56
 ```
 
 **Architectural Decisions Provided by Starter:**
@@ -130,8 +130,8 @@ bun create expo-app one-down --template default@sdk-55
 - **Language & Runtime:** TypeScript, Bun as package manager
 - **Navigation:** Expo Router (file-based routing) with typed routes
 - **Build Tooling:** Expo CLI, Metro bundler, EAS Build support
-- **New Architecture:** Fabric enabled by default (mandatory in SDK 55)
-- **React Version:** React 19.2 with React Native 0.83
+- **New Architecture:** Fabric enabled by default (mandatory in SDK 56); Hermes v1 default engine
+- **React Version:** React 19.2 with React Native 0.85.3
 
 **Must-Add After Scaffold:**
 
@@ -222,7 +222,7 @@ bun add -d drizzle-kit typescript @types/node
 
 **Error Handling:** tRPC's built-in typed error codes for API errors, Fastify's error handling hooks for unhandled exceptions, TanStack Query's error/loading states on the client.
 
-**AI Integration:** `@google/generative-ai` TypeScript SDK on the server, wrapped in a centralized AI service exposed via tRPC procedures (e.g., `trpc.ai.parseBrainDump.mutate(text)`). Centralizes usage metering per user, model selection logic (Gemini Flash 2.0 default with fallback tiers), decision caching for duplicate calls, and graceful degradation when offline or over budget. No need for LangChain or similar orchestration frameworks at this scale.
+**AI Integration:** `@google/genai` TypeScript SDK (Google's unified GenAI SDK) on the server, wrapped in a centralized AI service exposed via tRPC procedures (e.g., `trpc.ai.parseBrainDump.mutate(text)`). Note: the older `@google/generative-ai` SDK is **end-of-life** (support ended 2025-08-31) — use `@google/genai` (`new GoogleGenAI({ apiKey })` + `ai.models.generateContent(...)`), not the deprecated package. Default model **`gemini-2.5-flash`** (GA; set a low/zero thinking budget for fast, cheap parsing) with fallback tiers. The service centralizes usage metering per user, model selection logic, decision caching for duplicate calls, and graceful degradation when offline or over budget. No need for LangChain or similar orchestration frameworks at this scale.
 
 ### Frontend Architecture
 
@@ -381,7 +381,7 @@ server/
 
 **JSON fields:** `camelCase` in TypeScript/tRPC. Drizzle handles snake→camel mapping via column name overrides in schema definition.
 
-**IDs:** `crypto.randomUUID()` for both client and server (available in Hermes from RN 0.73+, we're on 0.83). Client-generated UUIDs for offline-created records are permanent — the server accepts them as-is during sync rather than replacing them. No extra UUID dependency needed.
+**IDs:** UUIDs client-generated on-device and server-generated on the backend. **On React Native use `expo-crypto`'s `randomUUID()`** — the global `crypto.randomUUID()` is not reliably available in Hermes and was a latent runtime bug in the first implementation (`expo-crypto` is already a dependency, so no extra UUID library is needed). On the server, Node/Bun's `crypto.randomUUID()` is fine. Client-generated UUIDs for offline-created records are permanent — the server accepts them as-is during sync rather than replacing them.
 
 **Migrations:** Drizzle-kit generates SQL migrations from schema changes. Run `bun drizzle-kit generate` to create migration files, `bun drizzle-kit migrate` to apply. Each Railway Postgres instance (dev/staging/e2e) runs migrations independently. Client-side SQLite schema evolves via `drizzle-orm/expo-sqlite` migrations (applied on app start).
 
@@ -470,7 +470,7 @@ All tRPC mutations automatically emit PostHog events. Specific procedures can ca
 
 ## Project Structure & Boundaries
 
-Based on all decisions (Bun workspaces monorepo, Expo SDK 55, Fastify + tRPC, Drizzle on both sides, Zustand, PostHog, gluestack-ui v3), here's the complete structure. **Offline-first principle:** task CRUD, context selection, star rewards, and card stack curation all run on-device against local SQLite. Only 4 server routes exist — for operations that genuinely require a backend.
+Based on all decisions (Bun workspaces monorepo, Expo SDK 56, Fastify + tRPC, Drizzle on both sides, Zustand, PostHog, gluestack-ui v3), here's the complete structure. **Offline-first principle:** task CRUD, context selection, star rewards, and card stack curation all run on-device against local SQLite. Only 4 server routes exist — for operations that genuinely require a backend.
 
 ```
 one-down/
@@ -693,7 +693,7 @@ RevenueCat → webhook → subscription router → entitlement update
 
 ### Coherence Validation ✅
 
-**Decision Compatibility:** All technology choices are version-compatible and work together without conflicts. Expo SDK 55 + Fabric + Reanimated 4, Bun + Fastify 5, tRPC end-to-end, Drizzle on both sides with shared schemas, Zustand + TanStack Query complementary state split, PostHog + posthog-trpc analytics layer, Supabase Auth JWT + tRPC middleware, Oxlint + Oxfmt separation.
+**Decision Compatibility:** All technology choices are version-compatible and work together without conflicts. Expo SDK 56 (Hermes v1) + Fabric + Reanimated 4, Bun + Fastify 5, tRPC end-to-end, Drizzle on both sides with shared schemas, Zustand + TanStack Query complementary state split, PostHog + posthog-trpc analytics layer, Supabase Auth JWT + tRPC middleware, Oxlint + Oxfmt separation. (Version pins re-validated against latest stable on 2026-06-08 — see the PRD appendix "Pinned Versions & Stack Choices" for the full SDK-56-aligned set.)
 
 **Pattern Consistency:** Naming conventions consistent across all layers. Co-located test pattern consistent across all workspaces. Offline-first principle consistently reflected in routes, structure, and FR mapping. Enforcement rules align with all documented patterns.
 
