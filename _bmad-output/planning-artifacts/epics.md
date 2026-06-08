@@ -49,7 +49,7 @@ This document provides the complete epic and story breakdown for One Down, decom
 - FR24: User can mark a task as complete
 - FR25: System can display satisfying completion feedback (toast confirmation, stars awarded)
 
-**Task Management (FR26–FR33)**
+**Task Management (FR26–FR33, FR67)**
 - FR26: User can edit task title, description, deadline, and context requirements
 - FR27: User can swipe past a task in the card stack to see other options (implicit skip/defer)
 - FR28: User can "cut loose" a task (remove without guilt)
@@ -58,6 +58,7 @@ This document provides the complete epic and story breakdown for One Down, decom
 - FR31: User can bulk-select tasks in overview for archive (via multi-select mode); permanent delete is only available from the archive/recycle bin as a further action
 - FR32: System can identify and flag stale or avoided tasks (long-running without action OR frequently swiped past)
 - FR33: System can prompt user about stale or avoided tasks (keep, cut loose, or break down)
+- FR67: User can manually set or change a task's size (quick win / big time, or leave unset) — independent of AI sizing
 
 **Quick Wins / Big Time Modes (FR34–FR36)**
 - FR34: User can toggle between Quick Wins mode and Big Time mode; pressing the active mode again toggles it off (both types show in the stack)
@@ -72,15 +73,15 @@ This document provides the complete epic and story breakdown for One Down, decom
 - FR41: User can accept or reject AI-suggested task breakdowns
 - FR42: User can revise AI task breakdown via a dedicated feedback input ("why this misses the mark"); AI distils useful info into the task notes and retries the breakdown
 
-**Rewards & Motivation (FR43–FR49)**
+**Rewards & Motivation (FR43–FR49, FR66)**
 - FR43: User can earn stars for completing tasks
 - FR44: User can earn more stars for completing relatively more urgent tasks from the list
 - FR45: User can earn more stars for completing larger tasks
 - FR46: User can earn bonus stars for completing tasks further before their deadline (up to a limit)
 - FR47: User can earn small rewards for confirming AI-inferred info or adding identified missing info
-- FR66: User can earn a small star reward for cutting a task loose (liberation is a positive action)
 - FR48: User can see accumulated stars count (grand total + daily amount displayed together)
 - FR49: User can tap star count to open star activity log (chronological list of all star transactions with today/all-time filter); completed tasks appear as a dedicated section at the top of the full task list view (scroll position on entry shows a couple of done tasks, user can scroll up to see more)
+- FR66: User can earn a small star reward for cutting a task loose (liberation is a positive action)
 
 **Return Experience (FR50–FR52)**
 - FR50: System can present gentle welcome-back summary after absence (no guilt)
@@ -155,14 +156,14 @@ This document provides the complete epic and story breakdown for One Down, decom
 - Shared schemas: packages/shared with Drizzle schema + Zod validation (drizzle-zod) + TypeScript types
 - Sync: Custom timestamp-based sync layer ("last-content-changed wins")
 - AI: Gemini Flash (`gemini-2.5-flash`) via the `@google/genai` SDK (the older `@google/generative-ai` is end-of-life), centralized AI service exposed via tRPC
-- Analytics: PostHog React Native SDK (client) + posthog-node + posthog-trpc middleware (server)
+- Analytics: PostHog React Native SDK (client, via a typed `track()` seam) + posthog-node with a hand-rolled tRPC middleware (server)
 - Billing: RevenueCat for Google Play subscription management
 
 **Tooling & Process**
 - Linting & Formatting: Oxlint + Oxfmt (Prettier-compatible) with enforcement rules
 - Testing: Jest + react-native-testing-library (unit/integration), Maestro (E2E)
 - CI/CD: EAS Build (mobile), Railway auto-deploy (API), GitHub Actions (CI)
-- IDs: crypto.randomUUID() for both client and server (client-generated UUIDs are permanent)
+- IDs: `expo-crypto`'s `randomUUID()` on the client (RN has no global `crypto.randomUUID`), `crypto.randomUUID()` on the server; client-generated UUIDs are permanent
 - Dates: ISO 8601 strings, date-fns for formatting
 - Token storage: expo-secure-store
 - Push notifications: FCM via Expo Notifications (Android MVP)
@@ -278,6 +279,7 @@ This document provides the complete epic and story breakdown for One Down, decom
 | FR64 | 5 | Offline manual task creation |
 | FR65 | 5 | Graceful offline AI degradation |
 | FR66 | 2 | Cut-loose earns small star reward |
+| FR67 | 1 | Manually set task size (quick win / big time) |
 
 ### NFR Coverage
 
@@ -327,7 +329,7 @@ This document provides the complete epic and story breakdown for One Down, decom
 ### Epic 1: Core Task Loop
 Users can manually add tasks, view them as a swipeable card deck, flip cards for details, edit task properties inline, and browse a full task list.
 
-**FRs:** 3, 5, 6, 8, 9, 10, 26, 27, 30
+**FRs:** 3, 5, 6, 8, 9, 10, 26, 27, 30, 67
 **UX-DRs:** 1, 2, 3, 14 (basic list), 15, 17, 23, 24, 25
 **Infrastructure:** Monorepo scaffold (Bun workspaces), Drizzle schemas, expo-sqlite local DB, gluestack-ui v3 setup, NativeWind
 
@@ -380,6 +382,7 @@ Users can bulk-archive tasks, manage stale/avoided tasks, and get a gentle welco
 
 **FRs:** 31, 32, 33, 50, 51, 52
 **UX-DRs:** 11, 14 (bulk actions, recycle bin)
+**Depends on:** Epic 4 (Story 7.1 archiving removes earned stars, so the star ledger must already exist)
 
 ---
 
@@ -396,7 +399,8 @@ Applied across all epics as story-level acceptance criteria:
 - **NFR-P1–P4:** Performance targets (50+ FPS, <2s cold start, <3s AI, <100ms interactions)
 - **NFR-A1–A4:** Accessibility (WCAG AA, TalkBack, reduced motion, ADHD-first)
 - **NFR-R1–R3:** Offline reliability (local-first architecture ensures core viewing and manual creation work offline, AI degrades gracefully)
-- **NFR-L1:** Basic logging (PostHog + pino)
+- **NFR-L1 (logging/analytics):** PostHog (client) + pino (server). Each story emits its own domain events through the typed `track()` seam established in Story 1.0a — instrument as features are built, not retrofitted at the end. Follow the `logging-best-practices` skill when fleshing out logging.
+- **NFR-S3 (no sensitive content):** task titles, descriptions, and notes are never sent to analytics or logs — enforced by PostHog's `before_send` sanitizer and the typed event-prop boundary.
 - **UX-DR18:** WCAG 2.1 AA (touch targets, labels, contrast)
 - **UX-DR19:** TalkBack screen reader support
 
@@ -458,8 +462,22 @@ So that all subsequent stories have a working development environment to build o
 **Then** `bun run lint` and `bun run format:check` scripts pass on the scaffold code
 **And** TypeScript strict mode is enabled and `bun run typecheck` passes across all workspaces
 
-**Given** the testing foundation
-**When** it is established alongside the scaffold
+**Infrastructure / setup:** Reanimated 4's Babel plugin is `react-native-worklets/plugin` (renamed in v4 — the old `react-native-reanimated/plugin` silently fails) and **must be LAST** in `babel.config.js`; install Reanimated + worklets in lockstep. NativeWind v4 + Tailwind v3 only (not Tailwind v4 / NativeWind v5); `metro.config.js` wraps `withNativeWind(config, { input: "./src/global.css" })`. Confine server `process.env` reads to `apps/server/src/lib/env.ts` (`loadEnv()` + Zod).
+
+*Note: This is the project scaffold + tooling story only — no custom UI, no domain logic, no database tables beyond stubs. The test + telemetry foundation follows in Story 1.0a. Full CI pipeline (GitHub Actions, EAS Build, Railway deploy) is deferred to Epic 5.*
+
+---
+
+#### Story 1.0a: Test & Telemetry Foundation
+
+As a developer,
+I want the testing harnesses and the analytics seam established on top of the scaffold,
+So that every later story can be tested properly and can emit telemetry safely from day one.
+
+**Acceptance Criteria:**
+
+**Given** the project scaffold from Story 1.0
+**When** the testing foundation is established
 **Then** React Native Storybook is installed and runs on-device (Android emulator) as the approach for visual/component testing — no mock-heavy Jest render tests
 **And** Portable Stories (`composeStories` from `@storybook/react`) run stories headlessly in Jest for crash-free CI coverage
 **And** a mobile integration-test harness against a real in-memory SQLite database is available (no mocked DB)
@@ -467,7 +485,16 @@ So that all subsequent stories have a working development environment to build o
 **And** the suite avoids trivial/fake-DB pass-through tests — only meaningful logic and real collaborations are tested
 **And** `CLAUDE.md` documents this testing methodology
 
-*Note: This story creates the development and testing foundation. No custom UI, no domain logic, no database tables beyond stubs. The mobile testing foundation (Storybook, in-memory SQLite integration harness, Maestro E2E foundation) is set up here; feature stories then add their own integration and E2E coverage, and the server-side integration harness (real test PostgreSQL + JWT) lands with the backend in Epic 5. Full CI pipeline (GitHub Actions, EAS Build, Railway deploy) is deferred to Epic 5. Consolidates former stories 1.0.1 (Maestro E2E foundation), 1.0.2 (Storybook), and 1.0.3 (integration tests & test-quality cleanup) — corrective stories created mid-implementation, now folded in so it is done right from the start.*
+**Given** the analytics seam
+**When** it is established
+**Then** a typed `track(event, props)` wrapper + event-taxonomy file exists for custom domain events (calls `posthog.capture()` internally; compile-time event-name/prop typing)
+**And** a `PostHogProvider` scaffold is mounted (autocapture + lifecycle) with a `before_send` PII sanitizer (NFR-S3 — never emit task title/description/notes)
+**And** it falls back to a no-op/console when no PostHog key is set (the live provider config + server side land in Story 8.3)
+**And** the seam covers ONLY custom domain events — it must NOT re-implement screen tracking, identity, super properties, feature flags, lifecycle, or offline queueing (those use PostHog built-ins — see `docs/posthog-integration.md`)
+
+**Dependencies:** Story 1.0 (scaffold + tooling) complete
+**Reference:** `docs/posthog-integration.md` (PostHog built-ins vs seam scope); the `logging-best-practices` skill
+*Note: Consolidates former stories 1.0.1 (Maestro E2E foundation), 1.0.2 (Storybook), and 1.0.3 (integration tests & test-quality cleanup) — corrective sub-stories from the reverted run, folded into one foundation phase. The server-side integration harness (real test PostgreSQL + JWT) lands with the backend in Epic 5; feature stories add their own integration/E2E coverage.*
 
 ---
 
@@ -487,7 +514,8 @@ So that I have a usable app foundation.
 **And** the layout uses NativeWind/Tailwind CSS utilities with safe area insets
 
 **Dependencies:** Story 1.0 scaffold complete
-**Infrastructure:** gluestack-ui v3, NativeWind, react-native-gesture-handler, Reanimated 4, Babel config (worklets plugin last)
+**Infrastructure:** NativeWind, react-native-gesture-handler, Reanimated 4 (`react-native-worklets/plugin` last in Babel config). gluestack-ui v3 via the copy-paste / CLI model (`npx gluestack-ui add <component>`); **mount `GluestackUIProvider` at the app root** when the first gluestack component is added (fall back to a thin NativeWind wrapper only if a primitive won't install cleanly). No bottom tab bar (UX spec) — a single `expo-router` `Stack`, `headerShown: false`.
+**Note:** `SafeAreaView` uses `edges={['top','left','right','bottom']}` (the bottom edge keeps the FAB above the Android gesture bar). FAB clearance / safe-area insets were never verified on-device by the prior run — confirm on a real device.
 **UX-DRs:** 1, 15, 23, 24, 25
 
 ---
@@ -510,7 +538,8 @@ So that I can capture tasks without friction.
 **When** they try to submit
 **Then** the submission is prevented with inline feedback
 
-**Creates:** Task Drizzle schema (local), Zustand task store, quick-add input with title + details fields
+**Creates:** local SQLite Drizzle table (`schema-local`), quick-add input with `title` + nullable `details` fields, the on-start migration runner.
+**Note:** Define one canonical `TaskData` type in `@one-down/shared` as the source of truth for a task's fields; the local SQLite table (`@one-down/shared/schema-local`, `sqliteTable`) and the server table (`@one-down/shared/schema`, `pgTable`) both conform to it — same shape, no subset. The mobile bundle must never import `drizzle-orm/pg-core`. Use `title` + nullable `details` naming (not `content`). Migrations: drizzle-kit *generates* SQL (build-time); the app applies them on start via `useMigrations(db, migrations)` from `drizzle-orm/expo-sqlite`. Open the DB with `enableChangeListener: true` — required for `useLiveQuery` reactivity (silent no-op otherwise). Generate IDs with `expo-crypto`'s `randomUUID()`, **not** `crypto.randomUUID()` (unreliable in RN/Hermes). Zustand holds **only** UI/sheet state — task data lives in SQLite, never mirrored into Zustand.
 **FRs:** 3
 
 ---
@@ -554,7 +583,7 @@ So that I can browse tasks one at a time in a focused way.
 **Creates:** TaskCard (front side), CardStack with Reanimated 4 worklets + gesture handler + wrap-around index
 **FRs:** 6, 9, 10, 27
 **UX-DRs:** 2, 3
-**Note:** Document the CardStack wrap-around index logic in `architecture.md` when implementing.
+**Note:** Document the CardStack wrap-around index logic in `architecture.md` when implementing. Use the modern Reanimated 4 `Gesture.Pan()` API (not the deprecated v2/v3 handler API). Curation is the pure function `curateTasks(tasks, activeContexts?)` in `services/curation.ts`: filter to `status === 'pending'`, optional context-overlap filter, sort deadline-soonest-first then `createdAt desc`; render the top 3. Keep the signature stable — Story 3.3 adds weighted scoring behind it. This story expands the local `tasks` columns (load-bearing): `status` (`pending|in_progress|completed|cut_loose`), `size` (`quick_win|big_time|null`), `contexts` (JSON-array string e.g. `'["home","phone"]'`), `deadline` (epoch ms), `has_check_needed` (0/1).
 
 ---
 
@@ -569,7 +598,7 @@ So that I can manage task information without leaving the card view.
 **Given** the user taps a card in the stack
 **When** the view switches to the back
 **Then** the card expands to fill more of the screen (not full screen)
-**And** they see task title, description, deadline, notes area, context requirement toggles, and placeholder buttons (Start, Cut Loose — wired in Epic 2)
+**And** they see task title, description, deadline, notes area, context requirement toggles, a task size selector (quick win / big time / unset), and placeholder buttons (Start, Cut Loose — wired in Epic 2)
 **And** a back button appears in the top-left corner
 
 **Given** the user taps any text field on the card back
@@ -581,12 +610,17 @@ So that I can manage task information without leaving the card view.
 **When** they toggle context options (Home, Out & About, Phone, Laptop, Internet)
 **Then** the selection updates immediately and persists
 
+**Given** the user sets or changes the task size
+**When** they pick quick win or big time (or clear it back to unset)
+**Then** the size updates immediately, persists, and is reflected by the size tag on the card front
+**And** the task becomes eligible for the Quick Wins / Big Time filter (Story 3.2) without depending on AI sizing
+
 **Given** the user taps the back button or taps around the edges of the expanded card
 **When** they do so
 **Then** the card contracts back to stack size and switches to front view
 **And** the front reflects any changes made
 
-**FRs:** 5, 8, 26
+**FRs:** 5, 8, 26, 67
 **UX-DRs:** 17
 
 ---
@@ -959,6 +993,7 @@ So that server-side features have a working foundation.
 **And** server-side task schema mirrors the local schema (via packages/shared)
 
 *Infrastructure: apps/server scaffold, tRPC + Fastify, PostgreSQL + Drizzle (server), packages/shared schemas*
+**Note:** `createDbClient(url)` must not eagerly connect at import (postgres.js connects lazily) — server boot and tests must succeed with a placeholder `DATABASE_URL`. Provide two health endpoints by design: Fastify-native `GET /health` (liveness) and a tRPC `health` query (end-to-end). Confine all `process.env` reads to `lib/env.ts` (`loadEnv()` + Zod). The server `tasks` table maps the full canonical `TaskData` shape (same fields as local) plus `userId` (uuid NOT NULL); `tasks.id` has **no** `defaultRandom()` — client-generated UUIDs are accepted as-is. `protectedProcedure` is added in Story 5.2 (`publicProcedure` only here).
 **NFRs:** SC1
 
 ---
@@ -981,6 +1016,7 @@ So that my data can be synced across devices.
 
 **Dependencies:** Story 5.0 backend scaffold complete
 **FRs:** (infrastructure for 62-65)
+**Note:** Import `AppRouter` **type-only** (`import type { AppRouter } from '@one-down/server'`) — a value import forces Metro to bundle Fastify/drizzle/postgres.js into the app; the server `exports` map points at `.ts` source. `getApiBaseUrl` must return `http://10.0.2.2:3000` on the Android emulator (not `localhost`); `EXPO_PUBLIC_*` vars are inlined at Metro bundle time (restart Metro after changing them). Single `httpBatchLink` + a `timeoutFetch` (5s `AbortController`); `QueryClient` uses `retry: 1` / `staleTime: 30s`. Defer `superjson` until the first Date-carrying procedure (Story 5.3) and wire it on client + server simultaneously (tRPC v11 enforces transformer symmetry). `TrpcProvider` mounts before SQLite migration completes.
 
 ---
 
@@ -1021,7 +1057,17 @@ So that my tasks are associated with me and can sync across devices.
 **When** they cancel the OAuth flow
 **Then** they return to the login screen with no error (cancellation is not an error)
 
+**Given** the user signs in with Google on a real device
+**When** the sign-in flow runs
+**Then** it uses the native `@react-native-google-signin/google-signin` package to obtain a Google ID token, exchanged via `supabase.auth.signInWithIdToken({ provider: 'google', token })` — NOT a bare `signInWithOAuth(... skipBrowserRedirect: true)`, which does not complete on-device
+
+**Given** the login and signup screens
+**When** the story is implemented
+**Then** Maestro E2E flows cover signup and login (the project's mandatory E2E requirement)
+
 *Infrastructure: Supabase Auth integration, JWT middleware, expo-secure-store*
+**Note — verification & wiring:** Verify JWTs in **tRPC middleware** (not a Fastify hook) via `jose` against Supabase's JWKS — `createRemoteJWKSet` + `jwtVerify`, caching the public keys; **no shared `SUPABASE_JWT_SECRET`** (do not hand-roll HS256). `protectedProcedure = publicProcedure.use(authMiddleware)` throws `UNAUTHORIZED`; `publicProcedure` (incl. health) stays public. The tRPC client injects the token via the `httpBatchLink` `headers` callback and **omits `Authorization` entirely when there is no session** (local-only free tier). Token storage is `expo-secure-store` (not AsyncStorage) via a custom `SupportedStorage` adapter; Supabase is auth-only (data lives in Postgres). Provider hierarchy: `AuthProvider` wraps **outside** `TrpcProvider`. Register `@fastify/cors` with origin from `CORS_ORIGIN`.
+**Note — do it right (prior-run regressions to avoid):** Native Google sign-in needs a research spike (config plugin, web/Android client IDs, the id-token flow). Auth-aware nav gating must be actually wired (redirect logic), not a no-op. Screen tests must verify real behaviour, not assert a fully-mocked `useAuth` was called. Screens use NativeWind `className`, not `StyleSheet.create`.
 **FRs:** 57, 59
 **NFRs:** S1, S2
 
@@ -1052,7 +1098,7 @@ So that I can access my tasks anywhere.
 
 **Given** task IDs
 **When** created on the client
-**Then** they use crypto.randomUUID() and are permanent (no server-side ID reassignment)
+**Then** they use `expo-crypto`'s `randomUUID()` and are permanent (no server-side ID reassignment)
 
 **Given** the sync layer encounters a network error
 **When** a sync attempt fails
@@ -1065,11 +1111,11 @@ So that I can access my tasks anywhere.
 
 *Note: FR63 (offline viewing) and FR64 (offline creation) are inherently satisfied by Epic 1's local-first architecture but sync behavior is validated here. FR65 (AI graceful degradation) is handled in Epic 6.*
 
-**Implementation Note — Schema Unification (added 2026-05-15):**
-Before implementing sync, unify the local (`schema-local/`) and cloud (`schema/`) task schemas around a single canonical set of types. Currently the cloud schema is missing `size`, `contexts`, `deadline`, and `hasCheckNeeded` fields that exist locally. For clean 1:1 backup and synchronization, both schemas should represent the same task shape — a shared canonical type (e.g. `TaskData`) should define what fields a task has, with each Drizzle table definition mapping to/from it for its respective database engine (SQLite vs PostgreSQL). This avoids information duplication and ensures schema drift doesn't break sync.
+**Implementation Note — Schema Parity:**
+Sync relies on the local and cloud tables holding the **same** task shape. This is established up front by the canonical `TaskData` type in `@one-down/shared` (introduced in Story 1.2): both the SQLite (`schema-local`) and Postgres (`schema`) Drizzle tables map to/from it, so there is no subset and no drift. Before building sync, just confirm both tables still cover the full canonical field set (`title`, `details`, `status`, `size`, `contexts`, `deadline`, `hasCheckNeeded`, timestamps, plus server `userId`).
 
-**Implementation Note — JWT Verification Refactor (added 2026-05-15):**
-Replace the manual HS256 JWT verification in `apps/server/src/middleware/auth.ts` with the `jose` library using Supabase's JWKS endpoint (asymmetric keys). Supabase explicitly recommends against hand-rolled HS256 verification and shared secrets. The refactor: (1) install `jose`, (2) use `createRemoteJWKSet` + `jwtVerify` to verify against Supabase's public keys at `https://<project-id>.supabase.co/auth/v1/.well-known/jwks.json`, (3) remove the `SUPABASE_JWT_SECRET` env var from the server. This is more secure (public keys can't forge tokens), follows Supabase's recommended practice, and reduces hand-rolled crypto from ~60 lines to ~10.
+**Implementation Note — JWT Verification (resolved in Story 5.2):**
+Auth uses asymmetric JWKS verification via `jose` (`createRemoteJWKSet` + `jwtVerify` against `https://<project-id>.supabase.co/auth/v1/.well-known/jwks.json`) from Story 5.2 onward — no shared `SUPABASE_JWT_SECRET`, no hand-rolled HS256. No refactor is needed here; this note remains only to record that the JWKS approach was chosen from the start (the earlier reverted run's HS256 shortcut was dropped).
 
 ---
 
@@ -1252,6 +1298,8 @@ So that I can clean up my task list efficiently.
 **When** it returns to the active list
 **Then** stars previously removed are NOT restored (kept simple — no reverse tracking)
 
+> **Dependency:** This story's star-removal behaviour requires the Epic 4 star ledger (earning + total). Sequence Epic 4 before Epic 7.
+
 **Given** the user sees a confirmation dialog (archival warning or permanent delete)
 **When** they cancel/dismiss the dialog
 **Then** no action is taken and their selection is preserved
@@ -1422,29 +1470,35 @@ So that I can unlock enhanced capabilities.
 #### Story 8.3: Analytics & Logging Foundation
 
 As a product owner,
-I want anonymized usage analytics and basic logging in place,
-So that I can make data-driven product decisions and debug issues in production.
+I want the analytics provider and server-side logging fully wired and privacy-verified,
+So that I can make data-driven decisions and debug production issues without leaking sensitive content.
 
 **Acceptance Criteria:**
 
-**Given** the app is running
-**When** the user performs key actions (task creation, completion, cut loose, brain dump, etc.)
-**Then** anonymized events are tracked via PostHog React Native SDK
+**Given** the typed `track()` seam and the domain events that earlier stories already emit (per the cross-cutting analytics requirement)
+**When** this story wires the live provider
+**Then** `PostHogProvider` is configured with a real project key, autocapture (taps + lifecycle), and feature-flag support
+**And** screen views are sent via manual `posthog.screen()` calls (RN screen-autocapture does not work with Expo Router / React Navigation v7)
 
-**Given** the server processes requests
-**When** tRPC endpoints are called
-**Then** server-side analytics are captured via posthog-node + posthog-trpc middleware
-**And** server-side operational logs are captured via pino
+**Given** the server processes tRPC requests
+**When** endpoints are called
+**Then** server-side analytics are captured via `posthog-node` through a small hand-rolled tRPC middleware (do NOT use the community `posthog-trpc` package — it is stale, pinned to tRPC 10 / posthog-node 4)
+**And** server operational logs are captured via `pino`, following the `logging-best-practices` skill (structured JSON, request/correlation IDs, correct levels)
 
 **Given** privacy requirements (NFR-S3)
-**When** analytics events are captured
-**Then** no sensitive task content (titles, descriptions, notes) is logged or transmitted
-**And** only structural event data (action type, timestamp, task count) is sent
+**When** any event or log is emitted
+**Then** no sensitive task content (titles, descriptions, notes) is transmitted — verified at the `before_send` sanitizer and enforced by the typed event-prop boundary
+**And** only structural data (action type, timestamp, ids, counts) is sent
 
 **Given** the mobile app in production
 **When** it runs
-**Then** console output is stripped from production builds
-**And** PostHog is the sole client-side logging mechanism
+**Then** console output is stripped from production builds and PostHog is the sole client-side telemetry mechanism
 
-*Infrastructure: PostHog React Native SDK (client), posthog-node + posthog-trpc middleware (server), pino (server ops)*
+**Given** mobile session replay (optional, late-beta, requires the dev build)
+**When** the team decides to enable it
+**Then** it is wired as a feature-flag-gated toggle with text/image masking on by default — not relied upon for MVP
+
+*Infrastructure: PostHog React Native SDK (client) + session replay (optional, flag-gated), posthog-node + hand-rolled tRPC middleware (server), pino (server ops)*
+*Skill: `logging-best-practices` — follow when implementing server/ops logging*
 *NFRs: L1 (basic logging/traceability), S3 (no sensitive content in analytics)*
+*Note: Per-action event emission is cross-cutting (each story uses the Story 1.0a `track()` seam); this story lands the live provider config, server side, privacy verification, and console stripping — not a retrofit of call sites.*

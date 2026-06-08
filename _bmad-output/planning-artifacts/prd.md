@@ -624,6 +624,7 @@ These innovations are philosophical rather than technical, so validation is beha
 - **FR31:** User can bulk-select tasks in overview for archive (via multi-select mode); permanent delete is only available from the archive/recycle bin as a further action
 - **FR32:** System can identify and flag stale or avoided tasks (long-running without action OR frequently swiped past)
 - **FR33:** System can prompt user about stale or avoided tasks (keep, cut loose, or break down)
+- **FR67:** User can manually set or change a task's size (quick win / big time, or leave unset) — independent of AI sizing
 
 ### Quick Wins / Big Time Modes
 
@@ -647,9 +648,9 @@ These innovations are philosophical rather than technical, so validation is beha
 - **FR45:** User can earn more stars for completing larger tasks
 - **FR46:** User can earn bonus stars for completing tasks further before their deadline (up to a limit)
 - **FR47:** User can earn small rewards for confirming AI-inferred info or adding identified missing info
-- **FR66:** User can earn a small star reward for cutting a task loose (liberation is a positive action)
 - **FR48:** User can see accumulated stars count (grand total + daily amount displayed together)
 - **FR49:** User can tap star count to open star activity log (chronological list of all star transactions with today/all-time filter); completed tasks appear as a dedicated section at the top of the full task list view (scroll position on entry shows a couple of done tasks, user can scroll up to see more)
+- **FR66:** User can earn a small star reward for cutting a task loose (liberation is a positive action)
 
 ### Return Experience
 
@@ -744,7 +745,10 @@ These innovations are philosophical rather than technical, so validation is beha
 > original code is preserved on branch **`midway-gas-town`**. The technical knowledge discovered
 > during that run is digested below so re-implementation benefits from it. These are concrete,
 > non-obvious findings — not a restatement of acceptance criteria. Treat them as strong defaults,
-> not gospel: a few were never validated on a real device (see "Unverified" notes).
+> not gospel: a few were never validated on a real device (see "Unverified" notes). Where a learning
+> was later superseded by a deliberate decision, the entry has been updated to reflect that decision,
+> so this section stays in sync with the Architecture and Epics docs (the abandoned approach is noted
+> in parentheses only as a "don't repeat this" warning).
 
 ### Cross-Cutting Technical Learnings
 
@@ -756,19 +760,21 @@ These innovations are philosophical rather than technical, so validation is beha
    `tasks-repository` shipped with `crypto.randomUUID()` and it was a latent runtime bug.
 3. **`useLiveQuery` reactivity requires `enableChangeListener: true`** on the expo-sqlite database.
    Without it the live query never re-runs (silent — looks like a state bug).
-4. **Two-schema split is foundational.** Server (Postgres) schema at `@one-down/shared/schema`
-   (`pgTable`); mobile (SQLite) schema at `@one-down/shared/schema-local` (`sqliteTable`). The
-   mobile bundle must **never** import `drizzle-orm/pg-core`. The main `.` barrel of
-   `@one-down/shared` re-exports neither. Use `title` + nullable `details` column naming from the
-   start (an earlier `content` name had to be migrated). Local schema is a strict subset of pg.
+4. **One canonical task type, two table mappings.** A single shared `TaskData` type in
+   `@one-down/shared` is the source of truth for a task's fields; both Drizzle tables conform to it —
+   the server is a 1:1 backup of local, so the shapes match (**no subset**). Two table definitions
+   exist only because Drizzle's engine APIs differ: `@one-down/shared/schema` (`pgTable`, server) and
+   `@one-down/shared/schema-local` (`sqliteTable`, mobile). The mobile bundle must **never** import
+   `drizzle-orm/pg-core`; the `.` barrel re-exports neither table. Use `title` + nullable `details`
+   naming (an earlier `content` name had to be migrated).
 5. **Cross-workspace imports must be type-only:** `import type { AppRouter } from '@one-down/server'`.
    The server `package.json` `exports` map points `types` and `default` at the `.ts` source (server
    is consumed type-only, never transpiled/published). A value import forces Metro to bundle
    Fastify/drizzle/postgres-js into the RN app.
-6. **Mobile migrations are hand-rolled raw SQL.** `runInitialMigrations()` uses
-   `CREATE TABLE IF NOT EXISTS` + `PRAGMA table_info` / `ALTER TABLE ADD COLUMN` for backward-compatible
-   upgrades. drizzle-kit was deliberately kept out of the mobile runtime. Standing plan: switch to
-   `useMigrations(db, migrations)` once schema churn justifies it.
+6. **Mobile migrations via drizzle-kit + `useMigrations`.** drizzle-kit *generates* the SQL at build
+   time (it never ships in the app runtime); the app applies the bundled migrations on start via
+   `useMigrations(db, migrations)` from `drizzle-orm/expo-sqlite`. (The reverted run hand-rolled raw
+   `CREATE TABLE`/`ALTER TABLE` SQL — avoid that; use the generated-migrations path from the start.)
 7. **Drizzle server client must lazy-connect** — server boot must succeed with a fake
    `DATABASE_URL` (no network call at import). Verified via stub-URL smoke test.
 8. **`@testing-library/react-native` v12 `getByRole(role, { name })` matches *descendant*
@@ -781,15 +787,13 @@ These innovations are philosophical rather than technical, so validation is beha
    annotations and are hoisted above variable declarations (declare mocks inside the factory or use
    a module-level const + proxy). The TanStack Query "A worker process has failed to exit gracefully"
    warning is **benign**.
-10. **gluestack v3 API gaps:** `VStack` has no `space` prop (use `style={{ gap }}`); `Button` has no
-    `variant="outline"` (use `"secondary"`). The project abandoned the gluestack CLI for base
-    primitives and hand-rolled thin NativeWind wrappers in `components/ui/` (`box`, `hstack`,
-    `vstack`, `pressable`, `text`, `icon`) — import paths match what `npx gluestack-ui add` produces
-    so they can be swapped later. **No `GluestackUIProvider` is mounted** — the first real gluestack
-    component must add it.
+10. **gluestack-ui v3 uses the copy-paste / CLI model.** Add primitives via
+    `npx gluestack-ui add <component>` (copied into `components/ui/`, owned by us) and **mount
+    `GluestackUIProvider`** at the app root when the first gluestack component is added. Fall back to a
+    thin NativeWind wrapper only if a specific primitive genuinely won't install cleanly. (The reverted
+    run hand-rolled all base primitives citing CLI friction — treat that as a last resort, not the plan.)
 11. **Server `process.env` discipline:** confine all reads to `apps/server/src/lib/env.ts`
-    (`loadEnv()` with Zod). Accepted exceptions: `drizzle.config.ts` (CLI tooling) and the auth
-    middleware's `SUPABASE_JWT_SECRET` read.
+    (`loadEnv()` with Zod). Accepted exception: `drizzle.config.ts` (CLI tooling).
 12. **`EXPO_PUBLIC_*` env vars are inlined at Metro bundle time** — restart Metro after changing
     them. The Android emulator reaches the host server at `http://10.0.2.2:3000`, **not** `localhost`.
 13. **`superjson` must be wired symmetrically** on client + server simultaneously (tRPC v11 enforces
@@ -884,8 +888,10 @@ These innovations are philosophical rather than technical, so validation is beha
 
 ### Auth (Story 5.2) — Specifics & Known Weaknesses
 
-- JWT verified **locally** with Node's built-in `crypto` (HS256, timing-safe compare) against
-  `SUPABASE_JWT_SECRET` — **no external JWT library**, no Supabase call per request.
+- JWTs are verified in **tRPC middleware** via **`jose` against Supabase's JWKS** (asymmetric —
+  `createRemoteJWKSet` + `jwtVerify`, cached public keys; no shared secret, no per-request Supabase
+  call). (The reverted run hand-rolled HS256 with a `SUPABASE_JWT_SECRET` — Supabase recommends against
+  that; use JWKS from the start.)
 - Token storage is **`expo-secure-store`, not AsyncStorage** (NFR-S1) via a custom adapter
   implementing Supabase's `SupportedStorage` interface. **Supabase is auth-only** — app data lives in
   (Railway) Postgres via Drizzle.
@@ -895,9 +901,10 @@ These innovations are philosophical rather than technical, so validation is beha
   `Authorization` header entirely when no session** (enables local-only free tier). `@fastify/cors`
   is registered with origin from `CORS_ORIGIN` (default `*` in dev).
 - **Known weaknesses to fix on re-implementation:**
-  (a) Google OAuth used `signInWithOAuth({ provider:'google', options:{ skipBrowserRedirect:true } })`,
-  which **will not complete on a real device** — RN needs `expo-auth-session` / `expo-web-browser` to
-  handle the redirect. (b) **No Maestro E2E coverage** for the new login/signup screens (violates the
+  (a) Google sign-in must use the **native `@react-native-google-signin/google-signin`** package (get a
+  Google ID token → `supabase.auth.signInWithIdToken({ provider:'google', token })`); needs a research
+  spike. The reverted run used `signInWithOAuth({ ..., skipBrowserRedirect:true })`, which **does not
+  complete on a real device**. (b) **No Maestro E2E coverage** for the new login/signup screens (violates the
   project's E2E requirement). (c) Auth-aware navigation gating was a **no-op** (marked done but no
   redirect logic wired). (d) The login/signup screen *unit* tests fully mock `useAuth` and assert the
   mock is called — they verify wiring, not behavior. (e) Original screens used `StyleSheet.create`

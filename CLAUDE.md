@@ -16,8 +16,8 @@ One Down is a mobile task management app built for people with ADHD. It uses a c
 - **State**: Zustand (UI), TanStack Query via tRPC (server)
 
 ### Project Status
-- Story 1.0 (Project Scaffold & Development Foundation) is **DONE**
-- Epic 1 is in-progress, all other stories are backlog
+- All implementation was reverted on 2026-06-07 (Gas Town pipeline run) and `main` reconstructed from the pre-story base; the full reverted code is preserved on branch `midway-gas-town`. **All stories are currently `backlog`** — implementation restarts with human oversight.
+- Planning artifacts (PRD, architecture, epics, UX) were refreshed on 2026-06-08 (Expo SDK 56 + version bumps, digested implementation learnings, reconciled decisions). Story 1.0 was split into **1.0 (scaffold + tooling)** and **1.0a (test + telemetry foundation)**. Next up: Story 1.0.
 - The full epic/story breakdown is at `_bmad-output/planning-artifacts/epics.md`
 - Architecture docs at `_bmad-output/planning-artifacts/architecture.md`
 - PRD at `_bmad-output/planning-artifacts/prd.md`
@@ -172,6 +172,10 @@ packages/shared/src/
 **File naming:** kebab-case for files, PascalCase for components
 
 **IDs:** crypto.randomUUID() — client-generated, permanent (no server reassignment)
+
+## AI Agent Behaviour Guidelines
+
+- **Ask for user review** before committing changes you have written into files, even if the user previously approved the plan for what to write. Only commit once you have explicit approval on the actual changes. The user will manage what is staged to represent what they have reviewed, so don't worry if some changes are staged while you are still working.
 
 ## Testing & Quality Methodology
 

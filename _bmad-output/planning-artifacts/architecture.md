@@ -165,9 +165,9 @@ bun add -d drizzle-kit typescript @types/node
 
 ### ORM Decision: Drizzle ORM (Both Sides)
 
-**Server-side:** `drizzle-orm` + `postgres.js` for PostgreSQL. Lightweight, Bun-native, fast cold starts. Clean migrations via `drizzle-kit`.
+**Server-side:** `drizzle-orm` + `postgres.js` for PostgreSQL. Lightweight, Bun-native, fast cold starts. Clean migrations via `drizzle-kit`. (`createDbClient(url)` should not eagerly connect at import — postgres.js connects lazily on first query, so boot and tests work with a placeholder `DATABASE_URL`.)
 
-**Client-side:** `drizzle-orm/expo-sqlite` for typed local queries. Enables shared type definitions across client and server for the sync layer — same task model, same types, both sides.
+**Client-side:** `drizzle-orm/expo-sqlite` for typed local queries. **One canonical task type, two thin table mappings.** A single shared `TaskData` type in `@one-down/shared` is the source of truth for a task's fields — the server (Postgres) is a 1:1 backup of local, so both sides represent the *same* shape (no subset). Drizzle still needs two table definitions because its engine APIs differ — `@one-down/shared/schema` (`pgTable`) and `@one-down/shared/schema-local` (`sqliteTable`) — and because the mobile bundle must **never** import `drizzle-orm/pg-core`. Both tables conform to `TaskData` (verify via `$inferSelect`/`$inferInsert`); the package's `.` barrel re-exports neither table directly (consumers import the specific entry point). Use `title` + nullable `details` naming (an earlier `content` name forced a migration).
 
 **Why not Prisma:** Query engine binary bloats API, no expo-sqlite driver, heavier cold starts on Bun. Overkill for this scale.
 
@@ -208,17 +208,19 @@ bun add -d drizzle-kit typescript @types/node
 
 ### Authentication & Security
 
-**Authentication:** Supabase Auth (free tier, 50k MAU). Email/password + Google OAuth (+ support for AppleID login in the future). JWT tokens verified by Fastify middleware without calling Supabase on every request. Works independently of Supabase's database — we keep Drizzle + Railway Postgres. Firebase Auth and Clerk evaluated but Supabase offers the best free tier alignment with 25k MAU target.
+**Authentication:** Supabase Auth (free tier, 50k MAU). Email/password + Google OAuth (+ support for AppleID login in the future). JWTs are verified in **tRPC middleware** (not a Fastify hook) without calling Supabase on every request. Works independently of Supabase's database — we keep Drizzle + Railway Postgres. Firebase Auth and Clerk evaluated but Supabase offers the best free tier alignment with 25k MAU target. **Google sign-in uses a native package, not a web redirect** — plan to use `@react-native-google-signin/google-signin` to obtain a Google ID token, then `supabase.auth.signInWithIdToken({ provider: 'google', token })`. This is viable because we ship a custom Expo dev build (native modules allowed). ⚠️ **Needs a research spike** before Story 5.2: config-plugin setup, web/Android client IDs, and the exact Supabase id-token flow. (Avoid a bare `supabase.auth.signInWithOAuth(... skipBrowserRedirect: true)` — it does not complete on a real device.)
 
 **Token Storage:** `expo-secure-store` for secure credential storage on device.
 
-**API Security:** `@fastify/cors` for CORS, `@fastify/rate-limit` for rate limiting, JWT verification middleware (Supabase tokens), HTTPS only (TLS 1.2+ per NFR), no PII in PostHog analytics. JWT verification should use tRPC middleware (not Fastify hooks) since procedures are the auth boundary. Supabase public key cached locally to avoid network round-trips per request.
+**API Security:** `@fastify/cors` for CORS (origin from `CORS_ORIGIN`, default `*` in dev), `@fastify/rate-limit` for rate limiting, JWT verification middleware (Supabase tokens), HTTPS only (TLS 1.2+ per NFR), no PII in PostHog analytics. JWT verification uses tRPC middleware (not Fastify hooks) since procedures are the auth boundary: `protectedProcedure = publicProcedure.use(authMiddleware)` throws `UNAUTHORIZED`; `publicProcedure` (incl. health) stays public. **Verify asymmetrically against Supabase's JWKS** — use `jose` (`createRemoteJWKSet` + `jwtVerify`) against `https://<project>.supabase.co/auth/v1/.well-known/jwks.json`, caching the public keys locally to avoid per-request round-trips. Do **not** hand-roll HS256 with a shared `SUPABASE_JWT_SECRET` — Supabase recommends against it, and the reverted run's HS256 approach was slated for exactly this refactor (build JWKS/`jose` directly). The tRPC client injects the token via the `httpBatchLink` `headers` callback and **omits the `Authorization` header entirely when there is no session** (enables local-only free tier).
 
 **Subscription Billing:** RevenueCat for Google Play billing integration. Free up to $2,500/month revenue, then 1% of revenue. Handles receipt validation, subscription state management, entitlement checking, and analytics. Avoids building custom Play Store billing integration.
 
 ### API & Communication Patterns
 
-**API Pattern:** tRPC with Fastify adapter (`@trpc/server/adapters/fastify`). End-to-end type safety between client and server — no API documentation layer needed, types are the contract. Uses TanStack Query under the hood via `@trpc/react-query` for caching, loading states, and optimistic updates. REST, GraphQL, and ts-rest evaluated — tRPC is the best fit for a single-client monorepo with ~8 procedure groups. `trpc-panel` available for debugging/testing UI.
+**API Pattern:** tRPC with Fastify adapter (`@trpc/server/adapters/fastify`). End-to-end type safety between client and server — types are the contract, no API doc layer. Uses TanStack Query under the hood via `@trpc/react-query`. REST, GraphQL, and ts-rest evaluated — tRPC is the best fit for a single-client monorepo with ~8 procedure groups.
+
+The client imports the router **type-only** (`import type { AppRouter } from '@one-down/server'`) so Metro never bundles the server's runtime deps (Fastify/drizzle/postgres.js) into the app; the server `package.json` `exports` map points at the `.ts` source to support this. Wiring: single `httpBatchLink` at `/trpc`; a `timeoutFetch` adds a 5s `AbortController` timeout; `QueryClient` uses `retry: 1` / `staleTime: 30s`. Two health endpoints by design — Fastify `GET /health` (liveness) and a tRPC `health` query (end-to-end check).
 
 **Error Handling:** tRPC's built-in typed error codes for API errors, Fastify's error handling hooks for unhandled exceptions, TanStack Query's error/loading states on the client.
 
@@ -230,7 +232,9 @@ bun add -d drizzle-kit typescript @types/node
 
 **Testing:** Jest + react-native-testing-library for unit and integration tests (Expo default, proven RN combo). Maestro for E2E testing (YAML-based flows, visual testing, simpler than Detox for a single-developer project). Set up Maestro early in the project to catch Expo integration issues before they compound.
 
-**Component Architecture:** gluestack-ui v3 components in `components/ui/` (copy-pasted from gluestack library). Custom app components in `components/` (task cards, card stack, star display, etc.). Expo Router handles screen organization in `app/` directory. Shared types in `packages/shared` workspace.
+**Component Architecture:** UI primitives live in `components/ui/`, added via the gluestack-ui v3 copy-paste / CLI model (`npx gluestack-ui add <component>`) — components are copied into the project and owned by us. **Mount `GluestackUIProvider` at the app root** (required by the copy-paste model for theming/config) when the first gluestack component is added. If a specific primitive genuinely won't install cleanly via the CLI, fall back to a thin NativeWind wrapper matching the same import path. Custom app components in `components/` (task cards, card stack, star display, etc.); Expo Router handles screens in `app/`; shared types in `packages/shared`.
+
+**Provider hierarchy (exact, load-bearing order):** `GestureHandlerRootView` → `SafeAreaProvider` → `AuthProvider` → `TrpcProvider` → `{migrated ? <Stack/> : null}`. `AuthProvider` must wrap **outside** `TrpcProvider` so the JWT is available to the tRPC client's `headers` callback. `TrpcProvider` mounts before SQLite migration completes (no dependency on local-DB readiness). `SafeAreaView` uses `edges={['top','left','right','bottom']}` — the bottom edge keeps the FAB above the Android gesture bar. No bottom tab bar (per UX spec): a single `expo-router` `Stack` with `headerShown: false`.
 
 ### Infrastructure & Deployment
 
@@ -377,13 +381,13 @@ server/
 
 **tRPC responses:** No manual wrapper — tRPC handles success/error automatically. Procedures return typed data directly. Errors thrown via `TRPCError` with typed error codes.
 
-**Dates:** ISO 8601 strings in all API communication (`2026-04-25T10:30:00.000Z`). Drizzle stores as `timestamp` in Postgres, `TEXT` in SQLite. Parse/format with `date-fns` (lightweight, tree-shakeable).
+**Dates:** ISO 8601 strings on the API wire (`2026-04-25T10:30:00.000Z`). Postgres stores `timestamp with time zone`; **local SQLite stores epoch-ms integers** (`integer({ mode: 'timestamp_ms' })`, e.g. `deadline INTEGER`), not `TEXT`. Parse/format with `date-fns` (lightweight, tree-shakeable). If/when a procedure returns a non-JSON-native type (a `Date`), `superjson` must be wired **symmetrically on client and server simultaneously** — tRPC v11 enforces transformer symmetry at the type level (a one-sided transformer is a compile error). Defer `superjson` until the first Date-carrying procedure lands (sync, Story 5.3).
 
 **JSON fields:** `camelCase` in TypeScript/tRPC. Drizzle handles snake→camel mapping via column name overrides in schema definition.
 
 **IDs:** UUIDs client-generated on-device and server-generated on the backend. **On React Native use `expo-crypto`'s `randomUUID()`** — the global `crypto.randomUUID()` is not reliably available in Hermes and was a latent runtime bug in the first implementation (`expo-crypto` is already a dependency, so no extra UUID library is needed). On the server, Node/Bun's `crypto.randomUUID()` is fine. Client-generated UUIDs for offline-created records are permanent — the server accepts them as-is during sync rather than replacing them.
 
-**Migrations:** Drizzle-kit generates SQL migrations from schema changes. Run `bun drizzle-kit generate` to create migration files, `bun drizzle-kit migrate` to apply. Each Railway Postgres instance (dev/staging/e2e) runs migrations independently. Client-side SQLite schema evolves via `drizzle-orm/expo-sqlite` migrations (applied on app start).
+**Migrations:** Both sides use drizzle-kit to *generate* SQL migrations from schema changes (build-time only — drizzle-kit never ships in the app runtime). Server (Postgres): `bun drizzle-kit generate` then `bun drizzle-kit migrate`; each Railway instance (dev/staging/e2e) migrates independently. Client (SQLite): bundle the generated migrations and apply them on app start via `useMigrations(db, migrations)` from `drizzle-orm/expo-sqlite`.
 
 ### Communication Patterns
 
@@ -440,7 +444,7 @@ All tRPC mutations automatically emit PostHog events. Specific procedures can ca
 **Loading states:** TanStack Query's `isLoading`/`isFetching`/`isError` for server data. No manual loading booleans for tRPC calls. Zustand only for UI loading (e.g., animation-in-progress).
 
 **Error recovery:**
-- Network errors: TanStack Query automatic retry (3 attempts, exponential backoff)
+- Network errors: TanStack Query retry `retry: 1` (not the default 3) with `staleTime: 30s` — avoids wedging the UI when the server is offline
 - Auth errors: Redirect to login, clear expo-secure-store
 - AI errors: Graceful degradation — show manual task entry, no AI features
 - Sync errors: Queue failed syncs, retry on next app foreground
@@ -461,12 +465,12 @@ All tRPC mutations automatically emit PostHog events. Specific procedures can ca
 - Never commit `console.log` statements (oxlint `no-console` rule enforces this)
 
 **Anti-patterns to avoid:**
-- `any` type assertions
-- `console.log` in committed code (use PostHog for deployed logging, pino for server ops)
-- Direct database access outside Drizzle
-- Inline styles (use gluestack-ui v3 styling)
-- Manual loading/error state tracking for API calls
-- Premature component grouping — start flat, refactor when patterns emerge
+- Avoid `any` type assertions
+- Avoid `console.log` in committed code (use PostHog for deployed logging, pino for server ops). `console.log`s are encouraged for temporary debugging but must be removed before committing.
+- Avoid direct database access outside Drizzle
+- Avoid `StyleSheet.create` / inline style objects for layout — use NativeWind `className` (see Component Architecture)
+- Avoid manual loading/error state tracking for API calls
+- Avoid premature component grouping — start flat, refactor when patterns emerge
 
 ## Project Structure & Boundaries
 
@@ -522,7 +526,7 @@ one-down/
 │   │   ├── metro.config.js
 │   │   ├── eas.json                  # EAS Build config (Bun version pin)
 │   │   ├── app/                      # Expo Router (file-based routing)
-│   │   │   ├── _layout.tsx           # Root layout (providers: PostHog, tRPC, Zustand)
+│   │   │   ├── _layout.tsx           # Root layout — order: GestureHandlerRootView → SafeAreaProvider → AuthProvider → TrpcProvider → Stack
 │   │   │   ├── index.tsx             # Home / card stack screen
 │   │   │   ├── brain-dump.tsx        # Brain dump capture screen
 │   │   │   ├── task/
@@ -567,7 +571,7 @@ one-down/
 │   │   │   ├── trpc.ts              # tRPC client setup + TanStack Query provider
 │   │   │   ├── supabase.ts          # Supabase Auth client
 │   │   │   ├── posthog.ts           # PostHog RN client init
-│   │   │   ├── local-db.ts          # expo-sqlite + Drizzle client init
+│   │   │   ├── local-db.ts          # expo-sqlite + Drizzle init (open with enableChangeListener:true — required for useLiveQuery reactivity)
 │   │   │   └── secure-store.ts      # expo-secure-store wrapper
 │   │   └── assets/
 │   │       ├── fonts/
@@ -631,15 +635,16 @@ Star weights live in `packages/shared/src/constants/star-weights.ts` — importa
 
 **API Boundary:** All client↔server communication goes through tRPC procedures. The root router in `server/src/routers/index.ts` is the single entry point. No raw HTTP calls from the client.
 
-**Auth Boundary:** Supabase JWT verified in tRPC middleware (`server/src/middleware/auth.ts`). Every procedure except public health checks runs through this middleware. Client stores tokens in expo-secure-store.
+**Auth Boundary:** Supabase JWT verified in tRPC middleware (`server/src/middleware/auth.ts`) via `jose` against Supabase's JWKS (asymmetric — no shared secret). `protectedProcedure` runs through this middleware; `publicProcedure` (incl. health checks) does not. Client stores tokens in `expo-secure-store` via a custom adapter implementing Supabase's `SupportedStorage`; Supabase is **auth-only** (app data lives in Postgres via Drizzle).
 
 **Data Boundaries:**
-- `packages/shared/src/schema/` is the **single source of truth** for data models
-- Server accesses Postgres via Drizzle (`server/src/db/client.ts`)
-- Client accesses SQLite via Drizzle (`mobile/lib/local-db.ts`)
-- Both import schemas from `@one-down/shared`
+- One canonical `TaskData` type in `@one-down/shared` is the source of truth for a task's fields; both Drizzle tables conform to it (the server is a 1:1 backup of local — same shape, no subset).
+- Two table definitions are required only because Drizzle's engine APIs differ: `@one-down/shared/schema` (`pgTable`, server) and `@one-down/shared/schema-local` (`sqliteTable`, mobile).
+- The mobile bundle must **never** import `drizzle-orm/pg-core`. The `.` barrel of `@one-down/shared` re-exports neither table — consumers import the specific entry point.
+- Both tables use `title` + nullable `details` naming (avoid the earlier `content` name).
+- Server accesses Postgres via Drizzle (`server/src/db/client.ts`); client accesses SQLite via Drizzle (`mobile/lib/local-db.ts`).
 
-**Component Boundary:** gluestack-ui v3 uses a copy-paste model (like shadcn/ui) — components in `components/ui/` are owned by us and can be customised as needed. For MVP, keep modifications minimal and purposeful. Higher-level app components in `components/` compose from `ui/`.
+**Component Boundary:** `components/ui/` holds gluestack-ui v3 primitives added via the copy-paste / CLI model — owned by us and customizable (see Component Architecture for the `GluestackUIProvider` requirement and the CLI fallback). Higher-level app components in `components/` compose from `ui/`.
 
 ### FR Category → Structure Mapping
 
