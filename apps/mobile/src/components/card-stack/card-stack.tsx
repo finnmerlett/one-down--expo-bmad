@@ -47,10 +47,12 @@ function SwipeableTopCard({
   task,
   accessibilityLabel,
   onDismiss,
+  onPress,
 }: {
   task: TaskData;
   accessibilityLabel: string;
   onDismiss: () => void;
+  onPress: () => void;
 }) {
   const { width: screenWidth } = useWindowDimensions();
   const translateX = useSharedValue(0);
@@ -92,6 +94,16 @@ function SwipeableTopCard({
       }
     });
 
+  // Tap-to-flip (Story 1.4). Exclusive: the pan wins as soon as the finger
+  // moves its minimum distance; the tap can only activate once the pan has
+  // FAILED (released without dragging), so a swipe never also flips.
+  const tap = Gesture.Tap().onEnd((_event, success) => {
+    if (success) {
+      scheduleOnRN(onPress);
+    }
+  });
+  const gesture = Gesture.Exclusive(pan, tap);
+
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
       { translateX: translateX.value },
@@ -103,7 +115,7 @@ function SwipeableTopCard({
   const fadeStyle = useAnimatedStyle(() => ({ opacity: contentFade.value }));
 
   return (
-    <GestureDetector gesture={pan}>
+    <GestureDetector gesture={gesture}>
       <Animated.View
         style={[CARD_FRAME, animatedStyle]}
         accessible
@@ -187,7 +199,13 @@ function StackedCard({ task, depth }: { task: TaskData; depth: number }) {
  * created task that curates to the front becomes the visible top card.
  * Deliberate: see story dev notes.)
  */
-export function CardStack({ tasks }: { tasks: TaskData[] }) {
+export function CardStack({
+  tasks,
+  onCardPress,
+}: {
+  tasks: TaskData[];
+  onCardPress?: (task: TaskData) => void;
+}) {
   const [topTaskId, setTopTaskId] = useState<string | null>(null);
   // Bumped on every dismiss: remounts the keyed top card (fresh zeroed
   // shared values), including the single-card self-wrap where the id repeats.
@@ -242,6 +260,7 @@ export function CardStack({ tasks }: { tasks: TaskData[] }) {
                 task={task}
                 accessibilityLabel={`Task: ${task.title}. Card ${topIndex + 1} of ${tasks.length}`}
                 onDismiss={advance}
+                onPress={() => onCardPress?.(task)}
               />
             ) : (
               <StackedCard key={task.id} task={task} depth={depth} />

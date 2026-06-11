@@ -7,6 +7,7 @@ function makeTask(overrides: Partial<TaskData> = {}): TaskData {
     id: 'task-1',
     title: 'Sample task',
     details: null,
+    notes: null,
     status: 'pending',
     size: null,
     contexts: null,

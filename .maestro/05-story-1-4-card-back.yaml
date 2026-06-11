@@ -1,0 +1,64 @@
+# Story 1.4 — card back: tap-to-flip opens the expanded back (AC1-3), text
+# auto-saves on blur (AC4), context toggles + size persist (AC5-6), back
+# button contracts to the front which reflects the edits (AC7). Edits are
+# verified through the FRONT after closing — proves persistence, not just
+# local state.
+appId: com.onedown.mobile
+---
+- runFlow: common/launch-app.yaml
+
+# Seed one task via quick add
+- tapOn: 'Add task'
+- waitForAnimationToEnd
+- tapOn: 'Task title'
+- inputText: 'Edit me task'
+- tapOn: 'Save task'
+- extendedWaitUntil:
+    visible: 'What needs doing?'
+    timeout: 3000
+- tapOn: 'Close add task'
+- waitForAnimationToEnd
+
+# Tap the top card -> back view expands (AC1) with all sections (AC2-3)
+- tapOn: 'Task: Edit me task. Card 1 of 1'
+- waitForAnimationToEnd
+- assertVisible: 'Back to card front'
+- assertVisible: 'No deadline'
+- assertVisible: 'Notes'
+- assertVisible: 'Start'
+- assertVisible: 'Cut loose'
+
+# Inline title edit; focusing the notes field blurs the title -> auto-save (AC4)
+- tapOn: 'Task title'
+- eraseText
+- inputText: 'Edited task title'
+- tapOn: 'Task notes'
+- inputText: 'Working note'
+- hideKeyboard
+
+# Context toggle + size persist immediately (AC5, AC6)
+- tapOn: 'Context: Home'
+- tapOn: 'Size: Quick win'
+
+# Back button -> contracts to the front, which reflects every edit (AC7):
+# new title in the card label, size tag and context badge visible
+- tapOn: 'Back to card front'
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: 'Task: Edited task title. Card 1 of 1'
+    timeout: 3000
+- assertVisible: 'Quick win'
+- assertVisible: 'Home'
+
+# Reopen: stored values survived the close (notes flushed on close).
+# Close with the system back gesture this time — it must close the card,
+# not exit the app (review fix: BackHandler in the overlay).
+- tapOn: 'Task: Edited task title. Card 1 of 1'
+- waitForAnimationToEnd
+- assertVisible: 'Working note'
+- back
+- waitForAnimationToEnd
+- assertVisible: 'Task: Edited task title. Card 1 of 1'
+
+- assertNotVisible: 'Unhandled'
+- assertNotVisible: 'error occurred'

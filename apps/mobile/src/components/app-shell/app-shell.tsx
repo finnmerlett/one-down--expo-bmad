@@ -22,7 +22,9 @@ export function AppShell({
     <SafeAreaView edges={['top', 'left', 'right', 'bottom']} className="flex-1 bg-background-0">
       <TopBar />
       <Box className="flex-1">{children}</Box>
-      <FloatingAddButton onPress={onAddPress} />
+      {/* No handler → no FAB: it paints above the content Box, so screens hide
+          it while an overlay (e.g. the expanded card back) is up. */}
+      {onAddPress ? <FloatingAddButton onPress={onAddPress} /> : null}
     </SafeAreaView>
   );
 }

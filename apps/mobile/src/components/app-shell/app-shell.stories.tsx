@@ -16,6 +16,9 @@ type Story = StoryObj<typeof meta>;
 
 export const HomeScreen: Story = {
   args: {
+    // The FAB only renders when a handler is provided (screens drop it while
+    // an overlay is up).
+    onAddPress: () => {},
     children: (
       <Box className="flex-1 items-center justify-center px-8">
         <Text className="text-center text-typography-400">Your tasks will appear here</Text>

@@ -18,6 +18,8 @@ type EnforceFlatProps<T extends Record<string, AnalyticsProperties>> = T;
 export type AnalyticsEventMap = EnforceFlatProps<{
   /** Story 1.2 — a task is saved from the quick-add sheet. */
   task_created: { source: 'quick_add'; has_details: boolean };
+  /** Story 1.4 — a field was edited inline on the card back (field NAME only, never the value). */
+  task_edited: { field: 'title' | 'details' | 'notes' | 'contexts' | 'size' };
 }>;
 
 export type AnalyticsEventName = keyof AnalyticsEventMap;

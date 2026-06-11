@@ -34,6 +34,8 @@ export interface TaskData {
   id: string;
   title: string;
   details: string | null;
+  /** Free-form working notes, editable on the card back and while running a task. */
+  notes: string | null;
   status: TaskStatus;
   size: TaskSize | null;
   /** JSON-encoded array of TaskContext values, e.g. '["home","phone"]'. */

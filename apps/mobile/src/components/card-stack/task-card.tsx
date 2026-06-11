@@ -11,14 +11,14 @@ import { HStack } from '@/components/ui/hstack';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 
-const SIZE_LABELS: Record<TaskSize, string> = {
+export const SIZE_LABELS: Record<TaskSize, string> = {
   quick_win: 'Quick win',
   big_time: 'Big time',
 };
 
 // Record<TaskContext, …> so adding a context to the shared union forces a
 // label here; lookups stay tolerant of unknown stored values (fall back raw).
-const CONTEXT_LABELS: Record<TaskContext, string> = {
+export const CONTEXT_LABELS: Record<TaskContext, string> = {
   home: 'Home',
   out_and_about: 'Out & about',
   phone: 'Phone',

@@ -2,7 +2,7 @@ import { tasks } from '@one-down/shared/schema-local';
 
 import { createTestDb, type TestDb } from '../test-utils/db';
 import { loadLocalMigrationsSql } from '../test-utils/migrations';
-import { createTask, EmptyTitleError } from './tasks-repository';
+import { createTask, EmptyTitleError, updateTask } from './tasks-repository';
 
 // expo-crypto is a native module; under Node the equivalent is node:crypto.
 jest.mock('expo-crypto', () => ({
@@ -53,5 +53,69 @@ describe('tasks-repository (integration, real migration SQL)', () => {
 
     const rows = await testDb.db.select().from(tasks);
     expect(rows).toHaveLength(0);
+  });
+
+  describe('updateTask (Story 1.4 inline edits)', () => {
+    it('applies a partial patch, bumps updatedAt, and leaves other fields alone', async () => {
+      const created = await createTask(testDb.db, { title: 'Original', details: 'keep me' });
+      // Back-date so the bump assertion can actually fail (same-ms create+update
+      // would satisfy >= even if updateTask never touched updatedAt).
+      const backdated = new Date('2026-01-01T00:00:00Z');
+      await testDb.db.update(tasks).set({ updatedAt: backdated });
+
+      await updateTask(testDb.db, created.id, { title: '  Renamed  ' });
+
+      const [row] = await testDb.db.select().from(tasks);
+      expect(row?.title).toBe('Renamed');
+      expect(row?.details).toBe('keep me');
+      expect(row?.updatedAt.getTime()).toBeGreaterThan(backdated.getTime());
+    });
+
+    it('trims notes/details and stores blanks as null', async () => {
+      const created = await createTask(testDb.db, { title: 'a', details: 'old' });
+
+      await updateTask(testDb.db, created.id, { notes: '  remember the keys  ' });
+      await updateTask(testDb.db, created.id, { details: '   ' });
+
+      const [row] = await testDb.db.select().from(tasks);
+      expect(row?.notes).toBe('remember the keys');
+      expect(row?.details).toBeNull();
+    });
+
+    it('JSON-encodes contexts and stores an empty selection as null', async () => {
+      const created = await createTask(testDb.db, { title: 'a' });
+
+      await updateTask(testDb.db, created.id, { contexts: ['home', 'phone'] });
+      let [row] = await testDb.db.select().from(tasks);
+      expect(row?.contexts).toBe('["home","phone"]');
+
+      await updateTask(testDb.db, created.id, { contexts: [] });
+      [row] = await testDb.db.select().from(tasks);
+      expect(row?.contexts).toBeNull();
+    });
+
+    it('sets and clears the size', async () => {
+      const created = await createTask(testDb.db, { title: 'a' });
+
+      await updateTask(testDb.db, created.id, { size: 'big_time' });
+      let [row] = await testDb.db.select().from(tasks);
+      expect(row?.size).toBe('big_time');
+
+      await updateTask(testDb.db, created.id, { size: null });
+      [row] = await testDb.db.select().from(tasks);
+      expect(row?.size).toBeNull();
+    });
+
+    it('rejects blanking the title and writes nothing', async () => {
+      const created = await createTask(testDb.db, { title: 'Keep me' });
+
+      await expect(updateTask(testDb.db, created.id, { title: '  ' })).rejects.toThrow(
+        EmptyTitleError,
+      );
+
+      const [row] = await testDb.db.select().from(tasks);
+      expect(row?.title).toBe('Keep me');
+      expect(row?.updatedAt).toEqual(created.updatedAt);
+    });
   });
 });

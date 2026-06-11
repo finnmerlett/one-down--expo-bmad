@@ -8,6 +8,7 @@ export const tasks = sqliteTable('tasks', {
   id: text('id').primaryKey(),
   title: text('title').notNull(),
   details: text('details'),
+  notes: text('notes'),
   status: text('status').$type<TaskStatus>().notNull().default('pending'),
   size: text('size').$type<TaskSize>(),
   contexts: text('contexts'),
