@@ -1,0 +1,8 @@
+# Story 1.0a — smoke test: the app launches and renders without JS errors.
+appId: com.onedown.mobile
+---
+- runFlow: common/launch-app.yaml
+- assertVisible: 'Welcome to Expo'
+- assertNotVisible: 'Unhandled'
+- assertNotVisible: 'uncaught'
+- assertNotVisible: 'error occurred'

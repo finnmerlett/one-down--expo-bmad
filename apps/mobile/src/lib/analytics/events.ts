@@ -1,0 +1,23 @@
+// Event taxonomy for custom domain events routed through track().
+// Grows story-by-story ("instrument as built" — NFR-L1). Names are
+// snake_case past-tense (logging-best-practices skill).
+//
+// Props MUST be PII-safe by construction: never raw task text — no titles,
+// details, or notes (NFR-S3). The before_send sanitizer is the hard backstop,
+// but shapes here should never rely on it.
+//
+// Scope guard (docs/posthog-integration.md): ONLY app-semantic domain events
+// belong here. Screen views, taps, lifecycle, identity, and flags use PostHog
+// built-ins directly — never add them to this map.
+// Props are constrained to FLAT primitive values: no nested objects means no
+// place for task content to hide, and PostHog ingests them as plain columns.
+export type AnalyticsProperties = Record<string, string | number | boolean | null>;
+
+type EnforceFlatProps<T extends Record<string, AnalyticsProperties>> = T;
+
+export type AnalyticsEventMap = EnforceFlatProps<{
+  /** Story 1.2 — a task is saved from the quick-add sheet. */
+  task_created: { source: 'quick_add'; has_details: boolean };
+}>;
+
+export type AnalyticsEventName = keyof AnalyticsEventMap;

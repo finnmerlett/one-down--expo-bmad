@@ -2,7 +2,10 @@
   "name": "one-down",
   "version": "0.1.0",
   "private": true,
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "packageManager": "bun@1.3.14",
   "engines": {
     "node": "^24.3.0"
@@ -13,10 +16,14 @@
     "format": "oxfmt apps packages",
     "format:check": "oxfmt --check apps packages",
     "typecheck": "bun --cwd packages/shared typecheck && bun --cwd apps/server typecheck && bun --cwd apps/mobile typecheck",
-    "test": "echo 'no test suites yet — harnesses land in Story 1.0a'",
+    "test": "bun --cwd apps/mobile test",
     "mobile": "bun --cwd apps/mobile start",
     "mobile:android": "bun --cwd apps/mobile android",
-    "server:dev": "bun --cwd apps/server dev"
+    "server:dev": "bun --cwd apps/server dev",
+    "mobile:build": "cd apps/mobile && npx expo prebuild --platform android --no-install && cd android && ./gradlew :app:assembleRelease",
+    "mobile:install": "${ANDROID_HOME:-$HOME/Library/Android/sdk}/platform-tools/adb install -r apps/mobile/android/app/build/outputs/apk/release/app-release.apk",
+    "test:e2e": "./scripts/maestro-test.sh .maestro/",
+    "test:e2e:fresh": "bun run mobile:build && bun run mobile:install && bun run test:e2e"
   },
   "devDependencies": {
     "oxlint": "^1.49.0",

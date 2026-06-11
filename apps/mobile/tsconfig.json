@@ -6,6 +6,7 @@
     "noFallthroughCasesInSwitch": true,
     "noImplicitOverride": true,
     "forceConsistentCasingInFileNames": true,
+    "types": ["jest"],
     "paths": {
       "@/*": ["./src/*"],
       "@/assets/*": ["./assets/*"]

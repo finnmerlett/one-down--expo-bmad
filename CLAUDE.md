@@ -8,16 +8,17 @@ One Down is a mobile task management app built for people with ADHD. It uses a c
 
 ### Tech Stack
 - **Monorepo**: Bun workspaces (apps/mobile, apps/server, packages/shared)
-- **Mobile**: Expo SDK 55, React Native, Expo Router, NativeWind, gluestack-ui v3, Reanimated 4
+- **Mobile**: Expo SDK 56, React Native, Expo Router, NativeWind v4 (+ Tailwind v3 — never v4/v5), gluestack-ui v3, Reanimated 4
 - **Server**: Fastify 5 + tRPC + Bun
 - **DB**: expo-sqlite + Drizzle (client), PostgreSQL + Drizzle (server)
-- **AI**: Gemini Flash via @google/generative-ai SDK
+- **AI**: Gemini Flash via @google/genai SDK (@google/generative-ai is EOL)
 - **Auth**: Supabase Auth
 - **State**: Zustand (UI), TanStack Query via tRPC (server)
 
 ### Project Status
-- All implementation was reverted on 2026-06-07 (Gas Town pipeline run) and `main` reconstructed from the pre-story base; the full reverted code is preserved on branch `midway-gas-town`. **All stories are currently `backlog`** — implementation restarts with human oversight.
-- Planning artifacts (PRD, architecture, epics, UX) were refreshed on 2026-06-08 (Expo SDK 56 + version bumps, digested implementation learnings, reconciled decisions). Story 1.0 was split into **1.0 (scaffold + tooling)** and **1.0a (test + telemetry foundation)**. Next up: Story 1.0.
+- All implementation was reverted on 2026-06-07 (Gas Town pipeline run) and `main` reconstructed from the pre-story base; the full reverted code is preserved on branch `midway-gas-town` (reference only — its versions/patterns are partly superseded).
+- Planning artifacts (PRD, architecture, epics, UX) were refreshed on 2026-06-08 (Expo SDK 56 + version bumps, digested implementation learnings, reconciled decisions). Story 1.0 was split into **1.0 (scaffold + tooling)** and **1.0a (test + telemetry foundation)**.
+- Re-implementation began 2026-06-11. Track progress in `_bmad-output/implementation-artifacts/sprint-status.yaml` (statuses there are the source of truth) and per-story files alongside it.
 - The full epic/story breakdown is at `_bmad-output/planning-artifacts/epics.md`
 - Architecture docs at `_bmad-output/planning-artifacts/architecture.md`
 - PRD at `_bmad-output/planning-artifacts/prd.md`
@@ -81,11 +82,14 @@ bun install
 # Lint & format (quality gates)
 bun run lint              # Oxlint across all workspaces
 bun run format:check      # Oxfmt check mode
+bun run lint:check        # Both of the above — run before completing any story
 bun run typecheck         # TypeScript strict across all workspaces
 
 # Tests
-bun run test              # Runs shared + server tests
+bun run test              # Jest (mobile: portable stories, unit, integration); server tests join the chain in Epic 5
 ```
+
+**Gate discipline:** re-run `bun run lint:check` and `bun run typecheck` as the LAST step before committing — Expo CLI invocations (`expo install`, `expo run`, prebuild) rewrite `package.json`/`tsconfig.json` formatting behind your back.
 
 ## E2E Testing
 
@@ -158,7 +162,7 @@ packages/shared/src/
 - Story squash-merges: `story(X.Y): emoji description`
 
 **Tooling:**
-- Package manager: Bun (v1.2.13)
+- Package manager: Bun (v1.3.14; `bunfig.toml` forces the hoisted linker — Bun 1.3's default isolated workspace layout breaks Metro/Babel)
 - Linting: Oxlint (not ESLint)
 - Formatting: Oxfmt (not Prettier)
 - TypeScript: Strict mode, v6.0
@@ -196,11 +200,25 @@ packages/shared/src/
 
 ### UI Storybook Tests
 
-All UI component testing uses **React Native Storybook**, not Jest render tests. Grouped by:
+All UI component testing uses **React Native Storybook** (v10, config in `apps/mobile/.rnstorybook/`), not Jest render tests. Grouped by:
 - Base UI components (button, input, textarea, etc.)
 - Feature sections (app-shell, card-stack, quick-add-sheet, auth), with individual component + full screen stories
 
+How it works here:
+- Stories are co-located: `component.tsx` + `component.stories.tsx` (CSF, types from `@storybook/react`).
+- **On-device**: `bun run storybook:android` (from `apps/mobile`) — entry-point swap via `STORYBOOK_ENABLED=true`; needs the dev-client build (`expo run:android` debug variant). Zero Storybook code enters normal bundles.
+- **Headless (CI)**: every story gets a Portable Stories crash-free test — `composeStories(stories)` from `@storybook/react`, rendered with `@testing-library/react-native`.
+- `apps/mobile/.rnstorybook/storybook.requires.ts` is generated (metro regenerates on start; `bun run storybook:generate` manually) but committed so typecheck works on fresh clones.
+- **RNTL v14 gotcha: `render()` is async** — always `await render(...)`. Never add `react-test-renderer` (RNTL 14 uses the new `test-renderer`).
+
+### Analytics seam (telemetry)
+
+- Custom domain events: typed `track(event, props)` in `apps/mobile/src/lib/analytics/track.ts`; taxonomy in `events.ts` (snake_case past-tense names, PII-safe props — never task title/details/notes, NFR-S3).
+- The seam ONLY wraps `posthog.capture()`. Screen views, identity, super props, flags, lifecycle, offline queueing = PostHog built-ins (see `docs/posthog-integration.md`). `before_send` (in `posthog-hooks.ts`) is the global PII redaction backstop.
+- No `EXPO_PUBLIC_POSTHOG_API_KEY` → no-op mode (console.debug in dev). Live config arrives in Story 8.3.
+- Instrument as you build: each story adds its own domain events to the taxonomy.
+
 ### Integration Tests
 
-- **Mobile:** Real flows against in-memory SQLite
-- **Server:** tRPC procedures against a real test Postgres instance with real JWT tokens.
+- **Mobile:** Real flows against in-memory SQLite — `createTestDb()` from `apps/mobile/src/test-utils/db.ts` (drizzle + better-sqlite3, same `sqliteTable` schema as production; expo-sqlite can't run under Node). From Story 1.2: pass the drizzle-kit migration SQL so tests run the exact on-device schema.
+- **Server:** tRPC procedures against a real test Postgres instance with real JWT tokens (lands with Epic 5).

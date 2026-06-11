@@ -1,0 +1,6 @@
+# Shared launch flow — all E2E flows start from a clean app state.
+# Targets the custom build (com.onedown.mobile), never Expo Go.
+appId: com.onedown.mobile
+---
+- launchApp:
+    clearState: true
