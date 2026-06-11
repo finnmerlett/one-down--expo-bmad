@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
+  Extrapolation,
+  interpolate,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -18,15 +20,28 @@ const VISIBLE_CARDS = 3;
 const DISMISS_THRESHOLD_RATIO = 0.35;
 const FLY_OFF_RATIO = 1.2;
 const FLY_OFF_DURATION_MS = 250;
-const SNAP_SPRING = { damping: 20, stiffness: 200 };
+const SNAP_SPRING = { damping: 70, stiffness: 900 };
+
+// Background-card stagger. translateY must out-run the bottom-edge rise from
+// the scale shrink (~2.5% of card height per depth) or the card hides
+// entirely behind the top card (AC1 peek). The promoted card's entrance
+// animation starts from the depth-1 values, so keep them in sync.
+const DEPTH_SCALE_STEP = 0.05;
+const DEPTH_TRANSLATE_STEP = 30;
+const DEPTH_1_OPACITY = 0.7;
+const DEPTH_2_OPACITY = 0.4;
+const PROMOTE_DURATION_MS = 200;
 
 const CARD_FRAME = { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 } as const;
+const FILL = { height: '100%', width: '100%' } as const;
 
 /**
  * The interactive top card OWNS its shared values, so they are born zeroed on
  * mount and there is never a cross-thread reset racing a Fabric commit (the
  * old card unmounts off-screen; the new one mounts centered). The parent
- * remounts it via key on every advance.
+ * remounts it via key on every advance — and the mount entrance animates from
+ * the depth-1 background position to full size, so the promoted card grows
+ * into place instead of jumping.
  */
 function SwipeableTopCard({
   task,
@@ -40,6 +55,17 @@ function SwipeableTopCard({
   const { width: screenWidth } = useWindowDimensions();
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
+  // Entrance: born at the depth-1 background position, settles to the top slot.
+  const settleY = useSharedValue(DEPTH_TRANSLATE_STEP);
+  const settleScale = useSharedValue(1 - DEPTH_SCALE_STEP);
+  const contentFade = useSharedValue(DEPTH_1_OPACITY);
+
+  useEffect(() => {
+    const timing = { duration: PROMOTE_DURATION_MS };
+    settleY.value = withTiming(0, timing);
+    settleScale.value = withTiming(1, timing);
+    contentFade.value = withTiming(1, timing);
+  }, [settleY, settleScale, contentFade]);
 
   const pan = Gesture.Pan()
     .onChange((event) => {
@@ -67,8 +93,14 @@ function SwipeableTopCard({
     });
 
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }, { translateY: translateY.value }],
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value + settleY.value },
+      { scale: settleScale.value },
+    ],
   }));
+
+  const fadeStyle = useAnimatedStyle(() => ({ opacity: contentFade.value }));
 
   return (
     <GestureDetector gesture={pan}>
@@ -77,9 +109,69 @@ function SwipeableTopCard({
         accessible
         accessibilityLabel={accessibilityLabel}
       >
-        <TaskCard task={task} />
+        {/* Solid base under the fading content so the entrance fade never
+            shows the card below through this one. */}
+        <View className="h-full w-full rounded-3xl bg-background-0">
+          <Animated.View style={[FILL, fadeStyle]}>
+            <TaskCard task={task} />
+          </Animated.View>
+        </View>
       </Animated.View>
     </GestureDetector>
+  );
+}
+
+/**
+ * Background card that animates toward its current slot: a single `progress`
+ * value tracks depth, so on every advance depth-2 rises/brightens into
+ * depth-1, a freshly mounted card rises in from one slot deeper while fading
+ * in (AC4), and a card pushed back down (task added mid-browse) recedes
+ * smoothly. The solid base fades only on entry (progress 2→3 region) — at
+ * resting depths it is opaque, so lower cards never show through the content
+ * fade.
+ */
+function StackedCard({ task, depth }: { task: TaskData; depth: number }) {
+  const progress = useSharedValue(depth + 1);
+
+  useEffect(() => {
+    progress.value = withTiming(depth, { duration: PROMOTE_DURATION_MS });
+  }, [depth, progress]);
+
+  const frameStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateY: progress.value * DEPTH_TRANSLATE_STEP },
+      { scale: 1 - progress.value * DEPTH_SCALE_STEP },
+    ],
+  }));
+
+  const baseStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      progress.value,
+      [VISIBLE_CARDS - 1, VISIBLE_CARDS],
+      [1, 0],
+      Extrapolation.CLAMP,
+    ),
+  }));
+
+  const contentStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      progress.value,
+      [0, 1, 2],
+      [1, DEPTH_1_OPACITY, DEPTH_2_OPACITY],
+      Extrapolation.CLAMP,
+    ),
+  }));
+
+  return (
+    <Animated.View pointerEvents="none" style={[CARD_FRAME, frameStyle]}>
+      <Animated.View style={[FILL, baseStyle]}>
+        <View className="h-full w-full rounded-3xl bg-background-0">
+          <Animated.View style={[FILL, contentStyle]}>
+            <TaskCard task={task} />
+          </Animated.View>
+        </View>
+      </Animated.View>
+    </Animated.View>
   );
 }
 
@@ -152,22 +244,7 @@ export function CardStack({ tasks }: { tasks: TaskData[] }) {
                 onDismiss={advance}
               />
             ) : (
-              <View
-                key={task.id}
-                pointerEvents="none"
-                style={[
-                  CARD_FRAME,
-                  {
-                    // translateY must out-run the bottom-edge rise from the
-                    // scale shrink (~2.5% of card height per depth) or the
-                    // card hides entirely behind the top card (AC1 peek).
-                    transform: [{ scale: 1 - depth * 0.05 }, { translateY: depth * 30 }],
-                    opacity: depth === 1 ? 0.7 : 0.4,
-                  },
-                ]}
-              >
-                <TaskCard task={task} />
-              </View>
+              <StackedCard key={task.id} task={task} depth={depth} />
             ),
           )}
       </Box>
