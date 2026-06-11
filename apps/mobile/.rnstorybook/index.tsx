@@ -1,3 +1,9 @@
+// NativeWind styles ship with whichever module imports global.css. The normal
+// app gets them via src/app/_layout.tsx, which this entry swap bypasses —
+// without this import every className in the Storybook bundle is a no-op
+// (unbounded SVG icons then crash Android with a too-large bitmap).
+import '../src/global.css';
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { registerRootComponent } from 'expo';
 

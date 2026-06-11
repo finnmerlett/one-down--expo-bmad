@@ -2,38 +2,46 @@
 /// <reference types="@storybook/react-native/metro-env" />
 import { start, updateView, View, type Features } from '@storybook/react-native';
 
-import '@storybook/addon-ondevice-controls/register';
-import '@storybook/addon-ondevice-actions/register';
+
+import "@storybook/addon-ondevice-controls/register";
+import "@storybook/addon-ondevice-actions/register";
 
 const normalizedStories = [
   {
-    titlePrefix: '',
-    directory: './src',
-    files: '**/*.stories.@(ts|tsx)',
-    importPathMatcher:
-      /^\.(?:(?:^|\/|(?:(?:(?!(?:^|\/)\.).)*?)\/)(?!\.)(?=.)[^/]*?\.stories\.(ts|tsx))$/,
+    titlePrefix: "",
+    directory: "./src",
+    files: "**/*.stories.@(ts|tsx)",
+    importPathMatcher: /^\.(?:(?:^|\/|(?:(?:(?!(?:^|\/)\.).)*?)\/)(?!\.)(?=.)[^/]*?\.stories\.(ts|tsx))$/,
     req: require.context(
       '../src',
       true,
-      /^\.(?:(?:^|\/|(?:(?:(?!(?:^|\/)\.).)*?)\/)(?!\.)(?=.)[^/]*?\.stories\.(ts|tsx))$/,
+      /^\.(?:(?:^|\/|(?:(?:(?!(?:^|\/)\.).)*?)\/)(?!\.)(?=.)[^/]*?\.stories\.(ts|tsx))$/
     ),
-  },
+  }
 ];
+
 
 declare global {
   var view: View;
   var STORIES: typeof normalizedStories;
-  var STORYBOOK_WEBSOCKET: { host?: string; port?: number; secured?: boolean } | undefined;
+  var STORYBOOK_WEBSOCKET:
+    | { host?: string; port?: number; secured?: boolean }
+    | undefined;
   var FEATURES: Features;
 }
 
-const annotations = [require('./preview'), require('@storybook/react-native/preview')];
+
+const annotations = [
+  require('./preview'),
+  require("@storybook/react-native/preview")
+];
 
 globalThis.STORIES = normalizedStories;
 
+
 module?.hot?.accept?.();
 
-const options = {};
+const options = {}
 
 if (!globalThis.view) {
   globalThis.view = start({

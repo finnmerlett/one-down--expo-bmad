@@ -18,7 +18,12 @@ export function GluestackUIProvider({
   const { colorScheme, setColorScheme } = useColorScheme();
 
   useEffect(() => {
-    setColorScheme(mode);
+    // Skip the no-op case: under jest there is no compiled stylesheet and
+    // nativewind's setColorScheme throws ("darkMode: class" check) even for
+    // a value that already matches.
+    if (colorScheme !== mode) {
+      setColorScheme(mode);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 

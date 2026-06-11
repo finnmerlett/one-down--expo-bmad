@@ -1,9 +1,17 @@
+import React from 'react';
 import type { Preview } from '@storybook/react-native';
 
+import { GluestackUIProvider } from '../src/components/ui/gluestack-ui-provider';
+
 const preview: Preview = {
-  // Global decorators (e.g. GluestackUIProvider once Story 1.1 adds it) go here
-  // so every story renders inside the app's real provider context.
-  decorators: [],
+  // Every story renders inside the app's real provider context (theme vars()).
+  decorators: [
+    (Story) => (
+      <GluestackUIProvider mode="light">
+        <Story />
+      </GluestackUIProvider>
+    ),
+  ],
   parameters: {},
 };
 
