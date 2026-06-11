@@ -1,0 +1,67 @@
+# Story 1.3 — card stack: stack renders with a11y announcement, swipe
+# advances, list changes keep position (AC7), wrap-around (AC6), snap-back
+# (AC5). The top card is an accessible container, so assertions target its
+# full label ("Task: <title>. Card X of Y"), not the inner title text.
+appId: com.onedown.mobile
+---
+- runFlow: common/launch-app.yaml
+
+# Seed two tasks via quick add (sheet stays open between saves; the cleared
+# title field shows its placeholder again — that's the post-save sync point)
+- tapOn: 'Add task'
+- waitForAnimationToEnd
+- tapOn: 'Task title'
+- inputText: 'Stack task alpha'
+- tapOn: 'Save task'
+- extendedWaitUntil:
+    visible: 'What needs doing?'
+    timeout: 3000
+- tapOn: 'Task title'
+- inputText: 'Stack task beta'
+- tapOn: 'Save task'
+- extendedWaitUntil:
+    visible: 'What needs doing?'
+    timeout: 3000
+- tapOn: 'Close add task'
+- waitForAnimationToEnd
+
+# Newest-created sorts first: beta is the top card
+- assertVisible: 'Task: Stack task beta. Card 1 of 2'
+
+# Swipe left past the dismiss threshold -> alpha becomes top
+- swipe:
+    start: 80%, 45%
+    end: 5%, 45%
+- waitForAnimationToEnd
+- assertVisible: 'Task: Stack task alpha. Card 2 of 2'
+
+# AC7: adding a task mid-browse must NOT reset the position — gamma sorts
+# to the front (newest), but alpha stays the top card (now card 3 of 3)
+- tapOn: 'Add task'
+- waitForAnimationToEnd
+- tapOn: 'Task title'
+- inputText: 'Stack task gamma'
+- tapOn: 'Save task'
+- extendedWaitUntil:
+    visible: 'What needs doing?'
+    timeout: 3000
+- tapOn: 'Close add task'
+- waitForAnimationToEnd
+- assertVisible: 'Task: Stack task alpha. Card 3 of 3'
+
+# Swipe past the last card -> wraps around to the list head (no dead end)
+- swipe:
+    start: 80%, 45%
+    end: 5%, 45%
+- waitForAnimationToEnd
+- assertVisible: 'Task: Stack task gamma. Card 1 of 3'
+
+# Below-threshold drag snaps back: top card unchanged
+- swipe:
+    start: 60%, 45%
+    end: 45%, 45%
+- waitForAnimationToEnd
+- assertVisible: 'Task: Stack task gamma. Card 1 of 3'
+
+- assertNotVisible: 'Unhandled'
+- assertNotVisible: 'error occurred'

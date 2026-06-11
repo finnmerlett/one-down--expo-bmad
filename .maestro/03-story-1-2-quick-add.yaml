@@ -17,10 +17,11 @@ appId: com.onedown.mobile
     notVisible: 'Give your task a title first'
     timeout: 3000
 - assertNotVisible: 'Could not save your task'
-# Close the sheet; the saved task is in the home list
+# Close the sheet; the saved task is the top card of the stack (1.3) —
+# the card is an accessible container, so match its full label.
 - tapOn: 'Close add task'
 - waitForAnimationToEnd
-- assertVisible: 'Maestro smoke test task'
+- assertVisible: 'Task: Maestro smoke test task. Card 1 of 1'
 - assertNotVisible: 'Unhandled'
 - assertNotVisible: 'uncaught'
 - assertNotVisible: 'error occurred'

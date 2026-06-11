@@ -363,6 +363,8 @@ Maestro E2E flows in a top-level `.maestro/` directory.
 
 **Client Services:** `services/` for pure business logic that runs on-device — `curation.ts` (card stack algorithm) and `star-calculator.ts` (reward logic). These are framework-agnostic, no React dependencies, and import types/constants from `@one-down/shared`. Being pure logic, they are the most testable parts of the app.
 
+**CardStack wrap-around index (implemented in Story 1.3):** the stack tracks the top card by **task id**, not array index. Each render re-derives `topIndex = tasks.findIndex(id)` (fallback 0 if the id left the list), and the visible window is `tasks[(topIndex + depth) % tasks.length]` for depth 0..2. Advancing after a dismiss selects `tasks[(topIndex + 1) % length].id` — the modulo provides continuous wrap-around (no dead end), and id-tracking means adding/removing/reordering tasks (curation is re-run live) never resets the user's position. The dismiss animation callback reads the freshest list through a ref, so tasks created mid-flight can't desync the cycle. Two deliberate nuances: (a) before the first swipe `topTaskId` is null — the deck shows "slot 0", so a newly created task that curates to the front becomes the visible top card (position-keeping starts once the user has swiped); (b) the interactive top card owns its gesture shared values and is remounted via `key={id}:{cycle}` on every advance, so values are born zeroed — no cross-thread reset races a Fabric commit. Story 3.3 must preserve both.
+
 **Server organization:** Fastify plugin-per-domain. Only 4 routers — task CRUD, context selection, and star rewards are offline-first client operations synced via `sync.ts`:
 ```
 server/

@@ -13,6 +13,22 @@ export type TaskContext = (typeof TASK_CONTEXTS)[number];
  * server, Epic 5). Same shape, no subset: the server copy is a 1:1 backup
  * of local data (plus userId on the server side).
  */
+/**
+ * Decode the JSON-encoded `contexts` column. Tolerant of nulls and malformed
+ * values (returns []) — the column is free-form text at the SQLite level.
+ */
+export function parseTaskContexts(value: string | null): string[] {
+  if (!value) return [];
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is string => typeof item === 'string')
+      : [];
+  } catch {
+    return [];
+  }
+}
+
 export interface TaskData {
   /** Client-generated UUID (expo-crypto randomUUID) — permanent, never reassigned. */
   id: string;

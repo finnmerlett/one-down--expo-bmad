@@ -2,6 +2,7 @@ import '../global.css';
 
 import { Stack } from 'expo-router';
 import type { ReactNode } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 
 import { Box } from '@/components/ui/box';
@@ -37,12 +38,14 @@ function MigrationGate({ children }: { children: ReactNode }) {
 
 export default function RootLayout() {
   return (
-    <GluestackUIProvider mode="light">
-      <AppPostHogProvider>
-        <MigrationGate>
-          <Stack screenOptions={{ headerShown: false }} />
-        </MigrationGate>
-      </AppPostHogProvider>
-    </GluestackUIProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <GluestackUIProvider mode="light">
+        <AppPostHogProvider>
+          <MigrationGate>
+            <Stack screenOptions={{ headerShown: false }} />
+          </MigrationGate>
+        </AppPostHogProvider>
+      </GluestackUIProvider>
+    </GestureHandlerRootView>
   );
 }
