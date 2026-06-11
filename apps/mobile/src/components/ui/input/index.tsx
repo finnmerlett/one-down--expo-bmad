@@ -172,25 +172,29 @@ const InputSlot = React.forwardRef<React.ComponentRef<typeof UIInput.Slot>, IInp
 type IInputFieldProps = React.ComponentProps<typeof UIInput.Input> &
   VariantProps<typeof inputFieldStyle> & { className?: string };
 
-const InputField = React.forwardRef<React.ComponentRef<typeof UIInput.Input>, IInputFieldProps>(
-  function InputField({ className, ...props }, ref) {
-    const { variant: parentVariant, size: parentSize } = useStyleContext(SCOPE);
+// Upstream typing bug: ComponentRef<typeof UIInput.Input> resolves to the
+// PROPS type (TextInputProps), not the instance. The real instance is a
+// TextInput — fixed here (copy-paste model: this file is ours to own).
+const InputField = React.forwardRef<TextInput, IInputFieldProps>(function InputField(
+  { className, ...props },
+  ref,
+) {
+  const { variant: parentVariant, size: parentSize } = useStyleContext(SCOPE);
 
-    return (
-      <UIInput.Input
-        ref={ref}
-        {...props}
-        className={inputFieldStyle({
-          parentVariants: {
-            variant: parentVariant,
-            size: parentSize,
-          },
-          class: className,
-        })}
-      />
-    );
-  },
-);
+  return (
+    <UIInput.Input
+      ref={ref as React.Ref<React.ComponentRef<typeof UIInput.Input>>}
+      {...props}
+      className={inputFieldStyle({
+        parentVariants: {
+          variant: parentVariant,
+          size: parentSize,
+        },
+        class: className,
+      })}
+    />
+  );
+});
 
 Input.displayName = 'Input';
 InputIcon.displayName = 'InputIcon';

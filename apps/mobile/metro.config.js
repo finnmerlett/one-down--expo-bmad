@@ -6,6 +6,9 @@ const { withStorybook } = require('@storybook/react-native/withStorybook');
 
 const config = getDefaultConfig(__dirname);
 
+// drizzle migrations: .sql files resolve as modules (inlined by babel inline-import).
+config.resolver.sourceExts.push('sql');
+
 // Keep jest-only code out of the app bundle: better-sqlite3 (test-utils) is a
 // Node native addon Metro must never try to resolve. (Plain RegExps — the
 // metro-config exclusionList helper is no longer export-mapped.)

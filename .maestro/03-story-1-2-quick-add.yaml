@@ -1,0 +1,26 @@
+# Story 1.2 — quick add: empty-title feedback, save persists, input clears,
+# task visible in the (interim) home list.
+appId: com.onedown.mobile
+---
+- runFlow: common/launch-app.yaml
+- tapOn: 'Add task'
+- waitForAnimationToEnd
+- assertVisible: 'Task title'
+# Empty title is rejected with inline feedback
+- tapOn: 'Save task'
+- assertVisible: 'Give your task a title first'
+# Valid save: input clears, sheet stays open for rapid entry
+- tapOn: 'Task title'
+- inputText: 'Maestro smoke test task'
+- tapOn: 'Save task'
+- extendedWaitUntil:
+    notVisible: 'Give your task a title first'
+    timeout: 3000
+- assertNotVisible: 'Could not save your task'
+# Close the sheet; the saved task is in the home list
+- tapOn: 'Close add task'
+- waitForAnimationToEnd
+- assertVisible: 'Maestro smoke test task'
+- assertNotVisible: 'Unhandled'
+- assertNotVisible: 'uncaught'
+- assertNotVisible: 'error occurred'

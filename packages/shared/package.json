@@ -5,10 +5,14 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./schema": "./src/schema/index.ts"
+    "./schema": "./src/schema/index.ts",
+    "./schema-local": "./src/schema-local/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.2"
   },
   "devDependencies": {
     "typescript": "~6.0.3"

@@ -1,6 +1,6 @@
 # Story 1.1: App Shell & Navigation
 
-Status: in-progress
+Status: done
 Date: 2026-06-11
 Mode: BMad-lite autonomous run (batched with 1.2: per-story commits, shared review + E2E cycle)
 
@@ -36,7 +36,7 @@ Given a fresh install, when the user launches the app, then:
 - [x] Stories per component + full-shell story; portable-story crash tests
 - [x] Maestro flow `02-story-1-1-app-shell.yaml` written (asserts all four controls visible) — RUN pending batch E2E
 - [x] Gates: lint:check, typecheck, test (10/10)
-- [ ] Batch: fresh-context review (with 1.2) → E2E release build → Maestro → screenshot → on-device FAB-clearance check → status done
+- [x] Batch: fresh-context review (with 1.2, verdict approve-with-fixes — see 1.2 story file) → E2E release build → Maestro 3/3 green → screenshot `.claude/run-notes/screenshots/1-1-app-shell.png` → FAB clears the gesture bar (bottom inset verified on-device)
 
 ## Dev Notes
 

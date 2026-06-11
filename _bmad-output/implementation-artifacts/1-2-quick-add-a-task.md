@@ -1,6 +1,6 @@
 # Story 1.2: Quick-Add a Task
 
-Status: ready-for-dev
+Status: done
 Date: 2026-06-11
 Mode: BMad-lite autonomous run (batched with 1.1: per-story commits, shared review + E2E cycle)
 
@@ -31,18 +31,40 @@ As a user, I want to quickly add a task with a title and optional details, So th
 
 ## Tasks
 
-- [ ] Deps: expo-sqlite, expo-crypto (expo install), zustand, drizzle-kit (dev)
-- [ ] `@one-down/shared`: TaskData type + `schema-local/tasks.ts` (+ conformance typing); barrel hygiene
-- [ ] drizzle-kit config + generate initial migration; commit SQL
-- [ ] Mobile `lib/local-db.ts` (open + enableChangeListener) + migration runner in `_layout.tsx`
-- [ ] `services/tasks-repository.ts` (createTask) + `hooks/use-tasks.ts` (useLiveQuery)
-- [ ] Quick-add sheet component + zustand store + FAB wiring + interim task list in home content area
-- [ ] `task_created` event in taxonomy + emit on save
-- [ ] Stories (sheet open state) + portable-story tests + integration tests (create round-trip, empty-title rejection at repo level)
-- [ ] Maestro flow `03-story-1-2-quick-add.yaml` (add task, input clears, task visible)
-- [ ] Gates: lint:check, typecheck, test
-- [ ] Batch: fresh-context review (with 1.1) → E2E release build → Maestro → screenshot → commit
+- [x] Deps: expo-sqlite, expo-crypto (expo install), zustand, drizzle-kit (dev) + babel-plugin-inline-import
+- [x] `@one-down/shared`: TaskData type + `schema-local/tasks.ts` (+ conformance typing); barrel hygiene
+- [x] drizzle-kit config + generate initial migration; commit SQL (`drizzle/0000_messy_next_avengers.sql`)
+- [x] Mobile `lib/local-db.ts` (open + enableChangeListener) + MigrationGate in `_layout.tsx` (useMigrations)
+- [x] `services/tasks-repository.ts` (createTask) + `hooks/use-tasks.ts` (useLiveQuery)
+- [x] Quick-add sheet component + zustand store + FAB wiring + interim task list in home content area
+- [x] `task_created` event emit on save (taxonomy entry already seeded in 1.0a — shapes matched)
+- [x] Stories (sheet open state) + portable-story tests (3) + integration tests on real migration SQL (3)
+- [x] Maestro flow `03-story-1-2-quick-add.yaml` (empty-title feedback, save, input clears, task visible)
+- [x] Gates: lint:check, typecheck, test (16/16)
+- [x] Fresh-context review (with 1.1): approve-with-fixes → all fixes applied
+- [x] E2E release build → Maestro 01/02/03 all green → screenshots (`1-2-quick-add-sheet.png`, `1-2-quick-add-task-in-list.png`)
 
 ## Dev Notes
 
-(filled in as work happens)
+- **Migrations**: drizzle-kit `driver: 'expo'` generates `drizzle/migrations.js` importing the `.sql` raw — needs `babel-plugin-inline-import` (extensions ['.sql']) + metro `sourceExts.push('sql')`. Typecheck needs a `drizzle-migrations.d.ts` ambient module (generated JS is untyped). jest never sees `.sql` imports (tests read the SQL via fs: `test-utils/migrations.ts` walks `meta/_journal.json`).
+- **gluestack InputField/TextareaInput inject a default `aria-label` ("Input Field")** which beats `accessibilityLabel` for both RNTL label queries AND the platform a11y tree — pass **`aria-label`** on form fields instead. Buttons/Pressables are unaffected.
+- gluestack `InputField` forwardRef typing bug (`ComponentRef` resolves to the props type) fixed in our copy (copy-paste ownership) — needed for `titleRef.focus()` refocus-after-save.
+- Repository takes db as first arg (`BaseSQLiteDatabase<'sync' | 'async', …>`) so integration tests pass the better-sqlite3 test db; expo-crypto mocked to node:crypto in tests (native module).
+- Sheet keeps drafts across close/reopen deliberately (interrupted capture ≠ lost capture); stays open after save + refocuses title for rapid multi-entry.
+- expo-sqlite config plugin added to app.json by `expo install` (kept).
+
+- **E2E-caught (would have shipped broken): RN 0.85 Android is edge-to-edge — `adjustResize` never resizes the Modal window, so the whole sheet hid behind the soft keyboard.** Fix: `KeyboardAvoidingView behavior="padding"` on BOTH platforms (the old `Platform.OS === 'ios'` conditional is exactly wrong on SDK 56). Verified by screenshot.
+- **gluestack Button also swallows `accessibilityLabel`** (like the inputs) — `aria-label` required for Maestro/TalkBack. Rule of thumb: on gluestack creator-based components, always use `aria-label`; plain RN Pressables can keep `accessibilityLabel`.
+- Debugging method that found both: probe Maestro flow + `takeScreenshot` + `maestro hierarchy` dump (instrument first, theorize second).
+
+### Review findings & resolutions (single reviewer, batch with 1.1)
+
+Verdict: **approve-with-fixes** (no blockers; gates independently re-run by reviewer). All fixes applied:
+
+1. Stale validation error persisted across sheet close/reopen → error cleared on `isOpen` change (drafts still retained, now commented as deliberate).
+2. Backdrop Pressable missing `accessibilityRole="button"` → added.
+3. `accessibilityLiveRegion` is Android-only — accepted (Android-only target until iOS lands; revisit with `announceForAccessibility`).
+4. `use-tasks` ordering nondeterministic for same-millisecond saves → `desc(id)` tiebreaker added.
+5. MigrationGate leaked raw driver error text to users → dev-only detail, generic message in release.
+6. Maestro save step not self-checking → `assertNotVisible: 'Could not save your task'` added.
+7. (process) Approval conditional on E2E passing — both stories stay un-done until Maestro 01/02/03 green on-device.

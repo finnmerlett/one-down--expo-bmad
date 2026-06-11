@@ -9,6 +9,10 @@ module.exports = function (api) {
     // A manual top-level entry would run FIRST (before preset plugins) and
     // workletize code before the other transforms — the silent-failure class
     // the old react-native-reanimated/plugin guidance warned about.
-    plugins: [...(isProduction ? ['transform-remove-console'] : [])],
+    plugins: [
+      // Inlines drizzle's generated .sql files as strings (drizzle/migrations.js).
+      ['inline-import', { extensions: ['.sql'] }],
+      ...(isProduction ? ['transform-remove-console'] : []),
+    ],
   };
 };
