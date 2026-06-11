@@ -20,3 +20,6 @@ logs/
 .events.jsonl
 .events.jsonl.lock
 state.json
+
+# Claude autonomous-run working notes (session-local, not project docs)
+.claude/run-notes/

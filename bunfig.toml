@@ -1,0 +1,5 @@
+# Bun 1.3 defaults workspaces to isolated (pnpm-style) installs, which breaks
+# Metro/Babel resolution in the Expo toolchain (duplicate module instances,
+# unresolvable transitive presets). Force the classic hoisted layout.
+[install]
+linker = "hoisted"

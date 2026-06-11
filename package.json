@@ -1,0 +1,26 @@
+{
+  "name": "one-down",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "packageManager": "bun@1.3.14",
+  "engines": {
+    "node": "^24.3.0"
+  },
+  "scripts": {
+    "lint": "oxlint apps packages",
+    "lint:check": "bun run lint && bun run format:check",
+    "format": "oxfmt apps packages",
+    "format:check": "oxfmt --check apps packages",
+    "typecheck": "bun --cwd packages/shared typecheck && bun --cwd apps/server typecheck && bun --cwd apps/mobile typecheck",
+    "test": "echo 'no test suites yet — harnesses land in Story 1.0a'",
+    "mobile": "bun --cwd apps/mobile start",
+    "mobile:android": "bun --cwd apps/mobile android",
+    "server:dev": "bun --cwd apps/server dev"
+  },
+  "devDependencies": {
+    "oxlint": "^1.49.0",
+    "oxfmt": "^0.54.0",
+    "typescript": "~6.0.3"
+  }
+}

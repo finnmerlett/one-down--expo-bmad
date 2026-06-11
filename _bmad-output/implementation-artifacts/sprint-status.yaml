@@ -48,8 +48,8 @@ story_location: _bmad-output/implementation-artifacts
 
 development_status:
   # Epic 1: Core Task Loop
-  epic-1: backlog
-  1-0-project-scaffold-and-development-foundation: backlog
+  epic-1: in-progress
+  1-0-project-scaffold-and-development-foundation: done
   1-0a-test-and-telemetry-foundation: backlog
   1-1-app-shell-and-navigation: backlog
   1-2-quick-add-a-task: backlog
