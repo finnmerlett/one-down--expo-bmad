@@ -51,8 +51,8 @@ development_status:
   epic-1: in-progress
   1-0-project-scaffold-and-development-foundation: done
   1-0a-test-and-telemetry-foundation: done
-  1-1-app-shell-and-navigation: backlog
-  1-2-quick-add-a-task: backlog
+  1-1-app-shell-and-navigation: in-progress
+  1-2-quick-add-a-task: ready-for-dev
   1-3-task-card-stack-and-swiping: backlog
   1-4-card-front-back-and-inline-editing: backlog
   1-5-task-overview-list: backlog

@@ -1,8 +1,10 @@
-# Story 1.0a — smoke test: the app launches and renders without JS errors.
+# Story 1.1 — app shell: top bar controls + FAB all present on launch.
 appId: com.onedown.mobile
 ---
 - runFlow: common/launch-app.yaml
-# Anchor element: the FAB exists on the home screen from Story 1.1 onwards.
+- assertVisible: 'Open task list'
+- assertVisible: 'View star activity'
+- assertVisible: 'Open settings'
 - assertVisible: 'Add task'
 - assertNotVisible: 'Unhandled'
 - assertNotVisible: 'uncaught'
