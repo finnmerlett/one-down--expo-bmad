@@ -14,13 +14,15 @@ cssInterop(SafeAreaView, { className: 'style' });
 export function AppShell({
   children,
   onAddPress,
+  onListPress,
 }: {
   children: ReactNode;
   onAddPress?: () => void;
+  onListPress?: () => void;
 }) {
   return (
     <SafeAreaView edges={['top', 'left', 'right', 'bottom']} className="flex-1 bg-background-0">
-      <TopBar />
+      <TopBar onListPress={onListPress} />
       <Box className="flex-1">{children}</Box>
       {/* No handler → no FAB: it paints above the content Box, so screens hide
           it while an overlay (e.g. the expanded card back) is up. */}

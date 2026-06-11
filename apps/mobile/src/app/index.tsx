@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 
 import { AppShell } from '@/components/app-shell/app-shell';
@@ -10,15 +11,12 @@ import { useTasks } from '@/hooks/use-tasks';
 import { track } from '@/lib/analytics/track';
 import { db } from '@/lib/local-db';
 import { curateTasks } from '@/services/curation';
-import {
-  createTask,
-  updateTask,
-  type CreateTaskInput,
-  type UpdateTaskPatch,
-} from '@/services/tasks-repository';
+import { applyTaskPatch } from '@/services/task-edits';
+import { createTask, type CreateTaskInput } from '@/services/tasks-repository';
 import { useQuickAddStore } from '@/stores/quick-add-store';
 
 export default function HomeScreen() {
+  const router = useRouter();
   const isOpen = useQuickAddStore((state) => state.isOpen);
   const open = useQuickAddStore((state) => state.open);
   const close = useQuickAddStore((state) => state.close);
@@ -39,21 +37,13 @@ export default function HomeScreen() {
     track('task_created', { source: 'quick_add', has_details: task.details !== null });
   };
 
-  // Inline auto-save: fire-and-forget against local SQLite (instantaneous,
-  // no network — AC). CardBack only emits patches that change a value.
-  const handleEdit = (patch: UpdateTaskPatch) => {
-    if (!openTask) return;
-    void updateTask(db, openTask.id, patch)
-      .then(() => {
-        for (const field of Object.keys(patch) as (keyof UpdateTaskPatch)[]) {
-          track('task_edited', { field });
-        }
-      })
-      .catch((error: unknown) => console.warn('Inline task update failed', error));
-  };
-
   return (
-    <AppShell onAddPress={openTask ? undefined : open}>
+    <AppShell
+      onAddPress={openTask ? undefined : open}
+      // Inert while the overlay is open (same as the FAB) — pushing a route
+      // would leave the overlay's BackHandler swallowing hardware back.
+      onListPress={openTask ? undefined : () => router.push('/task-list')}
+    >
       {tasks.length === 0 ? (
         <Box className="flex-1 items-center justify-center px-8">
           <Text className="text-center text-typography-400">Your tasks will appear here</Text>
@@ -70,7 +60,7 @@ export default function HomeScreen() {
       {openTask ? (
         <CardBackOverlay
           task={openTask}
-          onPatch={handleEdit}
+          onPatch={(patch) => applyTaskPatch(openTask.id, patch)}
           onDismiss={() => setOpenTaskId(null)}
         />
       ) : null}

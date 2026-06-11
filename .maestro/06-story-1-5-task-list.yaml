@@ -1,0 +1,66 @@
+# Story 1.5 — task overview list: top-bar icon opens the list (AC1) with the
+# done placeholder section at the top (AC2); tapping a row opens an isolated
+# full-screen card back whose edits persist back to the list (AC3); with no
+# tasks an empty state guides adding some (AC4).
+appId: com.onedown.mobile
+---
+- runFlow: common/launch-app.yaml
+
+# Clean launch has no tasks — empty state first (AC4), under the done
+# placeholder (AC2)
+- tapOn: 'Open task list'
+- waitForAnimationToEnd
+- assertVisible: 'Done'
+- assertVisible: 'Completed tasks will land here.'
+- assertVisible: 'No tasks yet'
+- tapOn: 'Back to home'
+- waitForAnimationToEnd
+
+# Seed two tasks via quick add
+- tapOn: 'Add task'
+- waitForAnimationToEnd
+- tapOn: 'Task title'
+- inputText: 'First listed task'
+- tapOn: 'Save task'
+- extendedWaitUntil:
+    visible: 'What needs doing?'
+    timeout: 3000
+- tapOn: 'Task title'
+- inputText: 'Second listed task'
+- tapOn: 'Save task'
+- extendedWaitUntil:
+    visible: 'What needs doing?'
+    timeout: 3000
+- tapOn: 'Close add task'
+- waitForAnimationToEnd
+
+# Every active task appears in the list (AC1)
+- tapOn: 'Open task list'
+- waitForAnimationToEnd
+- assertVisible: 'To do'
+- assertVisible: 'First listed task'
+- assertVisible: 'Second listed task'
+
+# Row tap -> isolated full-screen card back with its own back button (AC3)
+- tapOn: 'Open task: First listed task'
+- waitForAnimationToEnd
+- assertVisible: 'Back to task list'
+- assertVisible: 'Notes'
+
+# Inline edit; the back button flushes the in-flight title, and the list
+# reflects the change (auto-save reuse from 1.4)
+- tapOn: 'Task title'
+- eraseText
+- inputText: 'Renamed listed task'
+- tapOn: 'Back to task list'
+- waitForAnimationToEnd
+- assertVisible: 'Renamed listed task'
+- assertNotVisible: 'First listed task'
+
+# System back from the list lands home with the stack intact
+- back
+- waitForAnimationToEnd
+- assertVisible: 'Add task'
+
+- assertNotVisible: 'Unhandled'
+- assertNotVisible: 'error occurred'

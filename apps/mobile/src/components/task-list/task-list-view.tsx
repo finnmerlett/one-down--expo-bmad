@@ -1,0 +1,92 @@
+import { FlatList } from 'react-native';
+
+import { parseTaskContexts, type TaskData } from '@one-down/shared';
+
+import { HStack } from '@/components/ui/hstack';
+import { ChevronRightIcon, Icon } from '@/components/ui/icon';
+import { Pressable } from '@/components/ui/pressable';
+import { Text } from '@/components/ui/text';
+import { VStack } from '@/components/ui/vstack';
+
+import { CONTEXT_LABELS, SIZE_LABELS } from '@/components/card-stack/task-card';
+
+function TaskRow({ task, onPress }: { task: TaskData; onPress: () => void }) {
+  const contexts = parseTaskContexts(task.contexts);
+  const meta = [
+    task.size ? SIZE_LABELS[task.size] : null,
+    ...contexts.map((context) => (CONTEXT_LABELS as Record<string, string>)[context] ?? context),
+    task.deadline
+      ? task.deadline.toLocaleDateString(undefined, {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        })
+      : null,
+  ].filter((part): part is string => part !== null);
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      aria-label={`Open task: ${task.title}`}
+      onPress={onPress}
+      className="rounded-2xl border border-outline-200 bg-background-0 px-4 py-3 active:bg-background-50"
+    >
+      <HStack className="items-center gap-3">
+        <VStack className="flex-1 gap-0.5">
+          <Text numberOfLines={1} className="text-base font-medium text-typography-900">
+            {task.title}
+          </Text>
+          {meta.length > 0 ? (
+            <Text numberOfLines={1} className="text-sm text-typography-500">
+              {meta.join(' · ')}
+            </Text>
+          ) : null}
+        </VStack>
+        <Icon as={ChevronRightIcon} size="md" className="text-typography-400" />
+      </HStack>
+    </Pressable>
+  );
+}
+
+function ListHeader() {
+  return (
+    <VStack className="pb-3 pt-2">
+      <Text className="text-lg font-semibold text-typography-900">Done</Text>
+      {/* Placeholder — completed tasks populate this section in Epic 4. */}
+      <Text className="pb-4 text-sm text-typography-500">Completed tasks will land here.</Text>
+      <Text className="text-lg font-semibold text-typography-900">To do</Text>
+    </VStack>
+  );
+}
+
+function EmptyState() {
+  return (
+    <VStack className="items-center gap-1 py-8">
+      <Text className="font-medium text-typography-900">No tasks yet</Text>
+      <Text className="text-center text-sm text-typography-500">
+        Head back and tap the + button to add your first task.
+      </Text>
+    </VStack>
+  );
+}
+
+// Scrollable backlog overview: every active task, newest first (FR30).
+export function TaskListView({
+  tasks,
+  onTaskPress,
+}: {
+  tasks: TaskData[];
+  onTaskPress: (task: TaskData) => void;
+}) {
+  return (
+    <FlatList
+      data={tasks}
+      keyExtractor={(task) => task.id}
+      renderItem={({ item }) => <TaskRow task={item} onPress={() => onTaskPress(item)} />}
+      ListHeaderComponent={ListHeader}
+      ListEmptyComponent={EmptyState}
+      className="flex-1"
+      contentContainerClassName="gap-2 px-4 pb-8"
+    />
+  );
+}

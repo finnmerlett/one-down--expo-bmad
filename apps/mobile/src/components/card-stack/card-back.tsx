@@ -79,11 +79,14 @@ export function CardBack({
   task,
   onPatch,
   onClose,
+  backLabel = 'Back to card front',
   ref,
 }: {
   task: TaskData;
   onPatch: (patch: UpdateTaskPatch) => void;
   onClose: () => void;
+  /** A11y label for the back button — contextual per surface (overlay vs list detail). */
+  backLabel?: string;
   ref?: Ref<CardBackHandle>;
 }) {
   const [title, setTitle] = useState(task.title);
@@ -154,7 +157,7 @@ export function CardBack({
       <HStack className="items-center px-3 pt-3">
         <Pressable
           accessibilityRole="button"
-          aria-label="Back to card front"
+          aria-label={backLabel}
           hitSlop={8}
           onPress={onClose}
           className="h-10 w-10 items-center justify-center rounded-full"
