@@ -20,15 +20,15 @@ function makeTask(overrides: Partial<TaskData> = {}): TaskData {
 }
 
 describe('curateTasks', () => {
-  it('keeps only pending tasks', () => {
+  it('keeps pending and in-progress tasks, drops completed and cut-loose', () => {
     const tasks = [
-      makeTask({ id: 'a', status: 'pending' }),
+      makeTask({ id: 'a', status: 'pending', createdAt: new Date('2026-06-02') }),
       makeTask({ id: 'b', status: 'completed' }),
-      makeTask({ id: 'c', status: 'in_progress' }),
+      makeTask({ id: 'c', status: 'in_progress', createdAt: new Date('2026-06-01') }),
       makeTask({ id: 'd', status: 'cut_loose' }),
     ];
 
-    expect(curateTasks(tasks).map((t) => t.id)).toEqual(['a']);
+    expect(curateTasks(tasks).map((t) => t.id)).toEqual(['a', 'c']);
   });
 
   it('orders by deadline soonest first, no-deadline last, then newest created', () => {

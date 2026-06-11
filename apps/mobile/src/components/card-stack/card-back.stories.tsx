@@ -18,6 +18,7 @@ const meta = {
   args: {
     onPatch: () => {},
     onClose: () => {},
+    onStart: () => {},
   },
 } satisfies Meta<typeof CardBack>;
 
@@ -41,5 +42,17 @@ export const FullDetails: Story = {
 export const Minimal: Story = {
   args: {
     task: makeTask({ id: 'task-minimal', title: 'Water the plants' }),
+  },
+};
+
+// Started task — the primary action reads Continue instead of Start (2.1).
+export const InProgress: Story = {
+  args: {
+    task: makeTask({
+      id: 'task-started',
+      title: 'Sort out the garage',
+      status: 'in_progress',
+      notes: 'Shelves are up, boxes next',
+    }),
   },
 };

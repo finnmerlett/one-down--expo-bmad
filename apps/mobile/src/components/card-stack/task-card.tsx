@@ -29,13 +29,20 @@ export const CONTEXT_LABELS: Record<TaskContext, string> = {
 // Card front (Story 1.4 adds the back). Fills whatever frame the stack gives it.
 export function TaskCard({ task }: { task: TaskData }) {
   const contexts = parseTaskContexts(task.contexts);
+  const inProgress = task.status === 'in_progress';
 
   return (
     <Box className="h-full w-full rounded-3xl border border-outline-200 bg-background-0 p-6 shadow-hard-2">
       <VStack className="gap-4">
         <Text className="text-2xl font-semibold text-typography-900">{task.title}</Text>
-        {task.size || contexts.length > 0 ? (
+        {inProgress || task.size || contexts.length > 0 ? (
           <HStack className="flex-wrap gap-2">
+            {/* In-progress state marker (UX: card shows "Continue" on return). */}
+            {inProgress ? (
+              <Badge action="success" variant="solid">
+                <BadgeText>Continue</BadgeText>
+              </Badge>
+            ) : null}
             {task.size ? (
               <Badge action="info" variant="outline">
                 <BadgeText>{SIZE_LABELS[task.size]}</BadgeText>

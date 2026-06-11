@@ -1,4 +1,4 @@
-import { useImperativeHandle, useState, type Ref } from 'react';
+import { useEffect, useImperativeHandle, useState, type Ref } from 'react';
 import { KeyboardAvoidingView, ScrollView } from 'react-native';
 
 import {
@@ -79,44 +79,69 @@ export function CardBack({
   task,
   onPatch,
   onClose,
+  onStart,
   backLabel = 'Back to card front',
   ref,
 }: {
   task: TaskData;
   onPatch: (patch: UpdateTaskPatch) => void;
   onClose: () => void;
+  /** Start/Continue → task running screen (Story 2.1). Omitted = disabled placeholder. */
+  onStart?: () => void;
   /** A11y label for the back button — contextual per surface (overlay vs list detail). */
   backLabel?: string;
   ref?: Ref<CardBackHandle>;
 }) {
-  const [title, setTitle] = useState(task.title);
-  const [details, setDetails] = useState(task.details ?? '');
-  const [notes, setNotes] = useState(task.notes ?? '');
+  // Drafts OVERLAY the stored value while editing (null = not editing, the
+  // field follows the DB). When the stored value changes the draft drops:
+  // during normal editing that's just our own write landing via the live
+  // query (same text, no visual change); otherwise another screen (task
+  // running, Story 2.1) wrote while this card sat mounted-but-hidden beneath
+  // it, and stored truth must win — flushing a mount-time snapshot here used
+  // to wipe running-screen notes (review blocker).
+  const [titleDraft, setTitleDraft] = useState<string | null>(null);
+  const [detailsDraft, setDetailsDraft] = useState<string | null>(null);
+  const [notesDraft, setNotesDraft] = useState<string | null>(null);
+  useEffect(() => setTitleDraft(null), [task.title]);
+  useEffect(() => setDetailsDraft(null), [task.details]);
+  useEffect(() => setNotesDraft(null), [task.notes]);
+
+  const title = titleDraft ?? task.title;
+  const details = detailsDraft ?? task.details ?? '';
+  const notes = notesDraft ?? task.notes ?? '';
 
   const flushTitle = () => {
-    const trimmed = title.trim();
-    if (!trimmed) {
-      // Titles can't be blanked — revert the draft to the stored value.
-      setTitle(task.title);
+    if (titleDraft === null) return;
+    const trimmed = titleDraft.trim();
+    if (!trimmed || trimmed === task.title) {
+      // Blank reverts (titles can't be emptied); unchanged needs no write.
+      setTitleDraft(null);
       return;
     }
-    if (trimmed !== task.title) {
-      onPatch({ title: trimmed });
-    }
+    // The draft stays up until the write round-trips through the live query.
+    onPatch({ title: trimmed });
   };
 
   const flushDetails = () => {
-    const trimmed = details.trim();
-    if (trimmed !== (task.details ?? '')) {
-      onPatch({ details: trimmed ? trimmed : null });
+    if (detailsDraft === null) return;
+    const trimmed = detailsDraft.trim();
+    const next = trimmed ? trimmed : null;
+    if (next === (task.details ?? null)) {
+      setDetailsDraft(null);
+      return;
     }
+    onPatch({ details: next });
   };
 
   const flushNotes = () => {
-    const trimmed = notes.trim();
-    if (trimmed !== (task.notes ?? '')) {
-      onPatch({ notes: trimmed ? trimmed : null });
+    if (notesDraft === null) return;
+    const trimmed = notesDraft.trim();
+    const next = trimmed ? trimmed : null;
+    if (next === (task.notes ?? null)) {
+      setNotesDraft(null);
+      return;
     }
+    onPatch({ notes: next });
   };
 
   useImperativeHandle(ref, () => ({
@@ -143,6 +168,17 @@ export function CardBack({
     // Tapping the selected size again clears it back to unset.
     onPatch({ size: task.size === size ? null : size });
   };
+
+  // In-flight text drafts must persist before leaving for the running screen
+  // — navigation, like overlay dismissal, gives no blur guarantee.
+  const handleStart = () => {
+    flushTitle();
+    flushDetails();
+    flushNotes();
+    onStart?.();
+  };
+
+  const startLabel = task.status === 'in_progress' ? 'Continue' : 'Start';
 
   const deadlineLabel = task.deadline
     ? task.deadline.toLocaleDateString(undefined, {
@@ -178,7 +214,7 @@ export function CardBack({
                 aria-label="Task title"
                 placeholder="What needs doing?"
                 value={title}
-                onChangeText={setTitle}
+                onChangeText={setTitleDraft}
                 onBlur={flushTitle}
                 className="text-2xl font-semibold text-typography-900"
               />
@@ -190,7 +226,7 @@ export function CardBack({
                   aria-label="Task details"
                   placeholder="Add details"
                   value={details}
-                  onChangeText={setDetails}
+                  onChangeText={setDetailsDraft}
                   onBlur={flushDetails}
                 />
               </Textarea>
@@ -207,7 +243,7 @@ export function CardBack({
                   aria-label="Task notes"
                   placeholder="Notes to self"
                   value={notes}
-                  onChangeText={setNotes}
+                  onChangeText={setNotesDraft}
                   onBlur={flushNotes}
                 />
               </Textarea>
@@ -241,10 +277,16 @@ export function CardBack({
                 ))}
               </HStack>
             </VStack>
-            {/* Wired in Epic 2 (Start → task running, Cut Loose → release). */}
+            {/* Cut Loose is wired in Story 2.4. */}
             <HStack className="gap-3 pt-2">
-              <Button size="lg" className="flex-1" isDisabled aria-label="Start task">
-                <ButtonText>Start</ButtonText>
+              <Button
+                size="lg"
+                className="flex-1"
+                isDisabled={!onStart}
+                onPress={handleStart}
+                aria-label={`${startLabel} task`}
+              >
+                <ButtonText>{startLabel}</ButtonText>
               </Button>
               <Button
                 size="lg"

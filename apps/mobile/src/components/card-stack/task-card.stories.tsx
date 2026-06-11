@@ -53,3 +53,15 @@ export const WithSizeAndContexts: Story = {
     }),
   },
 };
+
+// Started task back in the stack — shows the Continue marker (UX flow 4).
+export const InProgress: Story = {
+  args: {
+    task: makeTask({
+      id: 'task-3',
+      title: 'Sort out the garage',
+      status: 'in_progress',
+      size: 'big_time',
+    }),
+  },
+};

@@ -1,0 +1,93 @@
+# Story 2.1 — start & continue a task: Start on the card back opens the task
+# running screen with title/details/notes/action row (AC1), leaving mid-task
+# marks the card front "Continue" (AC2), and continuing reopens the running
+# screen with notes preserved (AC3). Notes typed on the running screen are
+# verified AFTER leaving and re-entering — proves persistence via the flush.
+appId: com.onedown.mobile
+---
+- runFlow: common/launch-app.yaml
+
+# Seed one task via quick add
+- tapOn: 'Add task'
+- waitForAnimationToEnd
+- tapOn: 'Task title'
+- inputText: 'Start me task'
+- tapOn: 'Save task'
+- extendedWaitUntil:
+    visible: 'What needs doing?'
+    timeout: 3000
+- tapOn: 'Close add task'
+- waitForAnimationToEnd
+
+# Open the card back -> Start is live (AC1)
+- tapOn: 'Task: Start me task. Card 1 of 1'
+- waitForAnimationToEnd
+- tapOn: 'Start task'
+- waitForAnimationToEnd
+
+# Task running screen: title, notes area, action row (AC1)
+- assertVisible: 'Start me task'
+- assertVisible: 'Notes'
+- assertVisible: 'Done'
+- assertVisible: 'Help me with this'
+- assertVisible: 'Cut loose'
+
+# Add a working note, then leave mid-task WITHOUT blurring the field — the
+# note must survive via the beforeRemove flush, not the onBlur save
+- tapOn: 'Task notes'
+- inputText: 'Halfway through the pile'
+- tapOn: 'Pause and go back'
+- waitForAnimationToEnd
+
+# Card front now shows the Continue marker (AC2)
+- extendedWaitUntil:
+    visible: 'Task: Start me task. Card 1 of 1'
+    timeout: 3000
+- assertVisible: 'Continue'
+
+# Reopen the back -> primary action reads Continue; tap it (AC2/AC3)
+- tapOn: 'Task: Start me task. Card 1 of 1'
+- waitForAnimationToEnd
+- tapOn: 'Continue task'
+- waitForAnimationToEnd
+
+# Previous notes preserved on the running screen (AC3)
+- assertVisible: 'Halfway through the pile'
+
+# Hardware back also leaves cleanly — home stack intact, still continuable
+- back
+- waitForAnimationToEnd
+- assertVisible: 'Task: Start me task. Card 1 of 1'
+- assertVisible: 'Continue'
+
+# Second surface: task list → detail. The detail screen stays mounted under
+# the running screen — after editing notes there, the card back must show the
+# NEW note and re-entering must not wipe it (review blocker regression).
+- tapOn: 'Open task list'
+- waitForAnimationToEnd
+- tapOn: 'Open task: Start me task'
+- waitForAnimationToEnd
+- assertVisible: 'Halfway through the pile'
+- tapOn: 'Continue task'
+- waitForAnimationToEnd
+- tapOn: 'Task notes'
+- eraseText
+- inputText: 'Sweeping the floor now'
+- tapOn: 'Pause and go back'
+- waitForAnimationToEnd
+- assertVisible: 'Sweeping the floor now'
+- tapOn: 'Continue task'
+- waitForAnimationToEnd
+- assertVisible: 'Sweeping the floor now'
+
+# Unwind to home: running → detail → list → home
+- back
+- waitForAnimationToEnd
+- back
+- waitForAnimationToEnd
+- back
+- waitForAnimationToEnd
+- assertVisible: 'Add task'
+
+- assertNotVisible: 'Unhandled'
+- assertNotVisible: 'error occurred'

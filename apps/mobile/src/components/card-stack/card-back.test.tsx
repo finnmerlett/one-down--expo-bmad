@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import * as cardBackStories from './card-back.stories';
 
-const { FullDetails, Minimal } = composeStories(cardBackStories);
+const { FullDetails, Minimal, InProgress } = composeStories(cardBackStories);
 
 describe('CardBack (portable stories)', () => {
   it('renders all sections with the stored values', async () => {
@@ -82,6 +82,48 @@ describe('CardBack (portable stories)', () => {
     // Toggling an active context removes it.
     await fireEvent.press(screen.getByLabelText('Context: Home'));
     expect(onPatch).toHaveBeenCalledWith({ contexts: ['phone'] });
+  });
+
+  it('follows an external notes update when the field is not being edited', async () => {
+    const onPatch = jest.fn();
+    const screen1 = await render(<FullDetails onPatch={onPatch} />);
+
+    // Another screen (task running) wrote notes while this card sat hidden
+    // beneath it — the new stored value must win over the mount-time state...
+    const updatedTask = {
+      ...FullDetails.args!.task!,
+      notes: 'Rewritten on the running screen',
+      updatedAt: new Date('2026-06-21T09:00:00Z'),
+    };
+    await screen1.rerender(<FullDetails onPatch={onPatch} task={updatedTask} />);
+    expect(screen.getByLabelText('Task notes').props.value).toBe('Rewritten on the running screen');
+
+    // ...and blurring the untouched field must NOT flush anything stale.
+    await fireEvent(screen.getByLabelText('Task notes'), 'blur');
+    expect(onPatch).not.toHaveBeenCalled();
+  });
+
+  it('labels the primary action Continue for an in-progress task', async () => {
+    await render(<InProgress />);
+
+    expect(screen.getByLabelText('Continue task')).toBeTruthy();
+  });
+
+  it('flushes pending text drafts before reporting Start', async () => {
+    const onPatch = jest.fn();
+    const onStart = jest.fn();
+    await render(<FullDetails onPatch={onPatch} onStart={onStart} />);
+
+    // Edited but NOT blurred — Start must persist the draft before leaving.
+    await fireEvent.changeText(screen.getByLabelText('Task notes'), 'Bring the insurance card');
+    await fireEvent.press(screen.getByLabelText('Start task'));
+
+    expect(onPatch).toHaveBeenCalledWith({ notes: 'Bring the insurance card' });
+    expect(onStart).toHaveBeenCalledTimes(1);
+    // The invariant is the ORDER: persist first, then leave.
+    expect(onPatch.mock.invocationCallOrder[0] ?? Infinity).toBeLessThan(
+      onStart.mock.invocationCallOrder[0] ?? 0,
+    );
   });
 
   it('sets, and re-tap clears, the size', async () => {

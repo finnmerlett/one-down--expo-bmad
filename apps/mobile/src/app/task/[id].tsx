@@ -1,12 +1,12 @@
-import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
-import { useEffect, useRef } from 'react';
+import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { cssInterop } from 'nativewind';
 
 import { CardBack, type CardBackHandle } from '@/components/card-stack/card-back';
 import { Box } from '@/components/ui/box';
 import { useTasks } from '@/hooks/use-tasks';
-import { applyTaskPatch } from '@/services/task-edits';
+import { applyTaskPatch, startTask } from '@/services/task-edits';
 
 // Third-party component — NativeWind only auto-interops react-native core.
 cssInterop(SafeAreaView, { className: 'style' });
@@ -40,6 +40,18 @@ export default function TaskDetailScreen() {
     router.back();
   };
 
+  // Once-per-focus guard: a double tap on Start must not push the running
+  // screen twice (or emit task_started twice from the stale-status prop).
+  // Re-arming on focus is what lets Continue work again after returning.
+  // (Draft staleness while this route sits beneath the running screen is
+  // handled inside CardBack — draft-or-stored values.)
+  const startingRef = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      startingRef.current = false;
+    }, []),
+  );
+
   if (!task) {
     // Live query hasn't emitted yet (first render). Tasks can't be deleted
     // until Epic 7 and no deep links are exposed yet, so a missing id is
@@ -55,6 +67,12 @@ export default function TaskDetailScreen() {
           task={task}
           onPatch={(patch) => applyTaskPatch(task.id, patch)}
           onClose={close}
+          onStart={() => {
+            if (startingRef.current) return;
+            startingRef.current = true;
+            startTask(task, 'list_detail');
+            router.push(`/task-running/${task.id}`);
+          }}
           backLabel="Back to task list"
         />
       </Box>

@@ -30,10 +30,13 @@ export function CardBackOverlay({
   task,
   onPatch,
   onDismiss,
+  onStart,
 }: {
   task: TaskData;
   onPatch: (patch: UpdateTaskPatch) => void;
   onDismiss: () => void;
+  /** Start/Continue → task running screen (Story 2.1). CardBack flushes drafts itself. */
+  onStart?: () => void;
 }) {
   const cardBackRef = useRef<CardBackHandle>(null);
   const progress = useSharedValue(0);
@@ -88,7 +91,13 @@ export function CardBackOverlay({
         className="absolute bottom-0 left-0 right-0 top-0"
       />
       <Animated.View style={frameStyle}>
-        <CardBack ref={cardBackRef} task={task} onPatch={onPatch} onClose={close} />
+        <CardBack
+          ref={cardBackRef}
+          task={task}
+          onPatch={onPatch}
+          onClose={close}
+          onStart={onStart}
+        />
       </Animated.View>
     </>
   );

@@ -20,6 +20,8 @@ export type AnalyticsEventMap = EnforceFlatProps<{
   task_created: { source: 'quick_add'; has_details: boolean };
   /** Story 1.4 — a field was edited inline on the card back (field NAME only, never the value). */
   task_edited: { field: 'title' | 'details' | 'notes' | 'contexts' | 'size' };
+  /** Story 2.1 — first pending → in_progress transition (Continue taps don't re-emit). */
+  task_started: { via: 'card_back_overlay' | 'list_detail' };
 }>;
 
 export type AnalyticsEventName = keyof AnalyticsEventMap;

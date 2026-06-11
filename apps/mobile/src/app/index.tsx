@@ -11,7 +11,7 @@ import { useTasks } from '@/hooks/use-tasks';
 import { track } from '@/lib/analytics/track';
 import { db } from '@/lib/local-db';
 import { curateTasks } from '@/services/curation';
-import { applyTaskPatch } from '@/services/task-edits';
+import { applyTaskPatch, startTask } from '@/services/task-edits';
 import { createTask, type CreateTaskInput } from '@/services/tasks-repository';
 import { useQuickAddStore } from '@/stores/quick-add-store';
 
@@ -49,8 +49,9 @@ export default function HomeScreen() {
           <Text className="text-center text-typography-400">Your tasks will appear here</Text>
         </Box>
       ) : curated.length === 0 ? (
-        // Tasks exist but none are browsable (unreachable until Epic 2 adds
-        // status changes) — AC8: the "no tasks" message must not show here.
+        // Tasks exist but none are browsable (unreachable until 2.3/2.4 add
+        // completed/cut-loose — in_progress stays in the stack) — AC8: the
+        // "no tasks" message must not show here.
         <Box className="flex-1 items-center justify-center px-8">
           <Text className="text-center text-typography-400">Nothing to browse right now</Text>
         </Box>
@@ -62,6 +63,13 @@ export default function HomeScreen() {
           task={openTask}
           onPatch={(patch) => applyTaskPatch(openTask.id, patch)}
           onDismiss={() => setOpenTaskId(null)}
+          onStart={() => {
+            startTask(openTask, 'card_back_overlay');
+            // Unmount the overlay BEFORE pushing — its BackHandler stays live
+            // under a pushed route and would swallow hardware back there.
+            setOpenTaskId(null);
+            router.push(`/task-running/${openTask.id}`);
+          }}
         />
       ) : null}
       <QuickAddSheet isOpen={isOpen} onClose={close} onSubmit={handleSubmit} />

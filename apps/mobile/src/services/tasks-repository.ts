@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 import { randomUUID } from 'expo-crypto';
 
-import type { TaskContext, TaskData, TaskSize } from '@one-down/shared';
+import type { TaskContext, TaskData, TaskSize, TaskStatus } from '@one-down/shared';
 import { tasks } from '@one-down/shared/schema-local';
 
 // Repository functions take the db as first argument so integration tests can
@@ -63,6 +63,15 @@ export interface UpdateTaskPatch {
 function normalizeText(value: string | null): string | null {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
+}
+
+/**
+ * Status transitions (start/complete/cut-loose, Epic 2) are deliberate domain
+ * actions, not inline edits — kept out of UpdateTaskPatch so the card back's
+ * generic patch path can never change a task's lifecycle state.
+ */
+export async function setTaskStatus(db: TasksDb, id: string, status: TaskStatus): Promise<void> {
+  await db.update(tasks).set({ status, updatedAt: new Date() }).where(eq(tasks.id, id));
 }
 
 export async function updateTask(db: TasksDb, id: string, patch: UpdateTaskPatch): Promise<void> {
