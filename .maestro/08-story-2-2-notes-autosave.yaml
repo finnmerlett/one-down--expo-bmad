@@ -1,0 +1,53 @@
+# Story 2.2 — add notes during execution: notes typed on the running screen
+# persist WHILE TYPING via the 500 ms debounced autosave (AC1). The key
+# moment: the app is killed with the notes field never blurred and never
+# flushed (no navigation) — only the debounced write can have saved them.
+# Relaunching shows Continue and the note intact (AC1 + AC3).
+appId: com.onedown.mobile
+---
+- runFlow: common/launch-app.yaml
+
+# Seed one task via the shared quick-add subflow
+- runFlow:
+    file: common/add-task.yaml
+    env:
+      TITLE: 'Notes survive task'
+
+# Open the card back and start the task
+- tapOn: 'Task: Notes survive task. Card 1 of 1'
+- waitForAnimationToEnd
+- tapOn: 'Start task'
+- waitForAnimationToEnd
+
+# Type notes and DO NOT blur, DO NOT navigate — just idle past the debounce.
+# extendedWaitUntil on a never-present anchor is the Maestro sleep idiom:
+# optional means it waits the full timeout, then continues without failing.
+- tapOn: 'Task notes'
+- inputText: 'Typed and never blurred'
+- extendedWaitUntil:
+    visible: 'NEVER_PRESENT_ANCHOR'
+    timeout: 1500
+    optional: true
+
+# Kill the process, relaunch WITHOUT clearing state (must NOT use the common
+# launch subflow here) — the debounced write must already be in SQLite
+- stopApp
+- launchApp
+
+# Card front shows the Continue marker; reopen the back and continue
+- extendedWaitUntil:
+    visible: 'Task: Notes survive task. Card 1 of 1'
+    timeout: 5000
+- assertVisible: 'Continue'
+- tapOn: 'Task: Notes survive task. Card 1 of 1'
+- waitForAnimationToEnd
+- tapOn: 'Continue task'
+- waitForAnimationToEnd
+
+# The never-blurred note survived process death (AC1) and re-opening shows
+# all previously saved notes (AC3)
+- assertVisible: 'Typed and never blurred'
+- takeScreenshot: .claude/run-notes/screenshots/2-2-notes-survive-kill
+
+- assertNotVisible: 'Unhandled'
+- assertNotVisible: 'error occurred'

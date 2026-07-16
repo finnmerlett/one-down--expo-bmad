@@ -21,6 +21,28 @@ export function applyTaskPatch(taskId: string, patch: UpdateTaskPatch): void {
 }
 
 /**
+ * Notes autosave for the running screen (Story 2.2): fire-and-forget write
+ * like applyTaskPatch, but `task_edited { field: 'notes' }` is emitted only
+ * on the FIRST successful write per saver instance — the while-typing
+ * debounce would otherwise spam an event on every pause. One instance per
+ * screen session keeps the event honest ("user edited notes during
+ * execution"). Never any note content in props (NFR-S3).
+ */
+export function createNotesAutosaver(taskId: string): (notes: string | null) => void {
+  let tracked = false;
+  return (notes) => {
+    void updateTask(db, taskId, { notes })
+      .then(() => {
+        if (tracked) return;
+        tracked = true;
+        track('task_edited', { field: 'notes' });
+      })
+      // oxlint-disable-next-line no-console
+      .catch((error: unknown) => console.warn('Notes autosave failed', error));
+  };
+}
+
+/**
  * Start (or resume) a task before opening the running screen. Only the first
  * pending → in_progress transition writes and emits `task_started` — tapping
  * Continue on an already-started task changes nothing (notes/progress are

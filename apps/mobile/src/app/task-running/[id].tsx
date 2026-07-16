@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { cssInterop } from 'nativewind';
 
@@ -11,7 +11,7 @@ import { HStack } from '@/components/ui/hstack';
 import { ArrowLeftIcon, Icon } from '@/components/ui/icon';
 import { Pressable } from '@/components/ui/pressable';
 import { useTasks } from '@/hooks/use-tasks';
-import { applyTaskPatch } from '@/services/task-edits';
+import { createNotesAutosaver } from '@/services/task-edits';
 
 // Third-party component — NativeWind only auto-interops react-native core.
 cssInterop(SafeAreaView, { className: 'style' });
@@ -27,6 +27,10 @@ export default function TaskRunningScreen() {
   const task = tasks.find((candidate) => candidate.id === id) ?? null;
 
   const viewRef = useRef<TaskRunningViewHandle>(null);
+
+  // One saver per screen session (Story 2.2): debounced autosaves all funnel
+  // through it so `task_edited` fires at most once per session, not per pause.
+  const saveNotes = useMemo(() => createNotesAutosaver(id), [id]);
 
   // Blur is not guaranteed on unmount — flush the notes draft before the
   // route pops, whatever pops it (back button, hardware back, iOS swipe-back).
@@ -63,10 +67,11 @@ export default function TaskRunningScreen() {
           <Icon as={ArrowLeftIcon} size="xl" className="text-typography-900" />
         </Pressable>
       </HStack>
+      {/* The running view only ever patches notes. */}
       <TaskRunningView
         ref={viewRef}
         task={task}
-        onPatch={(patch) => applyTaskPatch(task.id, patch)}
+        onPatch={(patch) => saveNotes(patch.notes ?? null)}
       />
     </SafeAreaView>
   );
