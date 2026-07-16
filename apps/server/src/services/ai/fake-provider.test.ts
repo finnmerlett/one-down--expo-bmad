@@ -150,6 +150,58 @@ describe('fake provider deadline + timeSensitive rules', () => {
   });
 });
 
+describe('fake provider task breakdown (Story 6.3 E2E contract)', () => {
+  it('first_steps returns exactly the three starter steps with the title interpolated', async () => {
+    const steps = await provider.breakdownTask({
+      title: 'Sort the paperwork mountain',
+      details: null,
+      notes: null,
+      mode: 'first_steps',
+    });
+
+    expect(steps).toEqual([
+      'Get everything you need for "Sort the paperwork mountain" in one place',
+      'Do just the first two minutes',
+      'Set a 10-minute timer and keep going',
+    ]);
+  });
+
+  it('full returns the three starters plus the three finishers, in order', async () => {
+    const steps = await provider.breakdownTask({
+      title: 'Sort the paperwork mountain',
+      details: null,
+      notes: null,
+      mode: 'full',
+    });
+
+    expect(steps).toEqual([
+      'Get everything you need for "Sort the paperwork mountain" in one place',
+      'Do just the first two minutes',
+      'Set a 10-minute timer and keep going',
+      'Push through to the halfway point',
+      'Finish the last stretch',
+      'Put things away and tick it off',
+    ]);
+  });
+
+  it('ignores details and notes — output depends only on title and mode', async () => {
+    const bare = await provider.breakdownTask({
+      title: 'Fix the bike',
+      details: null,
+      notes: null,
+      mode: 'first_steps',
+    });
+    const contextual = await provider.breakdownTask({
+      title: 'Fix the bike',
+      details: 'The back brake is rubbing',
+      notes: 'Allen keys are in the shed',
+      mode: 'first_steps',
+    });
+
+    expect(contextual).toEqual(bare);
+  });
+});
+
 describe('fake provider determinism', () => {
   it('produces deep-equal output for the same input parsed twice', async () => {
     const text =

@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'bun:test';
 
-import { MAX_PARSED_TASKS } from '@one-down/shared';
+import { MAX_BREAKDOWN_STEP_CHARS, MAX_BREAKDOWN_STEPS, MAX_PARSED_TASKS } from '@one-down/shared';
 
-import { decodeModelResponse, mapModelResponse } from './gemini-provider';
+import {
+  decodeBreakdownResponse,
+  decodeModelResponse,
+  mapBreakdownResponse,
+  mapModelResponse,
+} from './gemini-provider';
 
 // Pure mapping layer only — no network. The live generateContent path is
 // exercised manually with a real key (out of scope for CI).
@@ -103,6 +108,85 @@ describe('mapModelResponse', () => {
     expect(() => mapModelResponse({ tasks: [] })).toThrow(/not a JSON array/);
     expect(() => mapModelResponse('[]')).toThrow(/not a JSON array/);
     expect(() => mapModelResponse(undefined)).toThrow(/not a JSON array/);
+  });
+});
+
+describe('mapBreakdownResponse', () => {
+  it('trims steps and drops empty and non-string entries', () => {
+    const steps = mapBreakdownResponse([
+      '  Clear the desk  ',
+      '',
+      '   ',
+      42,
+      null,
+      { step: 'nested' },
+      'Open the folder',
+    ]);
+
+    expect(steps).toEqual(['Clear the desk', 'Open the folder']);
+  });
+
+  it(`truncates steps longer than ${MAX_BREAKDOWN_STEP_CHARS} chars`, () => {
+    const longStep = `Sort ${'papers '.repeat(40)}into piles`;
+
+    const steps = mapBreakdownResponse([longStep]);
+
+    expect(steps[0]?.length).toBeLessThanOrEqual(MAX_BREAKDOWN_STEP_CHARS);
+    expect(steps[0]).toBe(longStep.slice(0, MAX_BREAKDOWN_STEP_CHARS).trimEnd());
+  });
+
+  it('never splits a surrogate pair at the truncation boundary', () => {
+    // An astral char (emoji) straddling the cut: code units 140 and 141.
+    const step = `${'x'.repeat(MAX_BREAKDOWN_STEP_CHARS - 1)}\u{1f600}tail`;
+
+    const steps = mapBreakdownResponse([step]);
+
+    // The lone high surrogate is dropped, not emitted as an ill-formed string.
+    expect(steps[0]).toBe('x'.repeat(MAX_BREAKDOWN_STEP_CHARS - 1));
+  });
+
+  it(`clamps output to ${MAX_BREAKDOWN_STEPS} steps`, () => {
+    const raw = Array.from({ length: MAX_BREAKDOWN_STEPS + 5 }, (_, i) => `Step ${i + 1}`);
+
+    const steps = mapBreakdownResponse(raw);
+
+    expect(steps).toHaveLength(MAX_BREAKDOWN_STEPS);
+    expect(steps.at(-1)).toBe(`Step ${MAX_BREAKDOWN_STEPS}`);
+  });
+
+  it('throws when the top-level shape is not an array (broken model contract)', () => {
+    expect(() => mapBreakdownResponse({ steps: [] })).toThrow(/not a JSON array/);
+    expect(() => mapBreakdownResponse('["step"]')).toThrow(/not a JSON array/);
+    expect(() => mapBreakdownResponse(undefined)).toThrow(/not a JSON array/);
+  });
+
+  it('throws when no usable steps survive mapping', () => {
+    expect(() => mapBreakdownResponse([])).toThrow(/no usable steps/);
+    expect(() => mapBreakdownResponse(['   ', 42, null])).toThrow(/no usable steps/);
+  });
+});
+
+describe('decodeBreakdownResponse', () => {
+  it('decodes a valid JSON array body into steps', () => {
+    expect(decodeBreakdownResponse('["Clear the desk","Open the folder"]')).toEqual([
+      'Clear the desk',
+      'Open the folder',
+    ]);
+  });
+
+  it('replaces JSON parse failures with a generic message that never embeds the body (NFR-S3)', () => {
+    // Non-JSON model output — a bare JSON.parse SyntaxError would quote a
+    // fragment of this task-derived text.
+    const body = 'First, call the bank about the overdraft';
+    let caught: unknown;
+    try {
+      decodeBreakdownResponse(body);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(Error);
+    expect((caught as Error).message).toBe('AI model response was not valid JSON');
   });
 });
 

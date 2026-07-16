@@ -26,3 +26,21 @@ export interface BrainDumpResult {
   tasks: ParsedTaskDraft[];
   provider: AiProviderName;
 }
+
+/**
+ * Task breakdown depth (Story 6.3): 'first_steps' = just enough to get moving
+ * (FR40 default), 'full' = the complete step list ("Show all steps").
+ */
+export const BREAKDOWN_MODES = ['first_steps', 'full'] as const;
+export type BreakdownMode = (typeof BREAKDOWN_MODES)[number];
+
+/**
+ * Response DTO of the `ai.breakdownTask` tRPC mutation. Steps are plain
+ * PROPOSAL strings — nothing is persisted server-side; the mobile client
+ * saves accepted steps as local subtasks.
+ */
+export interface BreakdownResult {
+  steps: string[];
+  mode: BreakdownMode;
+  provider: AiProviderName;
+}

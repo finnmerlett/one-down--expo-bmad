@@ -1,0 +1,24 @@
+# Shared subflow — seed ONE task through the quick-add UI.
+# Post-6.1 navigation: the FAB ('Add task') opens the brain dump screen;
+# quick add is reached via 'Add one task instead'. Ends back on the home
+# stack with the sheet closed.
+# Usage:
+#   - runFlow:
+#       file: common/seed-task.yaml
+#       env:
+#         TASK_TITLE: 'My task title'
+appId: com.onedown.mobile
+---
+- tapOn: 'Add task'
+- waitForAnimationToEnd
+- tapOn: 'Add one task instead'
+- waitForAnimationToEnd
+- tapOn: 'Task title'
+- inputText: ${TASK_TITLE}
+- tapOn: 'Save task'
+# The input clears back to its placeholder once the save lands
+- extendedWaitUntil:
+    visible: 'What needs doing?'
+    timeout: 3000
+- tapOn: 'Close add task'
+- waitForAnimationToEnd

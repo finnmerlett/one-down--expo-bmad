@@ -5,7 +5,7 @@ import {
   type TaskSize,
 } from '@one-down/shared';
 
-import type { AiProvider } from './provider';
+import type { AiProvider, BreakdownTaskInput } from './provider';
 
 // Deterministic fake provider — the no-GEMINI_API_KEY local mode (AC6).
 // The rules below are a CONTRACT: Maestro E2E flows assert against these
@@ -82,6 +82,23 @@ function draftFromSegment(segment: string): ParsedTaskDraft {
   };
 }
 
+// Story 6.3 breakdown contract (Maestro asserts these exact strings):
+// - first_steps: three starters, the first interpolating the task title
+// - full: the three starters + three finisher steps
+function fakeFirstSteps(title: string): string[] {
+  return [
+    `Get everything you need for "${title}" in one place`,
+    'Do just the first two minutes',
+    'Set a 10-minute timer and keep going',
+  ];
+}
+
+const FAKE_REMAINING_STEPS = [
+  'Push through to the halfway point',
+  'Finish the last stretch',
+  'Put things away and tick it off',
+] as const;
+
 export function createFakeProvider(): AiProvider {
   return {
     parseBrainDump(text: string): Promise<ParsedTaskDraft[]> {
@@ -92,6 +109,13 @@ export function createFakeProvider(): AiProvider {
         .slice(0, MAX_PARSED_TASKS);
 
       return Promise.resolve(segments.map(draftFromSegment));
+    },
+
+    breakdownTask({ title, mode }: BreakdownTaskInput): Promise<string[]> {
+      const firstSteps = fakeFirstSteps(title);
+      return Promise.resolve(
+        mode === 'full' ? [...firstSteps, ...FAKE_REMAINING_STEPS] : firstSteps,
+      );
     },
   };
 }

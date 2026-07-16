@@ -1,0 +1,97 @@
+# Story 6.3 — AI task breakdown: "Help me with this" on the running screen
+# requests first_steps via ai.breakdownTask (deterministic fake provider),
+# the proposal can be expanded to the full list and accepted as subtasks
+# (AC1–AC3), subtasks tick/untick/delete and survive leave+re-enter (AC4),
+# and the card-back entry auto-fires the request on arrival (AC6).
+# Fake-provider breakdown contract (fake-provider.ts — lockstep with this flow):
+#   first_steps: Get everything you need for "<title>" in one place /
+#     Do just the first two minutes / Set a 10-minute timer and keep going
+#   full: the three above + Push through to the halfway point /
+#     Finish the last stretch / Put things away and tick it off
+# Prereq (batched wave-end run): local server running WITHOUT GEMINI_API_KEY
+# (fake mode) and the APK built with EXPO_PUBLIC_API_URL=http://10.0.2.2:3000
+# (Story 5.1).
+# 3.3-proofing: card labels are matched by PREFIX regex ('Task: <title>\..*')
+# so Story 3.3's label extension ("Worth n stars") cannot break this flow, and
+# each stage relaunches with clearState + seeds exactly ONE task so 3.3's
+# randomized curation ordering can never decide which card is on top.
+appId: com.onedown.mobile
+---
+- runFlow: common/launch-app.yaml
+- runFlow:
+    file: common/seed-task.yaml
+    env:
+      TASK_TITLE: 'Sort the paperwork mountain'
+
+# Open the card back and start the task (2.1 surface)
+- tapOn: 'Task: Sort the paperwork mountain\..*'
+- waitForAnimationToEnd
+- tapOn: 'Start task'
+- waitForAnimationToEnd
+
+# Request a breakdown — loading lives in the subtask area only (AC1)
+- tapOn: 'Help me with this'
+- assertVisible: 'Breaking this down...'
+
+# Proposal arrives: the first_steps contract steps are listed (AC2)
+- extendedWaitUntil:
+    visible: 'Do just the first two minutes'
+    timeout: 15000
+- assertVisible: 'Add these steps'
+- assertVisible: 'Not helpful'
+
+# 'Show all steps' re-requests with mode=full and replaces the proposal (AC2)
+- tapOn: 'Show all steps'
+- extendedWaitUntil:
+    visible: 'Put things away and tick it off'
+    timeout: 15000
+
+# Accept: proposal becomes the live subtask list (AC3)
+- tapOn: 'Add these steps'
+- extendedWaitUntil:
+    visible: 'Subtask: Do just the first two minutes'
+    timeout: 5000
+- assertVisible: 'Subtask: Put things away and tick it off'
+- assertNotVisible: 'Add these steps'
+- takeScreenshot: .maestro/screenshots/09-story-6-3-subtask-list
+
+# Tick a subtask — checked state is exposed via accessibility (AC4)
+- tapOn: 'Subtask: Do just the first two minutes'
+- assertVisible:
+    text: 'Subtask: Do just the first two minutes'
+    checked: true
+
+# Leave mid-task and come back (pause/continue) — the tick persisted (AC4)
+- tapOn: 'Pause and go back'
+- waitForAnimationToEnd
+- tapOn: 'Task: Sort the paperwork mountain\..*'
+- waitForAnimationToEnd
+- tapOn: 'Continue task'
+- waitForAnimationToEnd
+- assertVisible:
+    text: 'Subtask: Do just the first two minutes'
+    checked: true
+
+# Delete a subtask — the row disappears (AC4)
+- tapOn: 'Delete subtask: Set a 10-minute timer and keep going'
+- assertNotVisible: 'Subtask: Set a 10-minute timer and keep going'
+
+# Card-back entry: 'Help me with this' starts the task and lands on the
+# running screen with the breakdown request already in flight (AC6).
+# Fresh clearState launch: the garden task is the ONLY card, so the tap is
+# deterministic no matter how curation (3.3) orders a multi-card stack.
+- runFlow: common/launch-app.yaml
+- runFlow:
+    file: common/seed-task.yaml
+    env:
+      TASK_TITLE: 'Plan the garden overhaul'
+- tapOn: 'Task: Plan the garden overhaul\..*'
+- waitForAnimationToEnd
+- tapOn: 'Help me with this'
+- assertVisible: 'Breaking this down...'
+- extendedWaitUntil:
+    visible: 'Do just the first two minutes'
+    timeout: 15000
+
+- assertNotVisible: 'Unhandled'
+- assertNotVisible: 'error occurred'
