@@ -3,13 +3,14 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import * as taskListStories from './task-list-view.stories';
 
-const { Populated, Empty } = composeStories(taskListStories);
+const { Populated, Empty, WithDoneTasks } = composeStories(taskListStories);
 
 describe('TaskListView (portable stories)', () => {
   it('renders the done placeholder section above every task row', async () => {
     await render(<Populated />);
 
     expect(screen.getByText('Done')).toBeTruthy();
+    // Placeholder copy shows ONLY while no done tasks exist (Story 2.3).
     expect(screen.getByText('Completed tasks will land here.')).toBeTruthy();
     expect(screen.getByText('To do')).toBeTruthy();
     expect(screen.getByText('Book dentist appointment')).toBeTruthy();
@@ -38,6 +39,26 @@ describe('TaskListView (portable stories)', () => {
 
     expect(onTaskPress).toHaveBeenCalledTimes(1);
     expect(onTaskPress.mock.calls[0]?.[0]?.id).toBe('task-2');
+  });
+
+  it('partitions completed tasks into Done and hides cut-loose ones entirely (Story 2.3)', async () => {
+    await render(<WithDoneTasks />);
+
+    // Completed tasks are display-only Done rows — no Open press target.
+    expect(screen.getByLabelText('Completed: Book dentist appointment')).toBeTruthy();
+    expect(screen.getByLabelText('Completed: Sort out the garage')).toBeTruthy();
+    expect(screen.queryByLabelText('Open task: Book dentist appointment')).toBeNull();
+    expect(screen.queryByLabelText('Open task: Sort out the garage')).toBeNull();
+
+    // Pending task stays a pressable To do row.
+    expect(screen.getByLabelText('Open task: Water the plants')).toBeTruthy();
+
+    // Cut-loose task appears in NEITHER section (recycle bin is Epic 7).
+    expect(screen.queryByText('Cancel gym membership')).toBeNull();
+    expect(screen.queryByLabelText('Completed: Cancel gym membership')).toBeNull();
+
+    // With done tasks present the placeholder copy makes way for real rows.
+    expect(screen.queryByText('Completed tasks will land here.')).toBeNull();
   });
 
   it('guides the user to add tasks when the list is empty', async () => {

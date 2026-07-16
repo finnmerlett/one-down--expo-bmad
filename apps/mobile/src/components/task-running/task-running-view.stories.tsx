@@ -44,3 +44,15 @@ export const Bare: Story = {
     }),
   },
 };
+
+/** Story 2.3 — Done wired (enabled); Cut loose still a placeholder until 2.4. */
+export const DoneEnabled: Story = {
+  args: {
+    task: makeTask({
+      id: 'task-running-done',
+      title: 'Sort out the garage',
+      status: 'in_progress',
+    }),
+    onDone: () => {},
+  },
+};

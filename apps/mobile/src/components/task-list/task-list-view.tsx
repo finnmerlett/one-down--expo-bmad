@@ -2,6 +2,7 @@ import { FlatList } from 'react-native';
 
 import { parseTaskContexts, type TaskData } from '@one-down/shared';
 
+import { Box } from '@/components/ui/box';
 import { HStack } from '@/components/ui/hstack';
 import { ChevronRightIcon, Icon } from '@/components/ui/icon';
 import { Pressable } from '@/components/ui/pressable';
@@ -48,12 +49,40 @@ function TaskRow({ task, onPress }: { task: TaskData; onPress: () => void }) {
   );
 }
 
-function ListHeader() {
+// Completed rows are a calm achievement record (Story 2.3): display-only —
+// no press target, muted styling. Viewing/restoring lands in Epic 7. The
+// distinct `Completed:` label prefix keeps selectors unambiguous vs the
+// pressable `Open task:` rows.
+function DoneRow({ task }: { task: TaskData }) {
+  return (
+    <Box
+      accessible
+      aria-label={`Completed: ${task.title}`}
+      className="rounded-2xl border border-outline-100 bg-background-50 px-4 py-3"
+    >
+      <Text numberOfLines={1} className="text-base text-typography-500">
+        {task.title}
+      </Text>
+    </Box>
+  );
+}
+
+// Done section renders inside ListHeaderComponent — done lists stay short
+// pre-Epic-7, so one FlatList over `todo` avoids SectionList churn. Hiding
+// the header entirely when empty is Story 4.4.
+function ListHeader({ done }: { done: TaskData[] }) {
   return (
     <VStack className="pb-3 pt-2">
       <Text className="text-lg font-semibold text-typography-900">Done</Text>
-      {/* Placeholder — completed tasks populate this section in Epic 4. */}
-      <Text className="pb-4 text-sm text-typography-500">Completed tasks will land here.</Text>
+      {done.length === 0 ? (
+        <Text className="pb-4 text-sm text-typography-500">Completed tasks will land here.</Text>
+      ) : (
+        <VStack className="gap-2 pb-4 pt-2">
+          {done.map((task) => (
+            <DoneRow key={task.id} task={task} />
+          ))}
+        </VStack>
+      )}
       <Text className="text-lg font-semibold text-typography-900">To do</Text>
     </VStack>
   );
@@ -70,7 +99,10 @@ function EmptyState() {
   );
 }
 
-// Scrollable backlog overview: every active task, newest first (FR30).
+// Scrollable backlog overview: active tasks newest first (FR30), completed
+// tasks in the Done section above (most recently finished first — updatedAt
+// desc; there is deliberately no completedAt column). Cut-loose tasks appear
+// in NEITHER section — the recycle bin arrives in Epic 7.
 export function TaskListView({
   tasks,
   onTaskPress,
@@ -78,12 +110,17 @@ export function TaskListView({
   tasks: TaskData[];
   onTaskPress: (task: TaskData) => void;
 }) {
+  const todo = tasks.filter((task) => task.status === 'pending' || task.status === 'in_progress');
+  const done = tasks
+    .filter((task) => task.status === 'completed')
+    .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+
   return (
     <FlatList
-      data={tasks}
+      data={todo}
       keyExtractor={(task) => task.id}
       renderItem={({ item }) => <TaskRow task={item} onPress={() => onTaskPress(item)} />}
-      ListHeaderComponent={ListHeader}
+      ListHeaderComponent={<ListHeader done={done} />}
       ListEmptyComponent={EmptyState}
       className="flex-1"
       contentContainerClassName="gap-2 px-4 pb-8"

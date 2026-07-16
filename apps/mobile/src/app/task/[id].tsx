@@ -52,6 +52,21 @@ export default function TaskDetailScreen() {
     }, []),
   );
 
+  // Not-browsable self-pop (Story 2.3, AC7): this route stays mounted beneath
+  // the running screen — if the task was completed (or cut loose, 2.4) up
+  // there, popping back must not strand the user on a dead card back. Only
+  // while FOCUSED: calling router.back() while not top-of-stack would pop the
+  // running screen instead. useFocusEffect re-runs on focus AND on dep
+  // change, covering both orderings of pop vs. live-query emit.
+  const status = task?.status;
+  useFocusEffect(
+    useCallback(() => {
+      if (status && status !== 'pending' && status !== 'in_progress') close();
+      // close is ref-guarded and recreated per render — deliberately not a dep.
+      // oxlint-disable-next-line react-hooks/exhaustive-deps
+    }, [status]),
+  );
+
   if (!task) {
     // Live query hasn't emitted yet (first render). Tasks can't be deleted
     // until Epic 7 and no deep links are exposed yet, so a missing id is

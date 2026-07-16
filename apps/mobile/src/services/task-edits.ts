@@ -57,3 +57,20 @@ export function startTask(task: TaskData, via: 'card_back_overlay' | 'list_detai
     // oxlint-disable-next-line no-console
     .catch((error: unknown) => console.warn('Task start failed', error));
 }
+
+/**
+ * Mark a task completed (Story 2.3). Fire-and-forget like startTask — the
+ * route pops immediately, the write lands via the module-scoped db.
+ * `pending` is allowed: the startTask write may not have landed yet when the
+ * user taps Done straight away (2.1 race).
+ */
+export function completeTask(task: TaskData): void {
+  if (task.status === 'completed' || task.status === 'cut_loose') return;
+  void setTaskStatus(db, task.id, 'completed')
+    .then(() => {
+      // Epic 4 (4.1): awardStars(...) slots in here, next to the track call.
+      track('task_completed', { size: task.size, had_notes: task.notes !== null });
+    })
+    // oxlint-disable-next-line no-console
+    .catch((error: unknown) => console.warn('Task complete failed', error));
+}

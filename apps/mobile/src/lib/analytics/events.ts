@@ -22,6 +22,8 @@ export type AnalyticsEventMap = EnforceFlatProps<{
   task_edited: { field: 'title' | 'details' | 'notes' | 'contexts' | 'size' };
   /** Story 2.1 — first pending → in_progress transition (Continue taps don't re-emit). */
   task_started: { via: 'card_back_overlay' | 'list_detail' };
+  /** Story 2.3 — task marked completed (star earning is Epic 4's `stars_awarded`). */
+  task_completed: { size: 'quick_win' | 'big_time' | null; had_notes: boolean };
 }>;
 
 export type AnalyticsEventName = keyof AnalyticsEventMap;

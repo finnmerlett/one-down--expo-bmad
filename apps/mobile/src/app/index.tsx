@@ -49,9 +49,8 @@ export default function HomeScreen() {
           <Text className="text-center text-typography-400">Your tasks will appear here</Text>
         </Box>
       ) : curated.length === 0 ? (
-        // Tasks exist but none are browsable (unreachable until 2.3/2.4 add
-        // completed/cut-loose — in_progress stays in the stack) — AC8: the
-        // "no tasks" message must not show here.
+        // Tasks exist but none are browsable — every task is completed (2.3)
+        // or cut loose (2.4). The "no tasks" message must not show here.
         <Box className="flex-1 items-center justify-center px-8">
           <Text className="text-center text-typography-400">Nothing to browse right now</Text>
         </Box>

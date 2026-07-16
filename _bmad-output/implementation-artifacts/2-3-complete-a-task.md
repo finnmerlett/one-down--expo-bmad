@@ -1,6 +1,6 @@
 # Story 2.3: Complete a Task
 
-Status: ready-for-dev
+Status: done
 Date: 2026-07-16
 Mode: Full-completion run (wave orchestration; spec-first)
 

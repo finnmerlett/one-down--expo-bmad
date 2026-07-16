@@ -27,16 +27,18 @@ export const NOTES_AUTOSAVE_DEBOUNCE_MS = 500;
  * Task running screen body (UX-DR 6): title + description for focus, an
  * editable notes area for working thoughts (draft/blur/flush auto-save like
  * the card back, PLUS a while-typing debounced autosave — Story 2.2), and the
- * action row. Done (Story 2.3), "Help me with this" (Epic 6), and Cut Loose
- * (Story 2.4) are disabled placeholders here.
+ * action row. Done completes the task (Story 2.3); "Help me with this" stays
+ * a disabled placeholder (Epic 6); Cut Loose lands in Story 2.4.
  */
 export function TaskRunningView({
   task,
   onPatch,
+  onDone,
   ref,
 }: {
   task: TaskData;
   onPatch: (patch: UpdateTaskPatch) => void;
+  onDone?: () => void;
   ref?: Ref<TaskRunningViewHandle>;
 }) {
   // Draft-or-stored: null draft = not editing, the field follows the DB.
@@ -111,6 +113,14 @@ export function TaskRunningView({
 
   useImperativeHandle(ref, () => ({ flush: flushNotes }));
 
+  // Flush-then-act (2.1 handleStart pattern): the in-flight notes draft must
+  // be persisted BEFORE completion is reported — tapping Done with the
+  // keyboard up must not lose the typed note (AC4).
+  const handleDone = () => {
+    flushNotes();
+    onDone?.();
+  };
+
   return (
     // Edge-to-edge Android never resizes for the keyboard — explicit padding
     // keeps the notes field reachable while editing (same as the card back).
@@ -136,8 +146,8 @@ export function TaskRunningView({
           </VStack>
           <Box className="flex-1" />
           <VStack className="gap-3">
-            {/* Primary action — completes the task (wired in Story 2.3). */}
-            <Button size="xl" isDisabled aria-label="Done">
+            {/* Primary action — completes the task (Story 2.3). */}
+            <Button size="xl" isDisabled={!onDone} onPress={handleDone} aria-label="Done">
               <ButtonText>Done</ButtonText>
             </Button>
             {/* AI breakdown placeholder (Epic 6) and Cut Loose (Story 2.4). */}

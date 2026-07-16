@@ -44,3 +44,25 @@ export const Empty: Story = {
     tasks: [],
   },
 };
+
+/** Story 2.3 — completed tasks fill the Done section; cut-loose ones vanish. */
+export const WithDoneTasks: Story = {
+  args: {
+    tasks: [
+      makeTask({ id: 'task-1', title: 'Water the plants' }),
+      makeTask({
+        id: 'task-2',
+        title: 'Book dentist appointment',
+        status: 'completed',
+        updatedAt: new Date('2026-06-03T10:00:00Z'),
+      }),
+      makeTask({
+        id: 'task-3',
+        title: 'Sort out the garage',
+        status: 'completed',
+        updatedAt: new Date('2026-06-05T10:00:00Z'),
+      }),
+      makeTask({ id: 'task-4', title: 'Cancel gym membership', status: 'cut_loose' }),
+    ],
+  },
+};

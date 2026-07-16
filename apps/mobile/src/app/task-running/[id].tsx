@@ -3,6 +3,9 @@ import { useEffect, useMemo, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { cssInterop } from 'nativewind';
 
+import { STAR_WEIGHTS } from '@one-down/shared';
+
+import { RewardToast } from '@/components/feedback/reward-toast';
 import {
   TaskRunningView,
   type TaskRunningViewHandle,
@@ -10,8 +13,9 @@ import {
 import { HStack } from '@/components/ui/hstack';
 import { ArrowLeftIcon, Icon } from '@/components/ui/icon';
 import { Pressable } from '@/components/ui/pressable';
+import { useToast } from '@/components/ui/toast';
 import { useTasks } from '@/hooks/use-tasks';
-import { createNotesAutosaver } from '@/services/task-edits';
+import { completeTask, createNotesAutosaver } from '@/services/task-edits';
 
 // Third-party component — NativeWind only auto-interops react-native core.
 cssInterop(SafeAreaView, { className: 'style' });
@@ -23,6 +27,7 @@ export default function TaskRunningScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const navigation = useNavigation();
+  const toast = useToast();
   const tasks = useTasks();
   const task = tasks.find((candidate) => candidate.id === id) ?? null;
 
@@ -46,6 +51,29 @@ export default function TaskRunningScreen() {
     if (closedRef.current) return;
     closedRef.current = true;
     router.back();
+  };
+
+  // Once-guard shared by the terminal actions (Done now, Cut Loose in 2.4):
+  // the `task.status` prop is stale until the live query re-emits, so the
+  // service-level status gate alone can't stop a double tap here.
+  const actedRef = useRef(false);
+  const handleDone = () => {
+    if (!task || actedRef.current) return;
+    actedRef.current = true;
+    completeTask(task);
+    // Shown from the provider root — survives the route pop below.
+    toast.show({
+      placement: 'top',
+      duration: 2000,
+      render: ({ id: toastId }) => (
+        <RewardToast
+          nativeID={`toast-${toastId}`}
+          title="One down!"
+          stars={STAR_WEIGHTS.taskCompletion}
+        />
+      ),
+    });
+    close();
   };
 
   if (!task) {
@@ -72,6 +100,7 @@ export default function TaskRunningScreen() {
         ref={viewRef}
         task={task}
         onPatch={(patch) => saveNotes(patch.notes ?? null)}
+        onDone={handleDone}
       />
     </SafeAreaView>
   );

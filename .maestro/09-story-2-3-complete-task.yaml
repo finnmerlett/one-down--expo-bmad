@@ -1,0 +1,46 @@
+# Story 2.3 — complete a task: Done on the running screen marks the task
+# completed, a "One down!" reward toast shows the star amount (display-only
+# until Epic 4), the stack advances to the next card, and the task list shows
+# the completed task under Done (display-only) instead of To do.
+appId: com.onedown.mobile
+---
+- runFlow: common/launch-app.yaml
+
+# Seed two tasks. Curation shows newest-created first, so 'Finish me first'
+# is seeded SECOND to sit on top of the stack (card 1 of 2).
+- runFlow:
+    file: common/add-task.yaml
+    env:
+      TITLE: 'Next in line'
+- runFlow:
+    file: common/add-task.yaml
+    env:
+      TITLE: 'Finish me first'
+
+# Open the top card's back, start the task, land on the running screen
+- tapOn: 'Task: Finish me first. Card 1 of 2'
+- waitForAnimationToEnd
+- tapOn: 'Start task'
+- waitForAnimationToEnd
+
+# Complete it — assert the toast fast (it auto-dismisses after ~2 s)
+- tapOn: 'Done'
+- assertVisible: 'One down!'
+- assertVisible: '+5 stars'
+- takeScreenshot: .claude/run-notes/screenshots/2-3-completion-toast
+
+# The running screen closed and the stack promoted the next card (AC3)
+- extendedWaitUntil:
+    visible: 'Task: Next in line. Card 1 of 1'
+    timeout: 5000
+- assertNotVisible: 'Finish me first'
+
+# Task list: completed task is a display-only Done row, gone from To do (AC5)
+- tapOn: 'Open task list'
+- waitForAnimationToEnd
+- assertVisible: 'Completed: Finish me first'
+- assertVisible: 'Open task: Next in line'
+- assertNotVisible: 'Open task: Finish me first'
+
+- assertNotVisible: 'Unhandled'
+- assertNotVisible: 'error occurred'

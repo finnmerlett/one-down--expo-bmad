@@ -30,12 +30,36 @@ describe('TaskRunningView (portable stories)', () => {
     expect(screen.getByText('Sort out the garage')).toBeTruthy();
     expect(screen.getByText('At least clear a path to the freezer')).toBeTruthy();
     expect(screen.getByLabelText('Task notes').props.value).toBe('Shelves are up, boxes next');
-    // Present but inert until their stories land (2.3 / Epic 6 / 2.4).
+    // Done is disabled without onDone (Story 2.3); the rest stay inert until
+    // their stories land (Epic 6 / 2.4).
     expect(screen.getByLabelText('Done').props.accessibilityState?.disabled).toBe(true);
     expect(screen.getByLabelText('Help me with this').props.accessibilityState?.disabled).toBe(
       true,
     );
     expect(screen.getByLabelText('Cut loose').props.accessibilityState?.disabled).toBe(true);
+  });
+
+  it('enables Done when onDone is provided (Story 2.3)', async () => {
+    await render(<WithDetailsAndNotes onDone={() => {}} />);
+
+    expect(screen.getByLabelText('Done').props.accessibilityState?.disabled).toBeFalsy();
+  });
+
+  it('flushes the notes draft BEFORE reporting Done (Story 2.3, AC4)', async () => {
+    const onPatch = jest.fn();
+    const onDone = jest.fn();
+    await render(<WithDetailsAndNotes onPatch={onPatch} onDone={onDone} />);
+
+    // Keyboard still up, debounce not yet fired — tap Done immediately.
+    await fireEvent.changeText(screen.getByLabelText('Task notes'), 'Final thought');
+    await fireEvent.press(screen.getByLabelText('Done'));
+
+    expect(onPatch).toHaveBeenCalledWith({ notes: 'Final thought' });
+    expect(onDone).toHaveBeenCalledTimes(1);
+    // The invariant is the ORDER: persist first, then complete.
+    expect(onPatch.mock.invocationCallOrder[0] ?? Infinity).toBeLessThan(
+      onDone.mock.invocationCallOrder[0] ?? 0,
+    );
   });
 
   it('renders without details and with empty notes', async () => {
