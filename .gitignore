@@ -23,3 +23,7 @@ state.json
 
 # Claude autonomous-run working notes (session-local, not project docs)
 .claude/run-notes/
+
+# Maestro E2E screenshot output (regenerated every run)
+.maestro/screenshots/*
+!.maestro/screenshots/.gitkeep

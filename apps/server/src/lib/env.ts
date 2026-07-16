@@ -11,6 +11,8 @@ const envSchema = z
     HOST: z.string().default('0.0.0.0'),
     CORS_ORIGIN: z.string().default('*'),
     DATABASE_URL: z.string().default(LOCAL_SUPABASE_DB_URL),
+    // Absent → the AI service runs the deterministic fake provider (local/E2E mode).
+    GEMINI_API_KEY: z.string().optional(),
   })
   .superRefine((env, ctx) => {
     // Fail fast at boot when a production deploy forgot to inject DATABASE_URL

@@ -1,0 +1,49 @@
+# Story 6.1 — brain dump: the FAB now opens the brain dump screen (UX-DR15),
+# submitting a dump creates one local task per extracted item via the server's
+# ai.parseBrainDump (deterministic fake provider), and quick add stays
+# reachable through 'Add one task instead'.
+# Prereq (batched wave-end run): local server running WITHOUT GEMINI_API_KEY
+# (fake mode) and the APK built with EXPO_PUBLIC_API_URL=http://10.0.2.2:3000
+# (Story 5.1).
+appId: com.onedown.mobile
+---
+- runFlow: common/launch-app.yaml
+
+# FAB opens the brain dump screen (AC1)
+- tapOn: 'Add task'
+- waitForAnimationToEnd
+- assertVisible: "What's on your mind?"
+
+# Alternative leg: 'Add one task instead' returns home and opens the
+# quick-add sheet (AC1)
+- tapOn: 'Add one task instead'
+- waitForAnimationToEnd
+- assertVisible: 'Task title'
+- tapOn: 'Close add task'
+- waitForAnimationToEnd
+
+# Main leg: submit a dump. Fake-provider contract: segments split on '.',
+# 'call' → phone context, 'tomorrow' → deadline tomorrow 18:00,
+# 'clean' → home context (AC2/AC4/AC6)
+- tapOn: 'Add task'
+- waitForAnimationToEnd
+- tapOn: 'Brain dump'
+- inputText: 'Call the dentist tomorrow. Clean out the garage'
+- tapOn: 'Parse my tasks'
+
+# Parse + local creation + pop home; the dentist task carries the sooner
+# deadline so curation puts it on top (AC4)
+- extendedWaitUntil:
+    visible: 'Task: Call the dentist tomorrow. Card 1 of 2'
+    timeout: 15000
+- takeScreenshot: .maestro/screenshots/08-story-6-1-brain-dump-stack
+
+# The second parsed task is in the stack too
+- swipe:
+    start: 80%, 45%
+    end: 5%, 45%
+- waitForAnimationToEnd
+- assertVisible: 'Task: Clean out the garage. Card 2 of 2'
+
+- assertNotVisible: 'Unhandled'
+- assertNotVisible: 'error occurred'
