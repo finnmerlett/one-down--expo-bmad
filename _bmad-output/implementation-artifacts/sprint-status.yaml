@@ -62,7 +62,7 @@ development_status:
   # Epic 2: Task Execution
   epic-2: in-progress
   2-1-start-and-continue-a-task: done
-  2-2-add-notes-during-execution: backlog
+  2-2-add-notes-during-execution: done
   2-3-complete-a-task: backlog
   2-4-cut-loose-a-task: backlog
   epic-2-retrospective: optional
