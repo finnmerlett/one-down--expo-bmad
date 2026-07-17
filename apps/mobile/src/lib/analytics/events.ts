@@ -21,7 +21,7 @@ export type AnalyticsEventMap = EnforceFlatProps<{
   /** Story 1.2 — a task is saved from the quick-add sheet. */
   task_created: { source: 'quick_add'; has_details: boolean };
   /** Story 1.4 — a field was edited inline on the card back (field NAME only, never the value). */
-  task_edited: { field: 'title' | 'details' | 'notes' | 'contexts' | 'size' };
+  task_edited: { field: 'title' | 'details' | 'notes' | 'contexts' | 'size' | 'deadline' };
   /** Story 2.1 — first pending → in_progress transition (Continue taps don't re-emit). */
   task_started: { via: 'card_back_overlay' | 'list_detail' };
   /** Story 2.3 — task marked completed (star earning is Epic 4's `stars_awarded`). */
@@ -39,7 +39,7 @@ export type AnalyticsEventMap = EnforceFlatProps<{
   stack_filters_cleared: { via: 'empty_state' };
   /** Story 4.1 — a star transaction was recorded (amounts only, never task text). */
   stars_awarded: {
-    action: 'task_completed' | 'task_cut_loose';
+    action: 'task_completed' | 'task_cut_loose' | 'triage_confirmed';
     amount: number;
     base: number;
     urgency_bonus: number;
@@ -96,6 +96,15 @@ export type AnalyticsEventMap = EnforceFlatProps<{
   };
   /** Story 6.1 — parse failed; the inline error offers retry / quick add. */
   brain_dump_failed: { reason: 'network' | 'server_error' };
+  /** Story 6.2 — the info icon was tapped and the stack filtered to flagged cards. */
+  review_mode_entered: { card_count: number };
+  /** Story 6.2 — one review item confirmed (tick or edit-confirm; field name only). */
+  review_item_confirmed: {
+    field: 'size' | 'contexts' | 'deadline' | 'missing_deadline';
+    via: 'tick' | 'edit';
+  };
+  /** Story 6.2 — a confirmation emptied a task's flags (per task, not per session). */
+  review_completed: Record<string, never>;
 }>;
 
 export type AnalyticsEventName = keyof AnalyticsEventMap;

@@ -89,3 +89,16 @@ export const NearDeadlineValue: Story = {
     starValue: 15,
   },
 };
+
+// Story 6.2 — the front carries the review marker when checks are pending.
+export const NeedsReview: Story = {
+  args: {
+    task: makeTask({
+      id: 'task-6',
+      title: 'Call the dentist soon',
+      contexts: '["phone"]',
+      hasCheckNeeded: true,
+      reviewFlags: JSON.stringify({ inferred: ['contexts'], missingDeadline: true }),
+    }),
+  },
+};

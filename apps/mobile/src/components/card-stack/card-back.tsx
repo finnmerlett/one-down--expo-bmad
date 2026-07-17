@@ -1,10 +1,13 @@
-import { useEffect, useImperativeHandle, useState, type Ref } from 'react';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useEffect, useImperativeHandle, useState, type ReactNode, type Ref } from 'react';
 import { KeyboardAvoidingView, ScrollView } from 'react-native';
 
 import {
+  parseReviewFlags,
   parseTaskContexts,
   TASK_CONTEXTS,
   TASK_SIZES,
+  type ReviewItem,
   type TaskContext,
   type TaskData,
   type TaskSize,
@@ -13,7 +16,7 @@ import {
 import { Box } from '@/components/ui/box';
 import { Button, ButtonText } from '@/components/ui/button';
 import { HStack } from '@/components/ui/hstack';
-import { ArrowLeftIcon, Icon } from '@/components/ui/icon';
+import { ArrowLeftIcon, CheckIcon, Icon } from '@/components/ui/icon';
 import { Input, InputField } from '@/components/ui/input';
 import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
@@ -30,6 +33,62 @@ export interface CardBackHandle {
 
 function SectionLabel({ children }: { children: string }) {
   return <Text className="text-sm font-medium text-typography-500">{children}</Text>;
+}
+
+/** Deadline chip presets (Story 6.2, AC6): N days ahead at 18:00 local. */
+function deadlineFromNow(daysAhead: number): Date {
+  const date = new Date();
+  date.setDate(date.getDate() + daysAhead);
+  date.setHours(18, 0, 0, 0);
+  return date;
+}
+
+/**
+ * Section wrapper with the review treatment (Story 6.2, AC3): flagged
+ * sections get an amber highlight (warning tones, never red), an "AI guessed"
+ * hint, and — for inferred flags — a confirm tick that clears the flag
+ * without changing the value. Unflagged sections render label + content only.
+ */
+function ReviewSection({
+  label,
+  flagged,
+  hint = 'AI guessed',
+  confirmLabel,
+  onConfirm,
+  children,
+}: {
+  label: string;
+  flagged: boolean;
+  hint?: string;
+  confirmLabel: string;
+  /** Only inferred flags get the tick; the missing-deadline prompt is answered by editing. */
+  onConfirm?: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <VStack
+      className={flagged ? 'gap-2 rounded-xl border border-warning-400 bg-warning-50 p-3' : 'gap-2'}
+    >
+      <HStack className="items-center justify-between">
+        <VStack className="gap-0.5">
+          <SectionLabel>{label}</SectionLabel>
+          {flagged ? <Text className="text-xs text-warning-700">{hint}</Text> : null}
+        </VStack>
+        {flagged && onConfirm ? (
+          <Pressable
+            accessibilityRole="button"
+            aria-label={confirmLabel}
+            hitSlop={8}
+            onPress={onConfirm}
+            className="h-11 w-11 items-center justify-center rounded-full"
+          >
+            <Icon as={CheckIcon} size="xl" className="text-warning-700" />
+          </Pressable>
+        ) : null}
+      </HStack>
+      {children}
+    </VStack>
+  );
 }
 
 function Chip({
@@ -81,6 +140,7 @@ export function CardBack({
   onClose,
   onStart,
   onCutLoose,
+  onConfirm,
   backLabel = 'Back to card front',
   ref,
 }: {
@@ -91,6 +151,8 @@ export function CardBack({
   onStart?: () => void;
   /** Cut loose → guilt-free archive (Story 2.4). Omitted = disabled. */
   onCutLoose?: () => void;
+  /** Tick-confirm a review item without editing it (Story 6.2). Omitted = no ticks. */
+  onConfirm?: (item: ReviewItem) => void;
   /** A11y label for the back button — contextual per surface (overlay vs list detail). */
   backLabel?: string;
   ref?: Ref<CardBackHandle>;
@@ -200,6 +262,19 @@ export function CardBack({
       })
     : 'No deadline';
 
+  // Review flags (Story 6.2): flagged sections get the highlight + tick.
+  const reviewFlags = parseReviewFlags(task.reviewFlags);
+  const inferred = reviewFlags?.inferred ?? [];
+  const missingDeadline = reviewFlags?.missingDeadline === true;
+
+  // Deadline is editable for ALL tasks from 6.2 (chips + native picker).
+  const [showPicker, setShowPicker] = useState(false);
+  const patchDeadline = (next: Date | null) => {
+    // Change-gated like the text fields — no spurious updatedAt bumps.
+    if ((task.deadline?.getTime() ?? null) === (next?.getTime() ?? null)) return;
+    onPatch({ deadline: next });
+  };
+
   return (
     <Box className="h-full w-full overflow-hidden rounded-3xl border border-outline-200 bg-background-0 shadow-hard-2">
       <HStack className="items-center px-3 pt-3">
@@ -243,11 +318,66 @@ export function CardBack({
                 />
               </Textarea>
             </VStack>
-            <VStack className="gap-1">
-              <SectionLabel>Deadline</SectionLabel>
-              {/* Display-only for now — deadline editing arrives with triage (Epic 6). */}
+            <ReviewSection
+              label="Deadline"
+              flagged={inferred.includes('deadline') || missingDeadline}
+              hint={missingDeadline ? 'Needs a deadline — when?' : 'AI guessed'}
+              confirmLabel="Confirm deadline"
+              onConfirm={
+                inferred.includes('deadline') && onConfirm ? () => onConfirm('deadline') : undefined
+              }
+            >
               <Text className="text-typography-900">{deadlineLabel}</Text>
-            </VStack>
+              <HStack className="flex-wrap gap-2">
+                <Chip
+                  label="Today"
+                  accessibilityLabel="Deadline: Today"
+                  selected={false}
+                  onPress={() => patchDeadline(deadlineFromNow(0))}
+                />
+                <Chip
+                  label="Tomorrow"
+                  accessibilityLabel="Deadline: Tomorrow"
+                  selected={false}
+                  onPress={() => patchDeadline(deadlineFromNow(1))}
+                />
+                <Chip
+                  label="Next week"
+                  accessibilityLabel="Deadline: Next week"
+                  selected={false}
+                  onPress={() => patchDeadline(deadlineFromNow(7))}
+                />
+                <Chip
+                  label="Pick a date…"
+                  accessibilityLabel="Pick a deadline date"
+                  selected={false}
+                  onPress={() => setShowPicker(true)}
+                />
+                {task.deadline && !inferred.includes('deadline') && !missingDeadline ? (
+                  <Chip
+                    label="Clear"
+                    accessibilityLabel="Clear deadline"
+                    selected={false}
+                    onPress={() => patchDeadline(null)}
+                  />
+                ) : null}
+              </HStack>
+              {showPicker ? (
+                <DateTimePicker
+                  value={task.deadline ?? deadlineFromNow(1)}
+                  mode="date"
+                  onChange={(event, picked) => {
+                    setShowPicker(false);
+                    if (event.type === 'set' && picked) {
+                      // Same 18:00-local convention as the chips.
+                      const next = new Date(picked);
+                      next.setHours(18, 0, 0, 0);
+                      patchDeadline(next);
+                    }
+                  }}
+                />
+              ) : null}
+            </ReviewSection>
             <VStack className="gap-2">
               <SectionLabel>Notes</SectionLabel>
               <Textarea size="md">
@@ -260,8 +390,14 @@ export function CardBack({
                 />
               </Textarea>
             </VStack>
-            <VStack className="gap-2">
-              <SectionLabel>Contexts</SectionLabel>
+            <ReviewSection
+              label="Contexts"
+              flagged={inferred.includes('contexts')}
+              confirmLabel="Confirm contexts"
+              onConfirm={
+                inferred.includes('contexts') && onConfirm ? () => onConfirm('contexts') : undefined
+              }
+            >
               <HStack className="flex-wrap gap-2">
                 {TASK_CONTEXTS.map((context) => (
                   <Chip
@@ -274,9 +410,15 @@ export function CardBack({
                   />
                 ))}
               </HStack>
-            </VStack>
-            <VStack className="gap-2">
-              <SectionLabel>Size</SectionLabel>
+            </ReviewSection>
+            <ReviewSection
+              label="Size"
+              flagged={inferred.includes('size')}
+              confirmLabel="Confirm size"
+              onConfirm={
+                inferred.includes('size') && onConfirm ? () => onConfirm('size') : undefined
+              }
+            >
               <HStack className="gap-2">
                 {TASK_SIZES.map((size) => (
                   <Chip
@@ -288,7 +430,7 @@ export function CardBack({
                   />
                 ))}
               </HStack>
-            </VStack>
+            </ReviewSection>
             {/* Cut loose is deliberately frictionless — no confirm, no warning
                 color (zero-guilt release; the recycle bin restore is Epic 7). */}
             <HStack className="gap-3 pt-2">

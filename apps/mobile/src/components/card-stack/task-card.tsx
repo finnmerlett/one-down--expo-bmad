@@ -8,7 +8,7 @@ import {
 import { Badge, BadgeText } from '@/components/ui/badge';
 import { Box } from '@/components/ui/box';
 import { HStack } from '@/components/ui/hstack';
-import { Icon, StarIcon } from '@/components/ui/icon';
+import { Icon, InfoIcon, StarIcon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 
@@ -36,6 +36,15 @@ export function TaskCard({ task, starValue }: { task: TaskData; starValue: numbe
 
   return (
     <Box className="h-full w-full rounded-3xl border border-outline-200 bg-background-0 p-6 shadow-hard-2">
+      {/* Review marker (Story 6.2): visual only — the interactive tap target
+          lives in the stack layer, above the swipe gesture (the top card is
+          an accessible container, so an inner button would be flattened away
+          from TalkBack/Maestro). */}
+      {task.hasCheckNeeded ? (
+        <Box className="absolute right-4 top-4">
+          <Icon as={InfoIcon} size="xl" className="text-warning-600" />
+        </Box>
+      ) : null}
       <VStack className="gap-4">
         <Text className="text-2xl font-semibold text-typography-900">{task.title}</Text>
         <HStack className="flex-wrap items-center gap-2">

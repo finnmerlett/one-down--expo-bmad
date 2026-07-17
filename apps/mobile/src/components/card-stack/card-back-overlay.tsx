@@ -7,7 +7,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
-import type { TaskData } from '@one-down/shared';
+import type { ReviewItem, TaskData } from '@one-down/shared';
 
 import { Pressable } from '@/components/ui/pressable';
 
@@ -32,6 +32,7 @@ export function CardBackOverlay({
   onDismiss,
   onStart,
   onCutLoose,
+  onConfirm,
 }: {
   task: TaskData;
   onPatch: (patch: UpdateTaskPatch) => void;
@@ -40,6 +41,8 @@ export function CardBackOverlay({
   onStart?: () => void;
   /** Cut loose → guilt-free archive (Story 2.4). CardBack flushes drafts itself. */
   onCutLoose?: () => void;
+  /** Tick-confirm a review item (Story 6.2) — passed straight through to CardBack. */
+  onConfirm?: (item: ReviewItem) => void;
 }) {
   const cardBackRef = useRef<CardBackHandle>(null);
   const progress = useSharedValue(0);
@@ -101,6 +104,7 @@ export function CardBackOverlay({
           onClose={close}
           onStart={onStart}
           onCutLoose={onCutLoose}
+          onConfirm={onConfirm}
         />
       </Animated.View>
     </>

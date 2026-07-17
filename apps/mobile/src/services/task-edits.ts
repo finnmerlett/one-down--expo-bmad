@@ -1,23 +1,63 @@
-import type { TaskData } from '@one-down/shared';
+import type { ReviewItem, TaskData } from '@one-down/shared';
 
 import { track } from '@/lib/analytics/track';
 import { db } from '@/lib/local-db';
-import { setTaskStatus, updateTask, type UpdateTaskPatch } from '@/services/tasks-repository';
+import { awardReviewConfirmStars } from '@/services/star-awards';
+import {
+  confirmReviewItem as repoConfirmReviewItem,
+  setTaskStatus,
+  updateTask,
+  type UpdateTaskPatch,
+} from '@/services/tasks-repository';
+
+/** Analytics field name for a review item (snake_case in props — NFR-L1 taxonomy). */
+function reviewItemField(item: ReviewItem): 'size' | 'contexts' | 'deadline' | 'missing_deadline' {
+  return item === 'missingDeadline' ? 'missing_deadline' : item;
+}
 
 /**
  * Inline auto-save shared by the card-back surfaces (home overlay, list
  * detail): fire-and-forget against local SQLite (instantaneous, no network —
  * AC), tracking `task_edited` per changed field after a successful write.
+ * From Story 6.2 an edit to a flagged field also auto-confirms its review
+ * item: one small star per cleared flag (the repository clears each exactly
+ * once, so awards can't double).
  */
-export function applyTaskPatch(taskId: string, patch: UpdateTaskPatch): void {
-  void updateTask(db, taskId, patch)
-    .then(() => {
+export function applyTaskPatch(task: TaskData, patch: UpdateTaskPatch): void {
+  void updateTask(db, task.id, patch)
+    .then(async ({ confirmedItems, reviewCleared }) => {
       for (const field of Object.keys(patch) as (keyof UpdateTaskPatch)[]) {
         track('task_edited', { field });
+      }
+      for (const item of confirmedItems) {
+        await awardReviewConfirmStars(db, task);
+        track('review_item_confirmed', { field: reviewItemField(item), via: 'edit' });
+      }
+      if (reviewCleared) {
+        track('review_completed', {});
       }
     })
     // oxlint-disable-next-line no-console
     .catch((error: unknown) => console.warn('Inline task update failed', error));
+}
+
+/**
+ * Tick-confirm one review item (Story 6.2, AC4): clears the flag without
+ * touching the value, then awards the confirmation star. Fire-and-forget like
+ * startTask; a double tap reports `confirmed: false` and awards nothing.
+ */
+export function confirmReviewItem(task: TaskData, item: ReviewItem): void {
+  void repoConfirmReviewItem(db, task.id, item)
+    .then(async ({ confirmed, reviewCleared }) => {
+      if (!confirmed) return;
+      await awardReviewConfirmStars(db, task);
+      track('review_item_confirmed', { field: reviewItemField(item), via: 'tick' });
+      if (reviewCleared) {
+        track('review_completed', {});
+      }
+    })
+    // oxlint-disable-next-line no-console
+    .catch((error: unknown) => console.warn('Review confirm failed', error));
 }
 
 /**

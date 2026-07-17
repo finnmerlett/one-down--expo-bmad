@@ -91,3 +91,23 @@ export function parseReviewFlags(value: string | null): TaskReviewFlags | null {
 export function hasReviewItems(flags: TaskReviewFlags | null): boolean {
   return flags !== null && ((flags.inferred?.length ?? 0) > 0 || flags.missingDeadline === true);
 }
+
+/** One confirmable review item (Story 6.2): an inferred field or the missing-deadline prompt. */
+export type ReviewItem = ReviewField | 'missingDeadline';
+
+/**
+ * Remove one confirmed review item (Story 6.2). Pure — returns the next flag
+ * set, or null when the last item was cleared (the caller flips
+ * `hasCheckNeeded` off that null).
+ */
+export function removeReviewFlag(
+  flags: TaskReviewFlags | null,
+  item: ReviewItem,
+): TaskReviewFlags | null {
+  if (flags === null) return null;
+  const next: TaskReviewFlags = {};
+  const inferred = (flags.inferred ?? []).filter((field) => field !== item);
+  if (inferred.length > 0) next.inferred = inferred;
+  if (flags.missingDeadline === true && item !== 'missingDeadline') next.missingDeadline = true;
+  return hasReviewItems(next) ? next : null;
+}

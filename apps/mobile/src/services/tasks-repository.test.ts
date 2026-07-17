@@ -7,6 +7,7 @@ import type { ParsedTaskDraft } from '@one-down/shared';
 import { createTestDb, type TestDb } from '../test-utils/db';
 import { loadLocalMigrationsSql } from '../test-utils/migrations';
 import {
+  confirmReviewItem,
   createTask,
   createTasksFromBrainDump,
   EmptyTitleError,
@@ -190,6 +191,98 @@ describe('tasks-repository (integration, real migration SQL)', () => {
       const [row] = await testDb.db.select().from(tasks);
       expect(row?.title).toBe('Keep me');
       expect(row?.updatedAt).toEqual(created.updatedAt);
+    });
+  });
+
+  describe('review flags (Story 6.2)', () => {
+    // Seed a fully-flagged task through the real brain-dump path.
+    const seedFlagged = async () => {
+      const [task] = await createTasksFromBrainDump(testDb.db, [
+        {
+          title: 'Call the dentist',
+          details: null,
+          size: 'quick_win',
+          contexts: ['phone'],
+          deadline: '2026-07-20T18:00:00.000Z',
+          timeSensitive: false,
+        },
+      ]);
+      if (!task) throw new Error('seed failed');
+      return task;
+    };
+
+    it('editing a flagged field clears its flag, recomputes hasCheckNeeded, and reports it', async () => {
+      const task = await seedFlagged();
+
+      const result = await updateTask(testDb.db, task.id, { size: 'big_time' });
+      expect(result.confirmedItems).toEqual(['size']);
+      expect(result.reviewCleared).toBe(false);
+
+      const [row] = await testDb.db.select().from(tasks);
+      expect(row?.size).toBe('big_time');
+      expect(JSON.parse(row?.reviewFlags ?? '{}')).toEqual({
+        inferred: ['contexts', 'deadline'],
+      });
+      expect(row?.hasCheckNeeded).toBe(true);
+    });
+
+    it('a deadline write clears both the inferred flag and missingDeadline', async () => {
+      const [task] = await createTasksFromBrainDump(testDb.db, [
+        {
+          title: 'Urgent form',
+          details: null,
+          size: null,
+          contexts: [],
+          deadline: null,
+          timeSensitive: true,
+        },
+      ]);
+      if (!task) throw new Error('seed failed');
+      expect(JSON.parse(task.reviewFlags ?? '{}')).toEqual({ missingDeadline: true });
+
+      const result = await updateTask(testDb.db, task.id, {
+        deadline: new Date('2026-07-21T18:00:00.000Z'),
+      });
+      expect(result.confirmedItems).toEqual(['missingDeadline']);
+      // Last flag cleared → the review pass for this task completed.
+      expect(result.reviewCleared).toBe(true);
+
+      const [row] = await testDb.db.select().from(tasks);
+      expect(row?.reviewFlags).toBeNull();
+      expect(row?.hasCheckNeeded).toBe(false);
+    });
+
+    it('editing an unflagged field reports no confirmations', async () => {
+      const task = await seedFlagged();
+
+      const result = await updateTask(testDb.db, task.id, { title: 'Renamed' });
+      expect(result.confirmedItems).toEqual([]);
+
+      const [row] = await testDb.db.select().from(tasks);
+      expect(row?.hasCheckNeeded).toBe(true);
+    });
+
+    it('confirmReviewItem clears the flag without touching the value, exactly once', async () => {
+      const task = await seedFlagged();
+
+      const first = await confirmReviewItem(testDb.db, task.id, 'contexts');
+      expect(first).toEqual({ confirmed: true, reviewCleared: false });
+
+      // Double tap: the flag is already gone — no-op, no second award.
+      const second = await confirmReviewItem(testDb.db, task.id, 'contexts');
+      expect(second).toEqual({ confirmed: false, reviewCleared: false });
+
+      const [row] = await testDb.db.select().from(tasks);
+      expect(row?.contexts).toBe('["phone"]'); // value untouched
+      expect(JSON.parse(row?.reviewFlags ?? '{}')).toEqual({ inferred: ['size', 'deadline'] });
+
+      // Clearing the remaining flags reports completion on the LAST one.
+      await confirmReviewItem(testDb.db, task.id, 'size');
+      const last = await confirmReviewItem(testDb.db, task.id, 'deadline');
+      expect(last).toEqual({ confirmed: true, reviewCleared: true });
+      const [done] = await testDb.db.select().from(tasks);
+      expect(done?.reviewFlags).toBeNull();
+      expect(done?.hasCheckNeeded).toBe(false);
     });
   });
 

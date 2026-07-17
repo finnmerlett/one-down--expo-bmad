@@ -17,7 +17,11 @@ import type { TasksDb } from '@/services/tasks-repository';
 
 async function insertAward(
   db: TasksDb,
-  entry: { taskId: string; taskTitle: string; action: 'task_completed' | 'task_cut_loose' },
+  entry: {
+    taskId: string;
+    taskTitle: string;
+    action: 'task_completed' | 'task_cut_loose' | 'triage_confirmed';
+  },
   breakdown: StarBreakdown,
   now: Date,
 ): Promise<void> {
@@ -73,6 +77,34 @@ export async function awardCompletionStars(
     console.warn('Star award insert failed', error);
   }
   return breakdown;
+}
+
+/**
+ * Award the flat review-confirmation amount (Story 6.2, AC7) — one small star
+ * per confirmed item (tick or edit-confirm). One award per flag, ever: the
+ * repository reports a cleared flag exactly once by construction.
+ */
+export async function awardReviewConfirmStars(db: TasksDb, task: TaskData): Promise<number> {
+  const amount = STAR_WEIGHTS.triageConfirmed;
+  const breakdown: StarBreakdown = {
+    base: amount,
+    urgencyBonus: 0,
+    sizeBonus: 0,
+    earlyBonus: 0,
+    total: amount,
+  };
+  try {
+    await insertAward(
+      db,
+      { taskId: task.id, taskTitle: task.title, action: 'triage_confirmed' },
+      breakdown,
+      new Date(),
+    );
+  } catch (error) {
+    // oxlint-disable-next-line no-console
+    console.warn('Star award insert failed', error);
+  }
+  return amount;
 }
 
 /**

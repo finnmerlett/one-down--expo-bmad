@@ -13,7 +13,9 @@ import { showRewardToast } from '@/components/feedback/reward-toast';
 import { QuickAddSheet } from '@/components/quick-add-sheet/quick-add-sheet';
 import { ContextToggleBar } from '@/components/stack-filters/context-toggle-bar';
 import { ModeToggle } from '@/components/stack-filters/mode-toggle';
+import { Button, ButtonText } from '@/components/ui/button';
 import { HStack } from '@/components/ui/hstack';
+import { Text } from '@/components/ui/text';
 import { useToast } from '@/components/ui/toast';
 import { VStack } from '@/components/ui/vstack';
 import { useStarTotals } from '@/hooks/use-star-totals';
@@ -23,9 +25,10 @@ import { db } from '@/lib/local-db';
 import { availableContexts, curateTasks, urgentContexts } from '@/services/curation';
 import { awardCutLooseStars } from '@/services/star-awards';
 import { potentialStars } from '@/services/star-calculator';
-import { applyTaskPatch, cutLooseTask, startTask } from '@/services/task-edits';
+import { applyTaskPatch, confirmReviewItem, cutLooseTask, startTask } from '@/services/task-edits';
 import { createTask, type CreateTaskInput } from '@/services/tasks-repository';
 import { useQuickAddStore } from '@/stores/quick-add-store';
+import { useReviewModeStore } from '@/stores/review-mode-store';
 import { useStackFiltersStore } from '@/stores/stack-filters-store';
 
 export default function HomeScreen() {
@@ -61,6 +64,20 @@ export default function HomeScreen() {
     () => curateTasks(tasks, { contexts: activeContexts, size: mode }, { now: new Date(), seed }),
     [tasks, activeContexts, mode, seed],
   );
+
+  // Review mode (Story 6.2): UNFILTERED flagged cards — the review pass must
+  // cover every AI guess, whatever context/mode filters happen to be active.
+  const isReviewing = useReviewModeStore((state) => state.isReviewing);
+  const enterReview = useReviewModeStore((state) => state.enter);
+  const exitReview = useReviewModeStore((state) => state.exit);
+  const reviewCards = useMemo(
+    () => curateTasks(tasks, {}, { now: new Date(), seed }).filter((task) => task.hasCheckNeeded),
+    [tasks, seed],
+  );
+  const handleReviewPress = () => {
+    enterReview();
+    track('review_mode_entered', { card_count: reviewCards.length });
+  };
   const available = useMemo(() => availableContexts(tasks, mode), [tasks, mode]);
   const urgent = useMemo(() => urgentContexts(tasks, new Date()), [tasks]);
 
@@ -126,7 +143,34 @@ export default function HomeScreen() {
         />
         <ModeToggle mode={mode} onToggle={handleToggleMode} />
       </VStack>
-      {tasks.length === 0 ? (
+      {isReviewing ? (
+        // Review mode (Story 6.2): flagged cards only, banner above the stack.
+        reviewCards.length === 0 ? (
+          <EmptyState
+            title="Nothing left to review"
+            body="Every AI guess has been checked."
+            actionLabel="Exit review"
+            onAction={exitReview}
+          />
+        ) : (
+          <>
+            <HStack className="items-center justify-between px-2 pt-1">
+              <Text className="text-sm font-medium text-typography-700">
+                {`Reviewing ${reviewCards.length} ${reviewCards.length === 1 ? 'task' : 'tasks'}`}
+              </Text>
+              <Button size="sm" variant="outline" aria-label="Exit review" onPress={exitReview}>
+                <ButtonText>Exit review</ButtonText>
+              </Button>
+            </HStack>
+            <CardStack
+              tasks={reviewCards}
+              getStarValue={getStarValue}
+              onCardPress={(task) => setOpenTaskId(task.id)}
+              onReviewPress={handleReviewPress}
+            />
+          </>
+        )
+      ) : tasks.length === 0 ? (
         // New-user empty state (AC2). Epic 6 swaps this CTA to brain dump.
         <EmptyState
           title="No tasks yet"
@@ -160,12 +204,14 @@ export default function HomeScreen() {
           tasks={curated}
           getStarValue={getStarValue}
           onCardPress={(task) => setOpenTaskId(task.id)}
+          onReviewPress={handleReviewPress}
         />
       )}
       {openTask ? (
         <CardBackOverlay
           task={openTask}
-          onPatch={(patch) => applyTaskPatch(openTask.id, patch)}
+          onPatch={(patch) => applyTaskPatch(openTask, patch)}
+          onConfirm={(item) => confirmReviewItem(openTask, item)}
           onDismiss={() => setOpenTaskId(null)}
           onStart={() => {
             startTask(openTask, 'card_back_overlay');

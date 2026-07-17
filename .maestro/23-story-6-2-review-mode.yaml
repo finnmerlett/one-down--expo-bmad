@@ -1,0 +1,75 @@
+# Story 6.2 — review mode: brain-dumped tasks with AI-inferred fields carry
+# an info marker (AC1), tapping it filters the stack to flagged cards with a
+# banner (AC2), the card back highlights each flagged item with a confirm
+# tick (AC3/AC4), supplying the missing deadline clears its prompt (AC6), and
+# clearing the last flag drops the card out of review (AC4/AC8).
+# Fake-provider contract for the dump below (fake-provider.ts):
+#   'Call the dentist soon'  → phone context + quick_win (≤5 words) inferred,
+#                              'soon' → timeSensitive with no date → missingDeadline
+#   'Ponder the universe quietly for a while' → nothing inferred (unflagged)
+# Prereq (batched wave-end run): local server running WITHOUT GEMINI_API_KEY
+# (fake mode) and the APK built with EXPO_PUBLIC_API_URL=http://10.0.2.2:3000.
+appId: com.onedown.mobile
+---
+- runFlow: common/launch-app.yaml
+
+# Seed via brain dump (6.1 surface)
+- tapOn: 'Add task'
+- waitForAnimationToEnd
+- tapOn: 'Brain dump'
+- inputText: 'Call the dentist soon. Ponder the universe quietly for a while'
+- tapOn: 'Parse my tasks'
+- extendedWaitUntil:
+    visible: 'Task: (Call the dentist soon|Ponder the universe quietly for a while)\..* Card . of 2'
+    timeout: 15000
+
+# The review entry only exists on a flagged TOP card — cycle once if the
+# unflagged card happened to surface first (3.3's curation order is seeded).
+- runFlow:
+    when:
+      notVisible: 'Needs review'
+    commands:
+      - swipe:
+          start: 80%, 45%
+          end: 5%, 45%
+      - waitForAnimationToEnd
+- assertVisible: 'Needs review'
+
+# Enter review mode: banner + only the flagged card remains (AC2)
+- tapOn: 'Needs review'
+- assertVisible: 'Reviewing 1 task'
+- assertVisible: 'Task: Call the dentist soon\..* Card 1 of 1'
+- assertNotVisible: 'Task: Ponder the universe quietly for a while\..*'
+
+# Open the card back: flagged sections highlighted with ticks (AC3)
+- tapOn: 'Task: Call the dentist soon\..* Card 1 of 1'
+- waitForAnimationToEnd
+- assertVisible: 'AI guessed'
+- assertVisible: 'Needs a deadline — when?'
+- takeScreenshot: .maestro/screenshots/23-story-6-2-review-card-back
+
+# Tick-confirm the inferred contexts and size — ticks disappear (AC4)
+- tapOn: 'Confirm contexts'
+- assertNotVisible: 'Confirm contexts'
+- tapOn: 'Confirm size'
+- assertNotVisible: 'Confirm size'
+
+# Supply the missing deadline via a quick chip — the prompt clears (AC6)
+- tapOn: 'Deadline: Tomorrow'
+- extendedWaitUntil:
+    notVisible: 'Needs a deadline — when?'
+    timeout: 3000
+
+# Last flag cleared → the card drops out of the review stack (AC4/AC8)
+- tapOn: 'Back to card front'
+- waitForAnimationToEnd
+- assertVisible: 'Nothing left to review'
+- tapOn: 'Exit review'
+- waitForAnimationToEnd
+
+# Full stack restored, no review marker anywhere (both cards browsable)
+- assertVisible: 'Task: (Call the dentist soon|Ponder the universe quietly for a while)\..* Card . of 2'
+- assertNotVisible: 'Needs review'
+
+- assertNotVisible: 'Unhandled'
+- assertNotVisible: 'error occurred'

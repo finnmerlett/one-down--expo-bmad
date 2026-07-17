@@ -13,6 +13,7 @@ import { scheduleOnRN } from 'react-native-worklets';
 import type { TaskData } from '@one-down/shared';
 
 import { Box } from '@/components/ui/box';
+import { Pressable } from '@/components/ui/pressable';
 import { TaskCard } from './task-card';
 
 const VISIBLE_CARDS = 3;
@@ -213,12 +214,15 @@ export function CardStack({
   tasks,
   getStarValue,
   onCardPress,
+  onReviewPress,
 }: {
   tasks: TaskData[];
   /** Star preview per task (Story 3.3) — home closes over the full browsable
    *  list, so relative urgency ranks against ALL active tasks. */
   getStarValue: (task: TaskData) => number;
   onCardPress?: (task: TaskData) => void;
+  /** Info-icon tap on a flagged top card → review mode (Story 6.2). */
+  onReviewPress?: (task: TaskData) => void;
 }) {
   const [topTaskId, setTopTaskId] = useState<string | null>(null);
   // Bumped on every dismiss: remounts the keyed top card (fresh zeroed
@@ -260,6 +264,8 @@ export function CardStack({
     }
   }
 
+  const topTask = stackWindow[0]?.task;
+
   return (
     <Box className="flex-1 px-6 py-6">
       <Box className="relative flex-1">
@@ -284,6 +290,20 @@ export function CardStack({
               <StackedCard key={task.id} task={task} starValue={getStarValue(task)} depth={depth} />
             ),
           )}
+        {/* Review entry (Story 6.2, AC1): a transparent tap target OVER the
+            top card's info marker. It must be a sibling painted above the
+            GestureDetector — an inner Pressable would be swallowed by the
+            tap-to-flip gesture AND flattened out of the accessibility tree
+            by the card's accessible container. */}
+        {topTask?.hasCheckNeeded && onReviewPress ? (
+          <Pressable
+            accessibilityRole="button"
+            aria-label="Needs review"
+            hitSlop={8}
+            onPress={() => onReviewPress(topTask)}
+            className="absolute right-0 top-0 h-14 w-14"
+          />
+        ) : null}
       </Box>
     </Box>
   );

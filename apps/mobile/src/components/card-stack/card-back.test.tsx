@@ -3,7 +3,8 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import * as cardBackStories from './card-back.stories';
 
-const { FullDetails, Minimal, InProgress, FullyWired } = composeStories(cardBackStories);
+const { FullDetails, Minimal, InProgress, FullyWired, WithReviewFlags, MissingDeadlineOnly } =
+  composeStories(cardBackStories);
 
 describe('CardBack (portable stories)', () => {
   it('renders all sections with the stored values', async () => {
@@ -163,6 +164,52 @@ describe('CardBack (portable stories)', () => {
     // FullDetails task is quick_win — tapping it again clears to unset.
     await fireEvent.press(screen.getByLabelText('Size: Quick win'));
     expect(onPatch).toHaveBeenCalledWith({ size: null });
+  });
+});
+
+describe('CardBack review mode (Story 6.2)', () => {
+  it('highlights flagged sections and forwards tick confirmations', async () => {
+    const onConfirm = jest.fn();
+    await render(<WithReviewFlags onConfirm={onConfirm} />);
+
+    // Contexts + size show the inferred hint; the deadline section carries
+    // the missing-deadline prompt instead (calm copy, warning tones).
+    expect(screen.getAllByText('AI guessed')).toHaveLength(2);
+    expect(screen.getByText('Needs a deadline — when?')).toBeTruthy();
+
+    await fireEvent.press(screen.getByLabelText('Confirm size'));
+    expect(onConfirm).toHaveBeenCalledWith('size');
+    await fireEvent.press(screen.getByLabelText('Confirm contexts'));
+    expect(onConfirm).toHaveBeenCalledWith('contexts');
+    await fireEvent.press(screen.getByLabelText('Confirm deadline'));
+    expect(onConfirm).toHaveBeenCalledWith('deadline');
+  });
+
+  it('deadline chips patch an 18:00-local date; Clear stays hidden while flagged', async () => {
+    const onPatch = jest.fn();
+    await render(<MissingDeadlineOnly onPatch={onPatch} />);
+
+    await fireEvent.press(screen.getByLabelText('Deadline: Tomorrow'));
+    expect(onPatch).toHaveBeenCalledTimes(1);
+    const patched = (onPatch.mock.calls[0]?.[0] as { deadline: Date }).deadline;
+    expect(patched.getHours()).toBe(18);
+
+    expect(screen.queryByLabelText('Clear deadline')).toBeNull();
+  });
+
+  it('Clear shows for a set, unflagged deadline and patches null', async () => {
+    const onPatch = jest.fn();
+    await render(<FullDetails onPatch={onPatch} />);
+
+    await fireEvent.press(screen.getByLabelText('Clear deadline'));
+    expect(onPatch).toHaveBeenCalledWith({ deadline: null });
+  });
+
+  it('renders no review chrome for an unflagged task', async () => {
+    await render(<FullDetails />);
+
+    expect(screen.queryByText('AI guessed')).toBeNull();
+    expect(screen.queryByLabelText('Confirm size')).toBeNull();
   });
 });
 

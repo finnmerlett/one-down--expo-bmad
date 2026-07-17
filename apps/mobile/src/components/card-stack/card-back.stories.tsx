@@ -64,3 +64,34 @@ export const FullyWired: Story = {
     onCutLoose: () => {},
   },
 };
+
+/** Story 6.2 — all three inferred flags plus the missing-deadline prompt. */
+export const WithReviewFlags: Story = {
+  args: {
+    task: makeTask({
+      id: 'task-flagged',
+      title: 'Call the dentist soon',
+      size: 'quick_win',
+      contexts: '["phone"]',
+      hasCheckNeeded: true,
+      reviewFlags: JSON.stringify({
+        inferred: ['size', 'contexts', 'deadline'],
+        missingDeadline: true,
+      }),
+    }),
+    onConfirm: () => {},
+  },
+};
+
+/** Story 6.2 — only the "Needs a deadline — when?" prompt (no inferred fields). */
+export const MissingDeadlineOnly: Story = {
+  args: {
+    task: makeTask({
+      id: 'task-missing-deadline',
+      title: 'Send the urgent form back',
+      hasCheckNeeded: true,
+      reviewFlags: JSON.stringify({ missingDeadline: true }),
+    }),
+    onConfirm: () => {},
+  },
+};
