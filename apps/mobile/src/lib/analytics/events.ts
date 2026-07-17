@@ -29,6 +29,12 @@ export type AnalyticsEventMap = EnforceFlatProps<{
     via: 'card_back_overlay' | 'list_detail' | 'task_running';
     was_started: boolean;
   };
+  /** Story 8.1 — a notification preference changed (new SETTING value only, never task content). */
+  notification_pref_changed: { pref: 'deadline_urgency' | 'challenges'; value: string };
+  /** Story 8.1 — the system notification permission request resolved. */
+  notification_permission_resolved: { granted: boolean };
+  /** Story 8.1 — user tapped a delivered notification (opens home). */
+  notification_opened: { type: 'deadline_urgency' | 'challenge' };
 }>;
 
 export type AnalyticsEventName = keyof AnalyticsEventMap;

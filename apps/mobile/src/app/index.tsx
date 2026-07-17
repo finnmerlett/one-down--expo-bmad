@@ -51,6 +51,7 @@ export default function HomeScreen() {
       // Inert while the overlay is open (same as the FAB) — pushing a route
       // would leave the overlay's BackHandler swallowing hardware back.
       onListPress={openTask ? undefined : () => router.push('/task-list')}
+      onSettingsPress={openTask ? undefined : () => router.push('/settings')}
     >
       {tasks.length === 0 ? (
         <Box className="flex-1 items-center justify-center px-8">

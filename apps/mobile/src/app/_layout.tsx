@@ -10,6 +10,7 @@ import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
 import { Text } from '@/components/ui/text';
 
 import migrations from '../../drizzle/migrations';
+import { useNotificationResync } from '../hooks/use-notification-resync';
 import { AppPostHogProvider } from '../lib/posthog';
 import { db } from '../lib/local-db';
 
@@ -36,12 +37,20 @@ function MigrationGate({ children }: { children: ReactNode }) {
   return children;
 }
 
+// Renders nothing — hosts the reactive notification resync (Story 8.1) so it
+// only ever runs behind the MigrationGate (its live queries need the schema).
+function NotificationResync() {
+  useNotificationResync();
+  return null;
+}
+
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <GluestackUIProvider mode="light">
         <AppPostHogProvider>
           <MigrationGate>
+            <NotificationResync />
             <Stack screenOptions={{ headerShown: false }} />
           </MigrationGate>
         </AppPostHogProvider>

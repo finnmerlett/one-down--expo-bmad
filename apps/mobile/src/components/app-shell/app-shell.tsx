@@ -15,14 +15,16 @@ export function AppShell({
   children,
   onAddPress,
   onListPress,
+  onSettingsPress,
 }: {
   children: ReactNode;
   onAddPress?: () => void;
   onListPress?: () => void;
+  onSettingsPress?: () => void;
 }) {
   return (
     <SafeAreaView edges={['top', 'left', 'right', 'bottom']} className="flex-1 bg-background-0">
-      <TopBar onListPress={onListPress} />
+      <TopBar onListPress={onListPress} onSettingsPress={onSettingsPress} />
       <Box className="flex-1">{children}</Box>
       {/* No handler → no FAB: it paints above the content Box, so screens hide
           it while an overlay (e.g. the expanded card back) is up. */}

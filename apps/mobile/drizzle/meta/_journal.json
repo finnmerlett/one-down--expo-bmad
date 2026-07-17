@@ -15,6 +15,13 @@
       "when": 1781200470567,
       "tag": "0001_green_rocket_racer",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1784248027205,
+      "tag": "0002_neat_enchantress",
+      "breakpoints": true
     }
   ]
 }
