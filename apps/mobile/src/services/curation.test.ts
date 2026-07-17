@@ -1,6 +1,6 @@
-import type { TaskData } from '@one-down/shared';
+import { TASK_CONTEXTS, type TaskData } from '@one-down/shared';
 
-import { curateTasks } from './curation';
+import { availableContexts, curateTasks } from './curation';
 
 function makeTask(overrides: Partial<TaskData> = {}): TaskData {
   return {
@@ -97,5 +97,45 @@ describe('curateTasks', () => {
     curateTasks(tasks);
 
     expect(tasks.map((t) => t.id)).toEqual(snapshot);
+  });
+});
+
+describe('availableContexts', () => {
+  it('maps tagged browsable tasks to their contexts', () => {
+    const tasks = [
+      makeTask({ id: 'a', contexts: '["home","phone"]' }),
+      makeTask({ id: 'b', status: 'in_progress', contexts: '["laptop"]' }),
+    ];
+
+    expect(availableContexts(tasks)).toEqual(new Set(['home', 'phone', 'laptop']));
+  });
+
+  it('makes every context available when any untagged browsable task exists', () => {
+    const tasks = [
+      makeTask({ id: 'a', contexts: '["home"]' }),
+      makeTask({ id: 'anywhere', contexts: null }),
+    ];
+
+    expect(availableContexts(tasks)).toEqual(new Set(TASK_CONTEXTS));
+  });
+
+  it('ignores completed and cut-loose tasks', () => {
+    const tasks = [
+      makeTask({ id: 'done', status: 'completed', contexts: '["home"]' }),
+      makeTask({ id: 'released', status: 'cut_loose', contexts: null }),
+      makeTask({ id: 'live', contexts: '["phone"]' }),
+    ];
+
+    expect(availableContexts(tasks)).toEqual(new Set(['phone']));
+  });
+
+  it('returns an empty set for no tasks', () => {
+    expect(availableContexts([])).toEqual(new Set());
+  });
+
+  it('ignores unknown stored context values', () => {
+    const tasks = [makeTask({ id: 'a', contexts: '["home","garden_shed"]' })];
+
+    expect(availableContexts(tasks)).toEqual(new Set(['home']));
   });
 });

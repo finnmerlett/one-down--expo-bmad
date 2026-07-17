@@ -1,4 +1,37 @@
-import { parseTaskContexts, type TaskData } from '@one-down/shared';
+import {
+  parseTaskContexts,
+  TASK_CONTEXTS,
+  type TaskContext,
+  type TaskData,
+} from '@one-down/shared';
+
+function isBrowsable(task: TaskData): boolean {
+  return task.status === 'pending' || task.status === 'in_progress';
+}
+
+/**
+ * Contexts that have at least one browsable (`pending`/`in_progress`)
+ * matching task — used to grey out empty context filter buttons (Story 3.1
+ * AC4). A browsable task with NO contexts is doable anywhere (consistent
+ * with `curateTasks`), so any untagged browsable task makes all five
+ * contexts available.
+ */
+export function availableContexts(tasks: TaskData[]): Set<TaskContext> {
+  const available = new Set<TaskContext>();
+  for (const task of tasks) {
+    if (!isBrowsable(task)) continue;
+    const contexts = parseTaskContexts(task.contexts);
+    if (contexts.length === 0) {
+      return new Set(TASK_CONTEXTS);
+    }
+    for (const context of contexts) {
+      if ((TASK_CONTEXTS as readonly string[]).includes(context)) {
+        available.add(context as TaskContext);
+      }
+    }
+  }
+  return available;
+}
 
 /**
  * Pure curation function — decides which tasks enter the card stack and in
@@ -14,9 +47,7 @@ import { parseTaskContexts, type TaskData } from '@one-down/shared';
  *   created first
  */
 export function curateTasks(tasks: TaskData[], activeContexts?: string[]): TaskData[] {
-  const browsable = tasks.filter(
-    (task) => task.status === 'pending' || task.status === 'in_progress',
-  );
+  const browsable = tasks.filter(isBrowsable);
 
   const matching = activeContexts?.length
     ? browsable.filter((task) => {

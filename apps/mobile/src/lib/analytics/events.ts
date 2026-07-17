@@ -1,3 +1,5 @@
+import type { TaskContext } from '@one-down/shared';
+
 // Event taxonomy for custom domain events routed through track().
 // Grows story-by-story ("instrument as built" — NFR-L1). Names are
 // snake_case past-tense (logging-best-practices skill).
@@ -29,6 +31,8 @@ export type AnalyticsEventMap = EnforceFlatProps<{
     via: 'card_back_overlay' | 'list_detail' | 'task_running';
     was_started: boolean;
   };
+  /** Story 3.1 — a context filter button toggled on the home screen (enum names only). */
+  context_toggled: { context: TaskContext; now_active: boolean; active_count: number };
 }>;
 
 export type AnalyticsEventName = keyof AnalyticsEventMap;

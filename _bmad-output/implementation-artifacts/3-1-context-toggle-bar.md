@@ -1,6 +1,6 @@
 # Story 3.1: Context Toggle Bar
 
-Status: ready-for-dev
+Status: done
 Date: 2026-07-16
 Mode: spec for wave-based autonomous run (see decisions-log 2026-07-16)
 

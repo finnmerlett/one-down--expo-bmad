@@ -1,23 +1,25 @@
 import { useRouter } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
 
-import { STAR_WEIGHTS } from '@one-down/shared';
+import { STAR_WEIGHTS, type TaskContext } from '@one-down/shared';
 
 import { AppShell } from '@/components/app-shell/app-shell';
 import { CardBackOverlay } from '@/components/card-stack/card-back-overlay';
 import { CardStack } from '@/components/card-stack/card-stack';
 import { showRewardToast } from '@/components/feedback/reward-toast';
 import { QuickAddSheet } from '@/components/quick-add-sheet/quick-add-sheet';
+import { ContextToggleBar } from '@/components/stack-filters/context-toggle-bar';
 import { Box } from '@/components/ui/box';
 import { Text } from '@/components/ui/text';
 import { useToast } from '@/components/ui/toast';
 import { useTasks } from '@/hooks/use-tasks';
 import { track } from '@/lib/analytics/track';
 import { db } from '@/lib/local-db';
-import { curateTasks } from '@/services/curation';
+import { availableContexts, curateTasks } from '@/services/curation';
 import { applyTaskPatch, cutLooseTask, startTask } from '@/services/task-edits';
 import { createTask, type CreateTaskInput } from '@/services/tasks-repository';
 import { useQuickAddStore } from '@/stores/quick-add-store';
+import { useStackFiltersStore } from '@/stores/stack-filters-store';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -36,13 +38,25 @@ export default function HomeScreen() {
   // Last task id cut loose from the overlay — see the onCutLoose guard below.
   const cutLooseFiredRef = useRef<string | null>(null);
 
-  // Context filtering arrives with the ContextToggleBar (Story 3.x) — until
-  // then every pending task is browsable.
-  const curated = useMemo(() => curateTasks(tasks), [tasks]);
+  const activeContexts = useStackFiltersStore((state) => state.activeContexts);
+  const toggleContext = useStackFiltersStore((state) => state.toggleContext);
+
+  const curated = useMemo(() => curateTasks(tasks, activeContexts), [tasks, activeContexts]);
+  const available = useMemo(() => availableContexts(tasks), [tasks]);
 
   const handleSubmit = async (input: CreateTaskInput) => {
     const task = await createTask(db, input);
     track('task_created', { source: 'quick_add', has_details: task.details !== null });
+  };
+
+  const handleToggleContext = (context: TaskContext) => {
+    const nowActive = !activeContexts.includes(context);
+    toggleContext(context);
+    track('context_toggled', {
+      context,
+      now_active: nowActive,
+      active_count: nowActive ? activeContexts.length + 1 : activeContexts.length - 1,
+    });
   };
 
   return (
@@ -52,15 +66,26 @@ export default function HomeScreen() {
       // would leave the overlay's BackHandler swallowing hardware back.
       onListPress={openTask ? undefined : () => router.push('/task-list')}
     >
+      {/* The filter bar stays visible in every home state — the user must
+          always be able to un-filter. The CardBackOverlay paints over it. */}
+      <ContextToggleBar
+        activeContexts={activeContexts}
+        availableContexts={available}
+        onToggle={handleToggleContext}
+      />
       {tasks.length === 0 ? (
         <Box className="flex-1 items-center justify-center px-8">
           <Text className="text-center text-typography-400">Your tasks will appear here</Text>
         </Box>
       ) : curated.length === 0 ? (
-        // Tasks exist but none are browsable — every task is completed (2.3)
-        // or cut loose (2.4). The "no tasks" message must not show here.
-        <Box className="flex-1 items-center justify-center px-8">
+        // Tasks exist but none are curated — everything is completed/cut
+        // loose OR the active filters match nothing. The "no tasks" message
+        // must not show here. (Full guidance treatment is Story 3.4.)
+        <Box className="flex-1 items-center justify-center gap-1 px-8">
           <Text className="text-center text-typography-400">Nothing to browse right now</Text>
+          <Text className="text-center text-typography-400">
+            Try another context or add a task.
+          </Text>
         </Box>
       ) : (
         <CardStack tasks={curated} onCardPress={(task) => setOpenTaskId(task.id)} />
