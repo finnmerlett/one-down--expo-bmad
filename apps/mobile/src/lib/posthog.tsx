@@ -1,6 +1,7 @@
 import { PostHogProvider, usePostHog } from 'posthog-react-native';
 import { useEffect, type ReactNode } from 'react';
 
+import { useScreenTracking } from '../hooks/use-screen-tracking';
 import { posthogBeforeSend } from './analytics/posthog-hooks';
 import { setAnalyticsClient } from './analytics/track';
 
@@ -15,13 +16,23 @@ function AnalyticsClientBinder({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-// Scaffold per Story 1.0a: autocapture + lifecycle + before_send PII redaction.
-// Live key/config (and the server side) land in Story 8.3. With no key set the
-// SDK is never mounted and track() falls back to console (dev) / no-op (prod).
+/** Renders null; exists only to run the screen-tracking effect (Story 8.3). */
+function ScreenTracker() {
+  useScreenTracking();
+  return null;
+}
+
+// Story 1.0a scaffold, completed by Story 8.3: autocapture + lifecycle +
+// before_send PII redaction + manual screen tracking. With no key set the
+// SDK is never mounted and track() falls back to console (dev) / no-op (prod)
+// — a real key is a drop-in with zero code changes.
 //
 // captureScreens is OFF by design: Expo Router (React Navigation v7) cannot be
-// autocaptured — screens are tracked manually via posthog.screen() as routes
-// are added (docs/posthog-integration.md).
+// autocaptured — ScreenTracker calls posthog.screen() with route templates
+// (docs/posthog-integration.md).
+//
+// Feature flags need no code here — `useFeatureFlag` from posthog-react-native
+// is available to any consumer once the provider is mounted (SDK built-in).
 export function AppPostHogProvider({ children }: { children: ReactNode }) {
   const apiKey = process.env.EXPO_PUBLIC_POSTHOG_API_KEY;
 
@@ -48,7 +59,10 @@ export function AppPostHogProvider({ children }: { children: ReactNode }) {
         before_send: posthogBeforeSend,
       }}
     >
-      <AnalyticsClientBinder>{children}</AnalyticsClientBinder>
+      <AnalyticsClientBinder>
+        <ScreenTracker />
+        {children}
+      </AnalyticsClientBinder>
     </PostHogProvider>
   );
 }

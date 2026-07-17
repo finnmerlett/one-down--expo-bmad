@@ -1,0 +1,45 @@
+# Story 8.3 — telemetry smoke: with no PostHog key (this build) the analytics
+# provider never mounts and the screen-tracking hook is inert — navigating
+# every route the hook observes must never crash. This drives the realistic
+# failure mode the story could introduce (a throw in no-op mode).
+appId: com.onedown.mobile
+---
+- runFlow: common/launch-app.yaml
+
+# Home → settings → back
+- tapOn: 'Open settings'
+- waitForAnimationToEnd
+- assertVisible: 'Settings'
+- back
+- waitForAnimationToEnd
+
+# Quick-add a task
+- runFlow:
+    file: common/add-task.yaml
+    env:
+      TITLE: 'Telemetry smoke task'
+
+# Card back → start task (task-running/[id])
+- tapOn: 'Task: Telemetry smoke task. Card 1 of 1'
+- waitForAnimationToEnd
+- tapOn: 'Start task'
+- waitForAnimationToEnd
+- assertVisible: 'Help me with this'
+- back
+- waitForAnimationToEnd
+
+# Task list → detail (task/[id]) → back ×2 to home
+- tapOn: 'Open task list'
+- waitForAnimationToEnd
+- tapOn: 'Open task: Telemetry smoke task'
+- waitForAnimationToEnd
+- assertVisible: 'Telemetry smoke task'
+- back
+- waitForAnimationToEnd
+- back
+- waitForAnimationToEnd
+- assertVisible: 'Add task'
+
+- takeScreenshot: .claude/run-notes/screenshots/8-3-telemetry-smoke
+- assertNotVisible: 'Unhandled'
+- assertNotVisible: 'error occurred'
