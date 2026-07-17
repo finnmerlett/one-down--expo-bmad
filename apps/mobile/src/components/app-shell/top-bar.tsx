@@ -2,11 +2,20 @@ import { HStack } from '@/components/ui/hstack';
 import { Icon, MenuIcon, SettingsIcon } from '@/components/ui/icon';
 import { Pressable } from '@/components/ui/pressable';
 
-import { StarBoxPlaceholder } from './star-box-placeholder';
+import { StarCounter } from './star-counter';
 
-// Remaining placeholder icon buttons until their screens land: star activity
-// log (4.2), settings (Epic 8).
-export function TopBar({ onListPress }: { onListPress?: () => void }) {
+// Remaining placeholder icon button until its screen lands: settings (Epic 8).
+export function TopBar({
+  onListPress,
+  starTotals = { total: 0, today: 0 },
+  onStarPress,
+}: {
+  onListPress?: () => void;
+  /** Live totals from useStarTotals (Story 4.2); defaults keep stories db-free. */
+  starTotals?: { total: number; today: number };
+  /** Opens the star activity log (wired in Story 4.3). */
+  onStarPress?: () => void;
+}) {
   return (
     <HStack className="items-center justify-between px-4 py-2">
       <HStack className="items-center gap-3">
@@ -19,7 +28,7 @@ export function TopBar({ onListPress }: { onListPress?: () => void }) {
         >
           <Icon as={MenuIcon} size="xl" className="text-typography-900" />
         </Pressable>
-        <StarBoxPlaceholder />
+        <StarCounter total={starTotals.total} today={starTotals.today} onPress={onStarPress} />
       </HStack>
       <Pressable
         accessibilityRole="button"

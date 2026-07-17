@@ -14,6 +14,7 @@ import { ContextToggleBar } from '@/components/stack-filters/context-toggle-bar'
 import { ModeToggle } from '@/components/stack-filters/mode-toggle';
 import { useToast } from '@/components/ui/toast';
 import { VStack } from '@/components/ui/vstack';
+import { useStarTotals } from '@/hooks/use-star-totals';
 import { useTasks } from '@/hooks/use-tasks';
 import { track } from '@/lib/analytics/track';
 import { db } from '@/lib/local-db';
@@ -32,6 +33,7 @@ export default function HomeScreen() {
   const close = useQuickAddStore((state) => state.close);
   const toast = useToast();
   const tasks = useTasks();
+  const starTotals = useStarTotals();
 
   // Card-back state lives HERE, not in the stack — stack cards remount on
   // depth promotion, which would wipe any card-local flip state. The open
@@ -98,6 +100,7 @@ export default function HomeScreen() {
       // Inert while the overlay is open (same as the FAB) — pushing a route
       // would leave the overlay's BackHandler swallowing hardware back.
       onListPress={openTask ? undefined : () => router.push('/task-list')}
+      starTotals={starTotals}
     >
       {/* Shared filter chrome stays visible in every home state — the user
           must always be able to un-filter. The CardBackOverlay paints over

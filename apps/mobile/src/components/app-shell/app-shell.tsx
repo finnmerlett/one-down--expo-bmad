@@ -15,14 +15,20 @@ export function AppShell({
   children,
   onAddPress,
   onListPress,
+  starTotals,
+  onStarPress,
 }: {
   children: ReactNode;
   onAddPress?: () => void;
   onListPress?: () => void;
+  /** Live totals for the top-bar star counter (Story 4.2). */
+  starTotals?: { total: number; today: number };
+  /** Opens the star activity log (wired in Story 4.3). */
+  onStarPress?: () => void;
 }) {
   return (
     <SafeAreaView edges={['top', 'left', 'right', 'bottom']} className="flex-1 bg-background-0">
-      <TopBar onListPress={onListPress} />
+      <TopBar onListPress={onListPress} starTotals={starTotals} onStarPress={onStarPress} />
       <Box className="flex-1">{children}</Box>
       {/* No handler → no FAB: it paints above the content Box, so screens hide
           it while an overlay (e.g. the expanded card back) is up. */}

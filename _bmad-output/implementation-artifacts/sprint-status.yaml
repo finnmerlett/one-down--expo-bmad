@@ -78,7 +78,7 @@ development_status:
   # Epic 4: Rewards & Motivation
   epic-4: in-progress
   4-1-star-earning-system: done
-  4-2-star-counter-display: backlog
+  4-2-star-counter-display: done
   4-3-star-activity-log: backlog
   4-4-done-section-in-task-list: backlog
   epic-4-retrospective: optional

@@ -3,7 +3,7 @@ appId: com.onedown.mobile
 ---
 - runFlow: common/launch-app.yaml
 - assertVisible: 'Open task list'
-- assertVisible: 'View star activity'
+- assertVisible: '0 stars, 0 earned today'
 - assertVisible: 'Open settings'
 - assertVisible: 'Add task'
 - assertNotVisible: 'Unhandled'
