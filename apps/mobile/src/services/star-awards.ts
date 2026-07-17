@@ -1,7 +1,7 @@
 import { inArray } from 'drizzle-orm';
 import { randomUUID } from 'expo-crypto';
 
-import { STAR_WEIGHTS, type TaskData } from '@one-down/shared';
+import { STAR_WEIGHTS, type StarAction, type SubtaskData, type TaskData } from '@one-down/shared';
 import { starActivityLog, tasks } from '@one-down/shared/schema-local';
 
 import { track } from '@/lib/analytics/track';
@@ -17,11 +17,7 @@ import type { TasksDb } from '@/services/tasks-repository';
 
 async function insertAward(
   db: TasksDb,
-  entry: {
-    taskId: string;
-    taskTitle: string;
-    action: 'task_completed' | 'task_cut_loose' | 'triage_confirmed';
-  },
+  entry: { taskId: string; taskTitle: string; action: StarAction },
   breakdown: StarBreakdown,
   now: Date,
 ): Promise<void> {
@@ -77,6 +73,42 @@ export async function awardCompletionStars(
     console.warn('Star award insert failed', error);
   }
   return breakdown;
+}
+
+/**
+ * Signed subtask transaction (Story 6.3, AC5). Completing earns the small
+ * `subtaskCompleted` weight; unticking reverses it (negative
+ * `subtask_completed` row); deleting a COMPLETED subtask reverses via a
+ * negative `subtask_deleted` row. The ledger is append-only — reversals are
+ * new signed rows, never edits. Title snapshot = the subtask's own title
+ * (display only, never analytics — NFR-S3).
+ */
+export async function awardSubtaskStars(
+  db: TasksDb,
+  subtask: SubtaskData,
+  action: 'subtask_completed' | 'subtask_deleted',
+  direction: 1 | -1,
+): Promise<number> {
+  const amount = direction * STAR_WEIGHTS.subtaskCompleted;
+  const breakdown: StarBreakdown = {
+    base: amount,
+    urgencyBonus: 0,
+    sizeBonus: 0,
+    earlyBonus: 0,
+    total: amount,
+  };
+  try {
+    await insertAward(
+      db,
+      { taskId: subtask.taskId, taskTitle: subtask.title, action },
+      breakdown,
+      new Date(),
+    );
+  } catch (error) {
+    // oxlint-disable-next-line no-console
+    console.warn('Star award insert failed', error);
+  }
+  return amount;
 }
 
 /**

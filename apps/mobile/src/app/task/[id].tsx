@@ -99,6 +99,14 @@ export default function TaskDetailScreen() {
             startTask(task, 'list_detail');
             router.push(`/task-running/${task.id}`);
           }}
+          onHelp={() => {
+            // Shares the Start once-per-focus guard — either action pushes
+            // the running screen; ?breakdown=1 auto-fires the request (6.3).
+            if (startingRef.current) return;
+            startingRef.current = true;
+            startTask(task, 'list_detail');
+            router.push(`/task-running/${task.id}?breakdown=1`);
+          }}
           onCutLoose={() => {
             if (cutLoosingRef.current) return;
             cutLoosingRef.current = true;

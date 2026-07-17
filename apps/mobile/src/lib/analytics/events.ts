@@ -39,7 +39,12 @@ export type AnalyticsEventMap = EnforceFlatProps<{
   stack_filters_cleared: { via: 'empty_state' };
   /** Story 4.1 — a star transaction was recorded (amounts only, never task text). */
   stars_awarded: {
-    action: 'task_completed' | 'task_cut_loose' | 'triage_confirmed';
+    action:
+      | 'task_completed'
+      | 'task_cut_loose'
+      | 'triage_confirmed'
+      | 'subtask_completed'
+      | 'subtask_deleted';
     amount: number;
     base: number;
     urgency_bonus: number;
@@ -105,6 +110,25 @@ export type AnalyticsEventMap = EnforceFlatProps<{
   };
   /** Story 6.2 — a confirmation emptied a task's flags (per task, not per session). */
   review_completed: Record<string, never>;
+  /** Story 6.3 — a breakdown was requested (surface + depth only, never task text). */
+  breakdown_requested: { via: 'task_running' | 'card_back'; mode: 'first_steps' | 'full' };
+  /** Story 6.3 — the server returned a proposal. */
+  breakdown_generated: {
+    step_count: number;
+    mode: 'first_steps' | 'full';
+    duration_ms: number;
+    provider: 'gemini' | 'fake';
+  };
+  /** Story 6.3 — the breakdown request failed; inline retry offered. */
+  breakdown_failed: { reason: 'network' | 'server_error' };
+  /** Story 6.3 — proposal accepted and saved as subtasks. */
+  breakdown_accepted: { step_count: number; mode: 'first_steps' | 'full' };
+  /** Story 6.3 — proposal rejected ("Not helpful"); nothing saved. */
+  breakdown_rejected: { step_count: number };
+  /** Story 6.3 — a subtask was ticked (or unticked — `reversed: true`). */
+  subtask_completed: { source: 'ai' | 'micro'; reversed: boolean };
+  /** Story 6.3 — a subtask row was deleted. */
+  subtask_deleted: { was_completed: boolean };
 }>;
 
 export type AnalyticsEventName = keyof AnalyticsEventMap;

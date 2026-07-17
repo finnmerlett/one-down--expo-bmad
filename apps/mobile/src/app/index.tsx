@@ -220,6 +220,13 @@ export default function HomeScreen() {
             setOpenTaskId(null);
             router.push(`/task-running/${openTask.id}`);
           }}
+          onHelp={() => {
+            // Same start + unmount-then-push contract as Start; the param
+            // auto-fires the first_steps request on arrival (Story 6.3, AC6).
+            startTask(openTask, 'card_back_overlay');
+            setOpenTaskId(null);
+            router.push(`/task-running/${openTask.id}?breakdown=1`);
+          }}
           onCutLoose={() => {
             // Idempotency ref (per task id): the unmount below stops later
             // taps, but a same-frame double tap reuses this closure and the

@@ -1,9 +1,11 @@
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import { KeyboardAvoidingView, ScrollView } from 'react-native';
 
-import type { TaskData } from '@one-down/shared';
+import type { SubtaskData, TaskData } from '@one-down/shared';
 
 import { SparkleBadge } from '@/components/premium/sparkle-badge';
+import { BreakdownProposal } from '@/components/task-running/breakdown-proposal';
+import { SubtaskList } from '@/components/task-running/subtask-list';
 import { Box } from '@/components/ui/box';
 import { Button, ButtonText } from '@/components/ui/button';
 import { HStack } from '@/components/ui/hstack';
@@ -11,6 +13,7 @@ import { Text } from '@/components/ui/text';
 import { Textarea, TextareaInput } from '@/components/ui/textarea';
 import { VStack } from '@/components/ui/vstack';
 
+import type { BreakdownController } from '@/hooks/use-breakdown';
 import type { UpdateTaskPatch } from '@/services/tasks-repository';
 
 export interface TaskRunningViewHandle {
@@ -38,12 +41,25 @@ export function TaskRunningView({
   onPatch,
   onDone,
   onCutLoose,
+  subtasks,
+  onToggleSubtask,
+  onDeleteSubtask,
+  breakdown,
+  onHelp,
   ref,
 }: {
   task: TaskData;
   onPatch: (patch: UpdateTaskPatch) => void;
   onDone?: () => void;
   onCutLoose?: () => void;
+  /** Saved subtasks (Story 6.3). Omitted/empty = no list rendered. */
+  subtasks?: SubtaskData[];
+  onToggleSubtask?: (subtask: SubtaskData) => void;
+  onDeleteSubtask?: (subtask: SubtaskData) => void;
+  /** Breakdown controller (Story 6.3). Omitted = "Help me with this" stays a disabled placeholder. */
+  breakdown?: BreakdownController;
+  /** "Help me with this" press — requests a first_steps breakdown. */
+  onHelp?: () => void;
   ref?: Ref<TaskRunningViewHandle>;
 }) {
   // Draft-or-stored: null draft = not editing, the field follows the DB.
@@ -142,7 +158,26 @@ export function TaskRunningView({
           {task.details ? (
             <Text className="text-base text-typography-600">{task.details}</Text>
           ) : null}
-          {/* Subtask list (AI breakdown) lands here in Epic 6. */}
+          {/* Subtask area (Story 6.3, UX-DR6/7): the saved list, and/or the
+              in-flight proposal — loading occupies only this slot (UX-DR20). */}
+          {subtasks && subtasks.length > 0 ? (
+            <SubtaskList
+              subtasks={subtasks}
+              onToggle={onToggleSubtask}
+              onDelete={onDeleteSubtask}
+            />
+          ) : null}
+          {breakdown && breakdown.state !== 'idle' ? (
+            <BreakdownProposal
+              state={breakdown.state}
+              steps={breakdown.steps}
+              mode={breakdown.mode}
+              onAccept={breakdown.accept}
+              onShowAll={() => breakdown.request('full', 'task_running')}
+              onReject={breakdown.reject}
+              onRetry={breakdown.retry}
+            />
+          ) : null}
           <VStack className="gap-2">
             <Text className="text-sm font-medium text-typography-500">Notes</Text>
             <Textarea size="md">
@@ -161,21 +196,25 @@ export function TaskRunningView({
             <Button size="xl" isDisabled={!onDone} onPress={handleDone} aria-label="Done">
               <ButtonText>Done</ButtonText>
             </Button>
-            {/* AI breakdown placeholder (Epic 6) with the premium discovery
-                sparkle beside it (Story 8.2a) — an invitation, not a lock:
-                the button's own disabled state belongs to Epic 6's wiring. */}
-            <HStack className="items-center gap-2">
-              <Button
-                size="lg"
-                variant="outline"
-                isDisabled
-                aria-label="Help me with this"
-                className="flex-1"
-              >
-                <ButtonText>Help me with this</ButtonText>
-              </Button>
-              <SparkleBadge feature="ai_breakdown" />
-            </HStack>
+            {/* AI breakdown entry (Story 6.3) with the premium discovery
+                sparkle beside it (Story 8.2a). Hidden once subtasks exist or
+                a proposal is in flight — the subtask area owns the flow then.
+                Disabled placeholder when the route doesn't wire onHelp. */}
+            {(!subtasks || subtasks.length === 0) && (!breakdown || breakdown.state === 'idle') ? (
+              <HStack className="items-center gap-2">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  isDisabled={!onHelp}
+                  onPress={onHelp}
+                  aria-label="Help me with this"
+                  className="flex-1"
+                >
+                  <ButtonText>Help me with this</ButtonText>
+                </Button>
+                <SparkleBadge feature="ai_breakdown" />
+              </HStack>
+            ) : null}
             {/* Frictionless release (Story 2.4) — no confirm, no warning color. */}
             <Button
               size="lg"

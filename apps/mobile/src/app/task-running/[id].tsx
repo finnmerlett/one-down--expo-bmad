@@ -12,9 +12,12 @@ import { HStack } from '@/components/ui/hstack';
 import { ArrowLeftIcon, Icon } from '@/components/ui/icon';
 import { Pressable } from '@/components/ui/pressable';
 import { useToast } from '@/components/ui/toast';
+import { useBreakdown } from '@/hooks/use-breakdown';
+import { useSubtasks } from '@/hooks/use-subtasks';
 import { useTasks } from '@/hooks/use-tasks';
 import { db } from '@/lib/local-db';
 import { awardCompletionStars, awardCutLooseStars } from '@/services/star-awards';
+import { removeSubtask, toggleSubtask } from '@/services/subtask-actions';
 import { completeTask, createNotesAutosaver, cutLooseTask } from '@/services/task-edits';
 
 // Third-party component — NativeWind only auto-interops react-native core.
@@ -24,7 +27,10 @@ cssInterop(SafeAreaView, { className: 'style' });
 // card back's Start/Continue. Leaving keeps the task in_progress (UX flow 4:
 // "task stays in progress, shows Continue").
 export default function TaskRunningScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, breakdown: breakdownParam } = useLocalSearchParams<{
+    id: string;
+    breakdown?: string;
+  }>();
   const router = useRouter();
   const navigation = useNavigation();
   const toast = useToast();
@@ -32,6 +38,20 @@ export default function TaskRunningScreen() {
   const task = tasks.find((candidate) => candidate.id === id) ?? null;
 
   const viewRef = useRef<TaskRunningViewHandle>(null);
+
+  // AI breakdown (Story 6.3): controller + live subtask list.
+  const subtasks = useSubtasks(id);
+  const breakdown = useBreakdown(task);
+
+  // `?breakdown=1` (card-back "Help me with this") auto-fires the first_steps
+  // request once per mount — the param is only ever set on a fresh push, so
+  // no re-arm is needed. Waits for the live query to deliver the task.
+  const autoFiredRef = useRef(false);
+  useEffect(() => {
+    if (breakdownParam !== '1' || !task || autoFiredRef.current) return;
+    autoFiredRef.current = true;
+    breakdown.request('first_steps', 'card_back');
+  }, [breakdownParam, task, breakdown]);
 
   // One saver per screen session (Story 2.2): debounced autosaves all funnel
   // through it so `task_edited` fires at most once per session, not per pause.
@@ -108,6 +128,11 @@ export default function TaskRunningScreen() {
         onPatch={(patch) => saveNotes(patch.notes ?? null)}
         onDone={handleDone}
         onCutLoose={handleCutLoose}
+        subtasks={subtasks}
+        onToggleSubtask={toggleSubtask}
+        onDeleteSubtask={removeSubtask}
+        breakdown={breakdown}
+        onHelp={() => breakdown.request('first_steps', 'task_running')}
       />
     </SafeAreaView>
   );

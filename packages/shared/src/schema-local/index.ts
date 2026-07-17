@@ -6,3 +6,4 @@ export { preferences, type NewPreferenceRow, type PreferenceRow } from './prefer
 export { syncMeta, type SyncMetaRow } from './sync-meta';
 export { tasks, type NewTaskRow, type TaskRow } from './tasks';
 export { starActivityLog, type NewStarActivityRow, type StarActivityRow } from './star-activity';
+export { subtasks, type NewSubtaskRow, type SubtaskRow } from './subtasks';

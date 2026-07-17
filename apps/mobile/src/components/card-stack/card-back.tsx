@@ -141,6 +141,7 @@ export function CardBack({
   onStart,
   onCutLoose,
   onConfirm,
+  onHelp,
   backLabel = 'Back to card front',
   ref,
 }: {
@@ -153,6 +154,8 @@ export function CardBack({
   onCutLoose?: () => void;
   /** Tick-confirm a review item without editing it (Story 6.2). Omitted = no ticks. */
   onConfirm?: (item: ReviewItem) => void;
+  /** "Help me with this" → start + running screen with an auto-fired breakdown (Story 6.3). */
+  onHelp?: () => void;
   /** A11y label for the back button — contextual per surface (overlay vs list detail). */
   backLabel?: string;
   ref?: Ref<CardBackHandle>;
@@ -250,6 +253,15 @@ export function CardBack({
     flushDetails();
     flushNotes();
     onCutLoose?.();
+  };
+
+  // Same flush-then-act contract for the breakdown entry (Story 6.3, AC6):
+  // it navigates to the running screen like Start does.
+  const handleHelp = () => {
+    flushTitle();
+    flushDetails();
+    flushNotes();
+    onHelp?.();
   };
 
   const startLabel = task.status === 'in_progress' ? 'Continue' : 'Start';
@@ -454,6 +466,17 @@ export function CardBack({
                 <ButtonText>Cut loose</ButtonText>
               </Button>
             </HStack>
+            {/* AI breakdown entry (Story 6.3, AC6): starts the task and lands
+                on the running screen with the request already in flight. */}
+            <Button
+              size="lg"
+              variant="outline"
+              isDisabled={!onHelp}
+              onPress={handleHelp}
+              aria-label="Help me with this"
+            >
+              <ButtonText>Help me with this</ButtonText>
+            </Button>
           </VStack>
         </ScrollView>
       </KeyboardAvoidingView>

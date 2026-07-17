@@ -33,6 +33,7 @@ export function CardBackOverlay({
   onStart,
   onCutLoose,
   onConfirm,
+  onHelp,
 }: {
   task: TaskData;
   onPatch: (patch: UpdateTaskPatch) => void;
@@ -43,6 +44,8 @@ export function CardBackOverlay({
   onCutLoose?: () => void;
   /** Tick-confirm a review item (Story 6.2) — passed straight through to CardBack. */
   onConfirm?: (item: ReviewItem) => void;
+  /** Breakdown entry (Story 6.3) — passed straight through to CardBack. */
+  onHelp?: () => void;
 }) {
   const cardBackRef = useRef<CardBackHandle>(null);
   const progress = useSharedValue(0);
@@ -105,6 +108,7 @@ export function CardBackOverlay({
           onStart={onStart}
           onCutLoose={onCutLoose}
           onConfirm={onConfirm}
+          onHelp={onHelp}
         />
       </Animated.View>
     </>

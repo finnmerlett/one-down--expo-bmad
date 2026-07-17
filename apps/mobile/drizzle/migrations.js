@@ -7,6 +7,7 @@ import m0002 from './0002_powerful_eddie_brock.sql';
 import m0003 from './0003_lush_jackal.sql';
 import m0004 from './0004_icy_silver_surfer.sql';
 import m0005 from './0005_chief_gambit.sql';
+import m0006 from './0006_majestic_amazoness.sql';
 
 export default {
   journal,
@@ -17,5 +18,6 @@ export default {
     m0003,
     m0004,
     m0005,
+    m0006,
   },
 };

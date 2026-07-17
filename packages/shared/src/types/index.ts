@@ -6,4 +6,5 @@ export type HealthStatus = {
 
 export * from './ai';
 export * from './star';
+export * from './subtask';
 export * from './task';

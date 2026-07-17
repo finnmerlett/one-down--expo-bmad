@@ -95,7 +95,7 @@ development_status:
   epic-6: in-progress
   6-1-ai-service-and-brain-dump-parsing: done
   6-2-review-mode-for-ai-confirmations: done
-  6-3-ai-task-breakdown: backlog
+  6-3-ai-task-breakdown: done
   6-4-ai-breakdown-feedback-and-retry: backlog
   epic-6-retrospective: optional
 

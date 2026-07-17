@@ -43,6 +43,13 @@
       "when": 1784281373824,
       "tag": "0005_chief_gambit",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1784283178204,
+      "tag": "0006_majestic_amazoness",
+      "breakpoints": true
     }
   ]
 }
