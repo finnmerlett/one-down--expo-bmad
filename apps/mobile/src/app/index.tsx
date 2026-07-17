@@ -101,6 +101,8 @@ export default function HomeScreen() {
       // would leave the overlay's BackHandler swallowing hardware back.
       onListPress={openTask ? undefined : () => router.push('/task-list')}
       starTotals={starTotals}
+      // Same inert-while-overlay guard as the list icon (4.3 AC5).
+      onStarPress={openTask ? undefined : () => router.push('/star-log')}
     >
       {/* Shared filter chrome stays visible in every home state — the user
           must always be able to un-filter. The CardBackOverlay paints over

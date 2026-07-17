@@ -1,0 +1,49 @@
+# Story 4.3 — star activity log: the top-bar counter opens a full-screen
+# chronological transaction list (empty state on a fresh install), each entry
+# shows action + task name + signed amount, and the Today filter keeps
+# today's earnings visible.
+appId: com.onedown.mobile
+---
+- runFlow: common/launch-app.yaml
+
+# Fresh install: counter opens the log to the all-time empty state (AC1/AC4)
+- tapOn: '0 stars, 0 earned today'
+- waitForAnimationToEnd
+- assertVisible: 'Star activity'
+- assertVisible: 'No stars yet'
+- tapOn: 'Back to home'
+- waitForAnimationToEnd
+
+# Earn a deterministic transaction
+- runFlow:
+    file: common/add-task.yaml
+    env:
+      TITLE: 'Log me task'
+- tapOn: 'Task: Log me task. Worth 10 stars. Card 1 of 1'
+- waitForAnimationToEnd
+- tapOn: 'Start task'
+- waitForAnimationToEnd
+- tapOn: 'Done'
+- waitForAnimationToEnd
+
+# The log shows the transaction: action label, title snapshot, amount (AC2)
+- extendedWaitUntil:
+    visible: '10 stars, 10 earned today'
+    timeout: 5000
+- tapOn: '10 stars, 10 earned today'
+- waitForAnimationToEnd
+- assertVisible: 'Completed · Log me task'
+- assertVisible: '+10'
+
+# Today filter keeps a just-earned entry visible (AC3)
+- tapOn: 'Today'
+- assertVisible: 'Completed · Log me task'
+- takeScreenshot: .claude/run-notes/screenshots/4-3-star-log
+
+# Back arrow returns home intact (AC6) — sole task completed -> All clear
+- tapOn: 'Back to home'
+- waitForAnimationToEnd
+- assertVisible: 'All clear'
+
+- assertNotVisible: 'Unhandled'
+- assertNotVisible: 'error occurred'
