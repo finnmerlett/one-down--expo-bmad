@@ -1,22 +1,24 @@
-import { initTRPC } from '@trpc/server';
+import { initTRPC, TRPCError } from '@trpc/server';
 import type { CreateFastifyContextOptions } from '@trpc/server/adapters/fastify';
 
 import type { DbClient } from './db/client';
 import { captureProcedureOutcome } from './lib/analytics-middleware';
 import { isDevEnv, type Env } from './lib/env';
 import type { ServerAnalytics } from './lib/posthog';
+import type { JwtVerifier } from './middleware/auth';
 
 /** Server-scoped dependencies baked into every request context. */
 export interface ContextSeed {
   env: Env;
   db: DbClient;
   analytics: ServerAnalytics;
+  verifyJwt: JwtVerifier;
 }
 
 export interface Context extends ContextSeed {
   req: CreateFastifyContextOptions['req'];
   res: CreateFastifyContextOptions['res'];
-  /** Authenticated user — arrives with Story 5.2's auth middleware. */
+  /** Authenticated user — set by the auth middleware (Story 5.2). */
   user?: { id: string };
 }
 
@@ -55,6 +57,25 @@ const analyticsMiddleware = t.middleware(async ({ ctx, path, type, next }) => {
   return result;
 });
 
+// Story 5.2: parse `Authorization: Bearer <jwt>` and verify against the
+// GoTrue JWKS. Runs INSIDE the analytics middleware — mutating `ctx.user`
+// (same object the outer middleware holds) is what lets analytics report a
+// real distinctId for protected procedures. Downstream ctx narrows to carry
+// a guaranteed `userId`.
+const authMiddleware = t.middleware(async ({ ctx, next }) => {
+  const header = ctx.req.headers.authorization;
+  const token = header?.startsWith('Bearer ') ? header.slice('Bearer '.length) : undefined;
+  if (!token) {
+    throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Missing bearer token' });
+  }
+  const verified = await ctx.verifyJwt(token);
+  if (!verified) {
+    throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid token' });
+  }
+  ctx.user = { id: verified.userId };
+  return next({ ctx: { userId: verified.userId } });
+});
+
 export const router = t.router;
-// Auth middleware / protectedProcedure arrive in Story 5.2 — publicProcedure only here.
 export const publicProcedure = t.procedure.use(analyticsMiddleware);
+export const protectedProcedure = publicProcedure.use(authMiddleware);

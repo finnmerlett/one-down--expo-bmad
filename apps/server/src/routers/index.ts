@@ -1,6 +1,6 @@
 import { APP_NAME, SHARED_PACKAGE_NAME } from '@one-down/shared';
 
-import { publicProcedure, router } from '../trpc';
+import { protectedProcedure, publicProcedure, router } from '../trpc';
 import { aiRouter } from './ai';
 
 // Root router — the single entry point. Feature routers (sync, ai,
@@ -16,6 +16,9 @@ export const appRouter = router({
     sharedPackage: SHARED_PACKAGE_NAME,
     timestamp: new Date().toISOString(),
   })),
+  // Auth probe (Story 5.2): proves the JWT survived the JWKS check — the
+  // returned id is the token's `sub`, i.e. the GoTrue user id.
+  whoAmI: protectedProcedure.query(({ ctx }) => ({ userId: ctx.userId })),
 });
 
 export type AppRouter = typeof appRouter;

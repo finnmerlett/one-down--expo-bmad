@@ -9,6 +9,7 @@ import { createDbClient, type DbClient } from './db/client';
 import { loadEnv, type Env } from './lib/env';
 import { buildLoggerOptions } from './lib/logger';
 import { createServerPostHog, type ServerAnalytics } from './lib/posthog';
+import { createJwtVerifier } from './middleware/auth';
 import { appRouter, type AppRouter } from './routers';
 import { createContextFactory } from './trpc';
 
@@ -54,11 +55,14 @@ export function buildServer(env: Env, options: BuildServerOptions = {}) {
 
   app.register(cors, { origin: env.CORS_ORIGIN });
 
+  // One verifier per server — createRemoteJWKSet caches the fetched keys.
+  const verifyJwt = createJwtVerifier(env);
+
   app.register(fastifyTRPCPlugin, {
     prefix: '/trpc',
     trpcOptions: {
       router: appRouter,
-      createContext: createContextFactory({ env, db, analytics }),
+      createContext: createContextFactory({ env, db, analytics, verifyJwt }),
       onError({ path, error }) {
         app.log.error({ event: 'trpc_procedure_errored', path, err: error }, 'tRPC error');
       },

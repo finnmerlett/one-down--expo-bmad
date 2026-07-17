@@ -8,6 +8,7 @@ import { useState, type ReactNode } from 'react';
 import type { AppRouter } from '@one-down/server';
 
 import { getApiBaseUrl } from './api-url';
+import { supabase } from './supabase';
 
 export const trpc = createTRPCReact<AppRouter>();
 
@@ -47,7 +48,18 @@ export function TrpcProvider({ children }: { children: ReactNode }) {
   );
   const [client] = useState(() =>
     trpc.createClient({
-      links: [httpBatchLink({ url: `${getApiBaseUrl()}/trpc`, fetch: timeoutFetch })],
+      links: [
+        httpBatchLink({
+          url: `${getApiBaseUrl()}/trpc`,
+          fetch: timeoutFetch,
+          // Reads supabase directly (not React state) — no provider-order
+          // race. Signed out = header omitted entirely (local-only free tier).
+          headers: async () => {
+            const { data } = await supabase.auth.getSession();
+            return data.session ? { authorization: `Bearer ${data.session.access_token}` } : {};
+          },
+        }),
+      ],
     }),
   );
 

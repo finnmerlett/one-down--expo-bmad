@@ -1,0 +1,64 @@
+# Story 5.2 — registration & authentication against the local Supabase GoTrue.
+# PREREQ: local supabase stack running (auth on :54321) AND `bun run server:dev`.
+appId: com.onedown.mobile
+---
+- runFlow: common/launch-app.yaml
+
+# AC-6: signed out, core features live — no login wall.
+- assertVisible: 'Add task'
+
+# Unique credentials per run (GoTrue keeps users across runs).
+- evalScript: ${output.email = 'e2e-' + Date.now() + '@test.local'}
+
+# Sign up from settings.
+- tapOn: 'Open settings'
+- tapOn: 'Create account'
+- tapOn: 'Email'
+- inputText: ${output.email}
+- tapOn: 'Password'
+- inputText: 'test-password-123'
+- hideKeyboard
+- tapOn: 'Create account'
+# Success redirects into the signed-in settings state (AC-2/AC-9).
+- extendedWaitUntil:
+    visible: 'Signed in as ${output.email}'
+    timeout: 10000
+- takeScreenshot: .maestro/screenshots/5-2-signed-in
+
+# Sign out lands back in the signed-out settings state (AC-9).
+- tapOn: 'Sign out'
+- extendedWaitUntil:
+    visible: 'Create account'
+    timeout: 5000
+
+# Wrong password → inline error, fields preserved, still on login (AC-7).
+- tapOn: 'Sign in'
+- tapOn: 'Email'
+- inputText: ${output.email}
+- tapOn: 'Password'
+- inputText: 'wrong-password'
+- hideKeyboard
+- tapOn: 'Sign in'
+- extendedWaitUntil:
+    visible: 'Email or password didn’t match — try again'
+    timeout: 10000
+
+# Correct password → signed-in settings again (AC-3).
+- tapOn: 'Password'
+- eraseText
+- inputText: 'test-password-123'
+- hideKeyboard
+- tapOn: 'Sign in'
+- extendedWaitUntil:
+    visible: 'Signed in as ${output.email}'
+    timeout: 10000
+
+# Session survives an app restart (secure-store persistence, AC-3).
+- launchApp
+- tapOn: 'Open settings'
+- extendedWaitUntil:
+    visible: 'Signed in as ${output.email}'
+    timeout: 10000
+
+- assertNotVisible: 'Unhandled'
+- assertNotVisible: 'error occurred'

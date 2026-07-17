@@ -13,6 +13,12 @@ const envSchema = z
     DATABASE_URL: z.string().default(LOCAL_SUPABASE_DB_URL),
     // Absent → the AI service runs the deterministic fake provider (local/E2E mode).
     GEMINI_API_KEY: z.string().optional(),
+    // Story 5.2 — JWT verification against Supabase GoTrue. Defaults target
+    // the local stack; the production JWKS/jose path is identical (ES256).
+    // NOTE deliberately no SUPABASE_JWT_SECRET: signature checks go through
+    // the JWKS, never a shared secret (architecture rule).
+    SUPABASE_JWKS_URL: z.string().default('http://127.0.0.1:54321/auth/v1/.well-known/jwks.json'),
+    SUPABASE_JWT_ISSUER: z.string().default('http://127.0.0.1:54321/auth/v1'),
     // Story 8.3 — ops logging + server-side analytics.
     LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
     // Absent → server analytics is a no-op stub (mirror of the mobile seam).

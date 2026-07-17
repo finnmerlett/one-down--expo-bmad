@@ -67,6 +67,12 @@ export type AnalyticsEventMap = EnforceFlatProps<{
   };
   /** Story 8.2b — restore-purchases outcome (restored = an entitlement was found). */
   purchases_restored: { restored: boolean };
+  /** Story 5.2 — account created (success only; never the email, NFR-S3). */
+  auth_signed_up: { method: 'email' };
+  /** Story 5.2 — signed in (success only). */
+  auth_signed_in: { method: 'email' };
+  /** Story 5.2 — signed out (success only). */
+  auth_signed_out: Record<string, never>;
 }>;
 
 export type AnalyticsEventName = keyof AnalyticsEventMap;

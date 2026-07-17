@@ -5,6 +5,7 @@ import { useEffect, type ReactNode } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 
+import { AuthProvider } from '@/components/auth/auth-provider';
 import { FakeBillingSheet } from '@/components/premium/fake-billing-sheet';
 import { Box } from '@/components/ui/box';
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
@@ -61,16 +62,20 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <GluestackUIProvider mode="light">
         <AppPostHogProvider>
-          {/* TrpcProvider sits OUTSIDE MigrationGate — it must never depend on
-              SQLite readiness (AuthProvider slots in outside it in 5.2). */}
-          <TrpcProvider>
-            <MigrationGate>
-              <NotificationResync />
-              <Stack screenOptions={{ headerShown: false }} />
-            </MigrationGate>
-            {/* Fake billing sheet (8.2b local mode) — no DB, outside the gate. */}
-            <FakeBillingSheet />
-          </TrpcProvider>
+          {/* AuthProvider OUTSIDE TrpcProvider (load-bearing order — the JWT
+              must exist before the tRPC headers callback needs it), and
+              TrpcProvider OUTSIDE MigrationGate — neither may depend on
+              SQLite readiness. */}
+          <AuthProvider>
+            <TrpcProvider>
+              <MigrationGate>
+                <NotificationResync />
+                <Stack screenOptions={{ headerShown: false }} />
+              </MigrationGate>
+              {/* Fake billing sheet (8.2b local mode) — no DB, outside the gate. */}
+              <FakeBillingSheet />
+            </TrpcProvider>
+          </AuthProvider>
         </AppPostHogProvider>
       </GluestackUIProvider>
     </GestureHandlerRootView>

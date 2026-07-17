@@ -5,6 +5,8 @@ import { AppState, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { cssInterop } from 'nativewind';
 
+import { useAuth } from '@/components/auth/auth-provider';
+import { AccountSection } from '@/components/settings/account-section';
 import {
   NotificationPreferencesSection,
   type NotificationPermissionState,
@@ -35,6 +37,7 @@ function toPermissionState(
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const { session, signOut } = useAuth();
 
   // null = stored prefs not loaded yet — the section renders only once real
   // values arrive so an early toggle can never overwrite them with defaults.
@@ -111,6 +114,14 @@ export default function SettingsScreen() {
         <Text className="text-xl font-semibold text-typography-900">Settings</Text>
       </HStack>
       <SettingsView>
+        <AccountSection
+          email={session?.user.email ?? null}
+          onSignIn={() => router.push('/(auth)/login')}
+          onCreateAccount={() => router.push('/(auth)/signup')}
+          // Sign-out lands back in the signed-out settings state (AC-9);
+          // failures are silent by design — the section simply stays signed in.
+          onSignOut={() => void signOut()}
+        />
         {prefs ? (
           <NotificationPreferencesSection
             permission={permission}
