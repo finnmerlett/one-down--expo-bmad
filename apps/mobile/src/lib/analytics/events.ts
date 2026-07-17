@@ -35,6 +35,8 @@ export type AnalyticsEventMap = EnforceFlatProps<{
   notification_permission_resolved: { granted: boolean };
   /** Story 8.1 — user tapped a delivered notification (opens home). */
   notification_opened: { type: 'deadline_urgency' | 'challenge' };
+  /** Story 8.2a — monetization-funnel entry: a premium sparkle was tapped. */
+  premium_sparkle_tapped: { feature: 'ai_breakdown' | 'ai_brain_dump' };
 }>;
 
 export type AnalyticsEventName = keyof AnalyticsEventMap;
