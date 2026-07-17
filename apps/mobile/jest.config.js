@@ -21,7 +21,7 @@ module.exports = {
   setupFiles: [...(preset.setupFiles ?? []), 'react-native-gesture-handler/jestSetup.js'],
   setupFilesAfterEnv: [...(preset.setupFilesAfterEnv ?? []), '<rootDir>/setup-portable-stories.ts'],
   transformIgnorePatterns: [
-    'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|jest-expo|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|storybook|@storybook/.*|uuid|@react-native/.*|nativewind|react-native-css-interop|posthog-react-native|@posthog/.*|@gluestack-ui/.*|@legendapp/.*|@expo/html-elements|tailwind-variants|lucide-react-native)',
+    'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|jest-expo|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|storybook|@storybook/.*|uuid|@react-native/.*|nativewind|react-native-css-interop|posthog-react-native|@posthog/.*|@gluestack-ui/.*|@legendapp/.*|@expo/html-elements|tailwind-variants|lucide-react-native|standard-navigation)',
     ...preset.transformIgnorePatterns.slice(1),
   ],
 };

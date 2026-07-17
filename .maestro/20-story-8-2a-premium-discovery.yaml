@@ -1,0 +1,43 @@
+# Story 8.2a — premium discovery: the free tier shows a tappable sparkle
+# beside the gated "Help me with this" action (AC1), tapping opens the
+# premium features page with the registry-driven list + placeholder CTA
+# (AC2), and going back leaves the running screen fully intact — gating is
+# discovery only, nothing is disabled (AC3).
+appId: com.onedown.mobile
+---
+- runFlow: common/launch-app.yaml
+
+# Seed one task via quick add
+- runFlow:
+    file: common/add-task.yaml
+    env:
+      TITLE: 'Sparkle me task'
+
+# Open the card back and start the task
+- tapOn: 'Task: Sparkle me task. Card 1 of 1'
+- waitForAnimationToEnd
+- tapOn: 'Start task'
+- waitForAnimationToEnd
+
+# Running screen shows the premium sparkle beside the AI action (AC1)
+- assertVisible: 'Help me with this'
+- assertVisible: 'Premium feature: AI task breakdown'
+
+# Tap the sparkle → premium page (AC2)
+- tapOn: 'Premium feature: AI task breakdown'
+- waitForAnimationToEnd
+- assertVisible: 'One Down Premium'
+- assertVisible: 'AI task breakdown'
+- assertVisible: 'AI brain-dump parsing'
+- assertVisible: 'Everything you already use stays free.'
+- assertVisible: 'Subscribe'
+- takeScreenshot: .claude/run-notes/screenshots/8-2a-premium-page
+
+# Back → running screen still intact (AC3)
+- back
+- waitForAnimationToEnd
+- assertVisible: 'Help me with this'
+- assertVisible: 'Sparkle me task'
+
+- assertNotVisible: 'Unhandled'
+- assertNotVisible: 'error occurred'

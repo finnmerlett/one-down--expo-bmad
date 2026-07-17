@@ -3,8 +3,10 @@ import { KeyboardAvoidingView, ScrollView } from 'react-native';
 
 import type { TaskData } from '@one-down/shared';
 
+import { SparkleBadge } from '@/components/premium/sparkle-badge';
 import { Box } from '@/components/ui/box';
 import { Button, ButtonText } from '@/components/ui/button';
+import { HStack } from '@/components/ui/hstack';
 import { Text } from '@/components/ui/text';
 import { Textarea, TextareaInput } from '@/components/ui/textarea';
 import { VStack } from '@/components/ui/vstack';
@@ -159,10 +161,21 @@ export function TaskRunningView({
             <Button size="xl" isDisabled={!onDone} onPress={handleDone} aria-label="Done">
               <ButtonText>Done</ButtonText>
             </Button>
-            {/* AI breakdown placeholder (Epic 6). */}
-            <Button size="lg" variant="outline" isDisabled aria-label="Help me with this">
-              <ButtonText>Help me with this</ButtonText>
-            </Button>
+            {/* AI breakdown placeholder (Epic 6) with the premium discovery
+                sparkle beside it (Story 8.2a) — an invitation, not a lock:
+                the button's own disabled state belongs to Epic 6's wiring. */}
+            <HStack className="items-center gap-2">
+              <Button
+                size="lg"
+                variant="outline"
+                isDisabled
+                aria-label="Help me with this"
+                className="flex-1"
+              >
+                <ButtonText>Help me with this</ButtonText>
+              </Button>
+              <SparkleBadge feature="ai_breakdown" />
+            </HStack>
             {/* Frictionless release (Story 2.4) — no confirm, no warning color. */}
             <Button
               size="lg"

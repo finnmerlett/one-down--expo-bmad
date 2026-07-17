@@ -46,6 +46,27 @@ export type AnalyticsEventMap = EnforceFlatProps<{
     size_bonus: number;
     early_bonus: number; // all zero except amount/base for cut_loose
   };
+  /** Story 8.1 — a notification preference changed (new SETTING value only, never task content). */
+  notification_pref_changed: { pref: 'deadline_urgency' | 'challenges'; value: string };
+  /** Story 8.1 — the system notification permission request resolved. */
+  notification_permission_resolved: { granted: boolean };
+  /** Story 8.1 — user tapped a delivered notification (opens home). */
+  notification_opened: { type: 'deadline_urgency' | 'challenge' };
+  /** Story 8.2a — monetization-funnel entry: a premium sparkle was tapped. */
+  premium_sparkle_tapped: { feature: 'ai_breakdown' | 'ai_brain_dump' };
+  /** Story 8.2b — purchase flow opened (structural data only, never payment details). */
+  purchase_initiated: { product: 'premium_monthly' };
+  /** Story 8.2b — entitlement granted. */
+  purchase_completed: { product: 'premium_monthly' };
+  /** Story 8.2b — user backed out of the billing sheet (NOT a failure). */
+  purchase_cancelled: { product: 'premium_monthly' };
+  /** Story 8.2b — purchase failed; reason is the provider's coarse bucket. */
+  purchase_failed: {
+    product: 'premium_monthly';
+    reason: 'network' | 'payment_declined' | 'unknown';
+  };
+  /** Story 8.2b — restore-purchases outcome (restored = an entitlement was found). */
+  purchases_restored: { restored: boolean };
 }>;
 
 export type AnalyticsEventName = keyof AnalyticsEventMap;

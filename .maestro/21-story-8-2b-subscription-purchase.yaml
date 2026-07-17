@@ -1,0 +1,72 @@
+# Story 8.2b — subscription purchase & entitlements (local fake provider):
+# cancelling the test billing sheet leaves the page unchanged (AC3), a failed
+# purchase shows the inline error + Retry (AC4), buying flips the entitlement
+# and swaps the CTA for the confirmation (AC2), the sparkle disappears on the
+# running screen (closes 8.2a AC4 end-to-end), and a plain relaunch keeps the
+# entitlement via AsyncStorage + launch refresh (AC6).
+appId: com.onedown.mobile
+---
+- runFlow: common/launch-app.yaml
+
+# Seed one task via quick add
+- runFlow:
+    file: common/add-task.yaml
+    env:
+      TITLE: 'Premium purchase task'
+
+# Card back → start the task → sparkle → premium page
+- tapOn: 'Task: Premium purchase task. Card 1 of 1'
+- waitForAnimationToEnd
+- tapOn: 'Start task'
+- waitForAnimationToEnd
+- tapOn: 'Premium feature: AI task breakdown'
+- waitForAnimationToEnd
+- assertVisible: 'One Down Premium'
+
+# Cancel path (AC3): back out of the sheet → free tier, no error copy
+- tapOn: 'Subscribe'
+- waitForAnimationToEnd
+- assertVisible: 'Test billing · One Down Premium'
+- assertVisible: '£1.50 / month'
+- tapOn: 'Cancel'
+- waitForAnimationToEnd
+- assertVisible: 'Subscribe'
+- assertNotVisible: 'Something went wrong with the purchase — nothing was charged.'
+
+# Failure path (AC4): inline error near the CTA + always-visible Retry
+- tapOn: 'Subscribe'
+- waitForAnimationToEnd
+- tapOn: 'Simulate failure'
+- waitForAnimationToEnd
+- assertVisible: 'Something went wrong with the purchase — nothing was charged.'
+- assertVisible: 'Retry'
+
+# Success path (AC2): Retry → Buy → calm confirmation replaces the CTA
+- tapOn: 'Retry'
+- waitForAnimationToEnd
+- tapOn: 'Buy'
+- waitForAnimationToEnd
+- assertVisible: 'You’re premium — enjoy!'
+- assertNotVisible: 'Subscribe'
+- takeScreenshot: .claude/run-notes/screenshots/8-2b-purchase-confirmed
+
+# Sparkle gone on the running screen (8.2a AC4 end-to-end)
+- back
+- waitForAnimationToEnd
+- assertVisible: 'Help me with this'
+- assertNotVisible: 'Premium feature: AI task breakdown'
+
+# Launch-refresh path (AC6): plain relaunch (NO clearState) keeps premium
+- launchApp
+- waitForAnimationToEnd
+- tapOn: 'Open task list'
+- waitForAnimationToEnd
+- tapOn: 'Open task: Premium purchase task'
+- waitForAnimationToEnd
+- tapOn: 'Continue task'
+- waitForAnimationToEnd
+- assertVisible: 'Help me with this'
+- assertNotVisible: 'Premium feature: AI task breakdown'
+
+- assertNotVisible: 'Unhandled'
+- assertNotVisible: 'error occurred'

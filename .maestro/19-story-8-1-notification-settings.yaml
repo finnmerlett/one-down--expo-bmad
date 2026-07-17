@@ -1,0 +1,49 @@
+# Story 8.1 — notification settings: the top-bar gear opens the Settings
+# screen with the Notifications section (AC4), enabling challenge invitations
+# triggers the system permission dialog on a fresh install (AC5, tolerated as
+# optional), and the preference change survives an app relaunch (AC4
+# persistence — asserted via the cadence selector, which only renders while
+# challenges are on). Scheduling correctness is unit/integration-tested; the
+# notification shade is deliberately NOT asserted.
+appId: com.onedown.mobile
+---
+- runFlow: common/launch-app.yaml
+
+# Open settings from the top bar
+- tapOn: 'Open settings'
+- waitForAnimationToEnd
+- assertVisible: 'Settings'
+- assertVisible: 'Notifications'
+- assertVisible: 'Deadline reminders'
+- assertVisible: 'Challenge invitations'
+
+# Enable challenge invitations (default OFF) → first enable may pop the
+# Android 13+ POST_NOTIFICATIONS dialog; clearState makes it deterministic on
+# fresh installs, but tolerate its absence (already granted / older API).
+- tapOn: 'Challenge invitations'
+- tapOn:
+    text: 'Allow'
+    optional: true
+- waitForAnimationToEnd
+
+# Cadence selector appears with the weekly default selected
+- assertVisible: 'Challenge frequency: Weekly'
+- assertVisible: 'Challenge frequency: Daily'
+- takeScreenshot: .claude/run-notes/screenshots/8-1-notification-settings
+
+# Persistence across restart (AC4): relaunch WITHOUT clearState
+- launchApp
+- waitForAnimationToEnd
+- tapOn: 'Open settings'
+- waitForAnimationToEnd
+- assertVisible: 'Notifications'
+# Challenges still on — the cadence row only exists while enabled
+- assertVisible: 'Challenge frequency: Weekly'
+
+# Back to home cleanly
+- back
+- waitForAnimationToEnd
+- assertVisible: 'Add task'
+
+- assertNotVisible: 'Unhandled'
+- assertNotVisible: 'error occurred'

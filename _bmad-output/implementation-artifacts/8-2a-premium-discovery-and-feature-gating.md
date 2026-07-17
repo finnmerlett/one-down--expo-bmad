@@ -1,6 +1,6 @@
 # Story 8.2a: Premium Discovery & Feature Gating
 
-Status: ready-for-dev
+Status: done
 Date: 2026-07-16
 Mode: Wave-based autonomous run — LOCAL MODE: no billing SDK, no server. This story is pure mobile UI + a local entitlement state seam that Story 8.2b's provider fills in.
 

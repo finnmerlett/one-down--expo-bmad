@@ -1,8 +1,9 @@
 import { createRef } from 'react';
 import { composeStories } from '@storybook/react';
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react-native';
 
 import { makeTask } from '@/components/card-stack/task-card.stories';
+import { useEntitlementsStore } from '@/stores/entitlements-store';
 import {
   NOTES_AUTOSAVE_DEBOUNCE_MS,
   TaskRunningView,
@@ -300,5 +301,30 @@ describe('TaskRunningView notes autosave (Story 2.2)', () => {
       <WithDetailsAndNotes onPatch={onPatch} task={storyTask('Externally written')} />,
     );
     expect(screen.getByLabelText('Task notes').props.value).toBe('My live draft');
+  });
+});
+
+describe('premium sparkle gating (Story 8.2a)', () => {
+  afterEach(() => {
+    // Unmount FIRST (jest runs this hook before RNTL's auto-cleanup), so the
+    // store reset never updates a still-mounted SparkleBadge outside act().
+    cleanup();
+    useEntitlementsStore.setState({ isPremium: false });
+  });
+
+  it('free tier: the discovery sparkle sits beside Help me with this', async () => {
+    await render(<WithDetailsAndNotes />);
+
+    expect(screen.getByLabelText('Premium feature: AI task breakdown')).toBeTruthy();
+    // Discovery only (AC3) — the gated button itself is untouched by gating.
+    expect(screen.getByLabelText('Help me with this')).toBeTruthy();
+  });
+
+  it('premium: no sparkle rendered on the gated surface (AC4)', async () => {
+    useEntitlementsStore.setState({ isPremium: true });
+    await render(<WithDetailsAndNotes />);
+
+    expect(screen.queryByLabelText('Premium feature: AI task breakdown')).toBeNull();
+    expect(screen.getByLabelText('Help me with this')).toBeTruthy();
   });
 });

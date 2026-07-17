@@ -4,17 +4,19 @@ import { Pressable } from '@/components/ui/pressable';
 
 import { StarCounter } from './star-counter';
 
-// Remaining placeholder icon button until its screen lands: settings (Epic 8).
 export function TopBar({
   onListPress,
   starTotals = { total: 0, today: 0 },
   onStarPress,
+  onSettingsPress,
 }: {
   onListPress?: () => void;
   /** Live totals from useStarTotals (Story 4.2); defaults keep stories db-free. */
   starTotals?: { total: number; today: number };
   /** Opens the star activity log (wired in Story 4.3). */
   onStarPress?: () => void;
+  /** Opens the settings screen (Story 8.1). */
+  onSettingsPress?: () => void;
 }) {
   return (
     <HStack className="items-center justify-between px-4 py-2">
@@ -34,6 +36,7 @@ export function TopBar({
         accessibilityRole="button"
         accessibilityLabel="Open settings"
         hitSlop={8}
+        onPress={onSettingsPress}
         className="h-11 w-11 items-center justify-center rounded-full active:bg-background-100"
       >
         <Icon as={SettingsIcon} size="xl" className="text-typography-900" />

@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import cors from '@fastify/cors';
 import { APP_NAME, type HealthStatus } from '@one-down/shared';
 import { fastifyTRPCPlugin, type FastifyTRPCPluginOptions } from '@trpc/server/adapters/fastify';
@@ -5,6 +7,8 @@ import Fastify from 'fastify';
 
 import { createDbClient, type DbClient } from './db/client';
 import { loadEnv, type Env } from './lib/env';
+import { buildLoggerOptions } from './lib/logger';
+import { createServerPostHog, type ServerAnalytics } from './lib/posthog';
 import { appRouter, type AppRouter } from './routers';
 import { createContextFactory } from './trpc';
 
@@ -15,10 +19,22 @@ export type { AppRouter } from './routers';
 export interface BuildServerOptions {
   /** Inject a Drizzle client (tests); defaults to one built from env.DATABASE_URL. */
   db?: DbClient;
+  /** Inject an analytics client (tests); defaults to one built from env (Story 8.3). */
+  analytics?: ServerAnalytics;
 }
 
 export function buildServer(env: Env, options: BuildServerOptions = {}) {
-  const app = Fastify({ logger: env.NODE_ENV !== 'test' });
+  const app = Fastify({
+    // Structured pino logging (Story 8.3, NFR-L1); silent under test.
+    logger: env.NODE_ENV === 'test' ? false : buildLoggerOptions(env),
+    // Correlation id on every request log: honour the inbound x-request-id
+    // (context propagation across boundaries) else mint one.
+    genReqId: (req) => {
+      const header = req.headers['x-request-id'];
+      const inbound = Array.isArray(header) ? header[0] : header;
+      return inbound && inbound.length > 0 ? inbound : randomUUID();
+    },
+  });
 
   // Lazy client — no connection is opened until the first query runs.
   const db = options.db ?? createDbClient(env.DATABASE_URL);
@@ -30,15 +46,21 @@ export function buildServer(env: Env, options: BuildServerOptions = {}) {
     });
   }
 
+  // No-op stub without POSTHOG_API_KEY; flushed on close either way.
+  const analytics = options.analytics ?? createServerPostHog(env);
+  app.addHook('onClose', async () => {
+    await analytics.shutdown();
+  });
+
   app.register(cors, { origin: env.CORS_ORIGIN });
 
   app.register(fastifyTRPCPlugin, {
     prefix: '/trpc',
     trpcOptions: {
       router: appRouter,
-      createContext: createContextFactory({ env, db }),
+      createContext: createContextFactory({ env, db, analytics }),
       onError({ path, error }) {
-        app.log.error({ path, err: error }, 'tRPC error');
+        app.log.error({ event: 'trpc_procedure_errored', path, err: error }, 'tRPC error');
       },
     } satisfies FastifyTRPCPluginOptions<AppRouter>['trpcOptions'],
   });
@@ -60,8 +82,13 @@ if (import.meta.main) {
   const env = loadEnv();
   const app = buildServer(env);
 
-  app.listen({ port: env.PORT, host: env.HOST }).catch((error) => {
-    app.log.error(error);
-    process.exit(1);
-  });
+  app
+    .listen({ port: env.PORT, host: env.HOST })
+    .then(() => {
+      app.log.info({ event: 'server_started', port: env.PORT }, 'server started');
+    })
+    .catch((error: unknown) => {
+      app.log.error({ event: 'server_start_failed', err: error }, 'server failed to start');
+      process.exit(1);
+    });
 }

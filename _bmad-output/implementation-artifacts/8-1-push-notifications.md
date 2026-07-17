@@ -1,6 +1,6 @@
 # Story 8.1: Push Notifications
 
-Status: ready-for-dev
+Status: done
 Date: 2026-07-16
 Mode: Wave-based autonomous run — LOCAL MODE (see decisions-log 2026-07-16): **local scheduled notifications via `expo-notifications` only. No EAS, no FCM, no remote push, no server code.** The scheduling seam is designed so a remote path can be added later without reworking callers.
 

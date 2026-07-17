@@ -17,6 +17,7 @@ export function AppShell({
   onListPress,
   starTotals,
   onStarPress,
+  onSettingsPress,
 }: {
   children: ReactNode;
   onAddPress?: () => void;
@@ -25,10 +26,18 @@ export function AppShell({
   starTotals?: { total: number; today: number };
   /** Opens the star activity log (wired in Story 4.3). */
   onStarPress?: () => void;
+  /** Opens the settings screen (Story 8.1). */
+  onSettingsPress?: () => void;
 }) {
   return (
     <SafeAreaView edges={['top', 'left', 'right', 'bottom']} className="flex-1 bg-background-0">
-      <TopBar onListPress={onListPress} starTotals={starTotals} onStarPress={onStarPress} />
+      <TopBar
+        onListPress={onListPress}
+        starTotals={starTotals}
+        onStarPress={onStarPress}
+        onSettingsPress={onSettingsPress}
+      />
+
       <Box className="flex-1">{children}</Box>
       {/* No handler → no FAB: it paints above the content Box, so screens hide
           it while an overlay (e.g. the expanded card back) is up. */}
