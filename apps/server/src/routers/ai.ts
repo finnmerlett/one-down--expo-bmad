@@ -85,12 +85,19 @@ export const aiRouter = router({
       const { provider, name } = createAiProvider(ctx.env);
 
       const startedAt = Date.now();
-      const steps = await provider.breakdownTask({
+      const rawSteps = await provider.breakdownTask({
         title: input.title,
         details: input.details,
         notes: input.notes,
         mode: input.mode,
       });
+
+      // Enforce the shared step cap at the seam, not per-provider: the Gemini
+      // mapper already clamps (re-truncating is idempotent), but the fake
+      // provider interpolates the ≤200-char title into a step, so without
+      // this the invariant MAX_BREAKDOWN_STEP_CHARS documents ("truncated
+      // server-side") breaks in local/E2E fake mode.
+      const steps = rawSteps.map((step) => truncateChars(step, MAX_BREAKDOWN_STEP_CHARS).trimEnd());
 
       // NFR-S3: counts + duration only — never the task text or step text.
       ctx.req.log.info(

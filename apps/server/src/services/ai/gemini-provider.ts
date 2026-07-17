@@ -407,8 +407,14 @@ export function decodeMicroResponse(body: string): string {
   return mapMicroResponse(raw);
 }
 
+// Transport-level bound on every Gemini call (the SDK aborts the fetch when
+// it fires). Without it a hung upstream request holds the Fastify request
+// open indefinitely — the mobile client aborts at 5s and retries, stacking
+// zombie server calls. 10s = generous ceiling over the NFR-P3 <3s target.
+const GEMINI_TIMEOUT_MS = 10_000;
+
 export function createGeminiProvider(apiKey: string): AiProvider {
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI({ apiKey, httpOptions: { timeout: GEMINI_TIMEOUT_MS } });
 
   return {
     async parseBrainDump(text: string): Promise<ParsedTaskDraft[]> {

@@ -3,6 +3,7 @@ import { afterAll, describe, expect, it } from 'bun:test';
 import {
   MAX_BRAIN_DUMP_CHARS,
   MAX_BREAKDOWN_CONTEXT_CHARS,
+  MAX_BREAKDOWN_STEP_CHARS,
   MAX_BREAKDOWN_TITLE_CHARS,
   MAX_REFINE_FEEDBACK_CHARS,
   MAX_REFINE_SUBTASKS,
@@ -192,10 +193,17 @@ describe('ai.breakdownTask (fake mode)', () => {
 
     expect(response.statusCode).toBe(200);
     const { result } = response.json();
-    // The fake provider interpolates the title — proves the transform ran.
+    // The fake provider interpolates the title — proves the title transform
+    // ran — and the router clamps each step to MAX_BREAKDOWN_STEP_CHARS at
+    // the seam (the interpolated step would otherwise be ~243 chars).
     expect(result.data.steps[0]).toBe(
-      `Get everything you need for "${'T'.repeat(MAX_BREAKDOWN_TITLE_CHARS)}" in one place`,
+      `Get everything you need for "${'T'.repeat(MAX_BREAKDOWN_TITLE_CHARS)}" in one place`
+        .slice(0, MAX_BREAKDOWN_STEP_CHARS)
+        .trimEnd(),
     );
+    for (const step of result.data.steps) {
+      expect(step.length).toBeLessThanOrEqual(MAX_BREAKDOWN_STEP_CHARS);
+    }
   });
 
   it(`truncates over-length details/notes to ${MAX_BREAKDOWN_CONTEXT_CHARS} chars instead of rejecting`, async () => {

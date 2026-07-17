@@ -29,9 +29,11 @@ appId: com.onedown.mobile
 - tapOn: 'Start task'
 - waitForAnimationToEnd
 
-# Request a breakdown — loading lives in the subtask area only (AC1)
+# Request a breakdown (AC1). The 'Breaking this down...' loading state is NOT
+# asserted: against the instant local fake provider it can render for only a
+# frame or two, gone before Maestro's first hierarchy poll — assert only the
+# settled proposal (same approach as 08-story-6-1-brain-dump.yaml).
 - tapOn: 'Help me with this'
-- assertVisible: 'Breaking this down...'
 
 # Proposal arrives: the first_steps contract steps are listed (AC2)
 - extendedWaitUntil:
@@ -87,8 +89,8 @@ appId: com.onedown.mobile
       TASK_TITLE: 'Plan the garden overhaul'
 - tapOn: 'Task: Plan the garden overhaul\..*'
 - waitForAnimationToEnd
+# (Loading text not asserted — see the note on the first leg.)
 - tapOn: 'Help me with this'
-- assertVisible: 'Breaking this down...'
 - extendedWaitUntil:
     visible: 'Do just the first two minutes'
     timeout: 15000
