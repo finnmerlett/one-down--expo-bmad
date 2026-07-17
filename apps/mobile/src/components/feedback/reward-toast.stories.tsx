@@ -21,12 +21,12 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Story 2.3 — task completion award. */
+/** Story 2.3 — task completion award (base amount; bonuses vary per task). */
 export const Completion: Story = {
   args: {
     nativeID: 'toast-completion',
     title: 'One down!',
-    stars: STAR_WEIGHTS.taskCompletion,
+    stars: STAR_WEIGHTS.completionBase,
   },
 };
 

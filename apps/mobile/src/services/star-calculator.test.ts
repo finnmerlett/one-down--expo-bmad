@@ -1,6 +1,11 @@
 import type { TaskData } from '@one-down/shared';
 
-import { potentialStars, relativeUrgencyBonus } from './star-calculator';
+import {
+  calculateCompletionStars,
+  earlyCompletionBonus,
+  potentialStars,
+  relativeUrgencyBonus,
+} from './star-calculator';
 
 const NOW = new Date('2026-06-10T12:00:00Z');
 
@@ -78,5 +83,81 @@ describe('relativeUrgencyBonus', () => {
     const second = makeTask({ id: 'second', deadline: new Date('2026-06-12') });
 
     expect(relativeUrgencyBonus(second, [first, second])).toBe(3);
+  });
+});
+
+describe('earlyCompletionBonus (Story 4.1, FR46)', () => {
+  it('is 0 without a deadline', () => {
+    expect(earlyCompletionBonus(makeTask(), NOW)).toBe(0);
+  });
+
+  it('accrues per FULL day of headroom (2.5 days early -> 2)', () => {
+    const task = makeTask({ deadline: new Date('2026-06-13T00:00:00Z') }); // 2.5 days after NOW
+    expect(earlyCompletionBonus(task, NOW)).toBe(2);
+  });
+
+  it('caps at earlyBonusMax (10 days early -> 3)', () => {
+    const task = makeTask({ deadline: new Date('2026-06-20T12:00:00Z') });
+    expect(earlyCompletionBonus(task, NOW)).toBe(3);
+  });
+
+  it('is 0 after the deadline — no punishment, just no bonus', () => {
+    const task = makeTask({ deadline: new Date('2026-06-09T12:00:00Z') });
+    expect(earlyCompletionBonus(task, NOW)).toBe(0);
+  });
+});
+
+describe('calculateCompletionStars (Story 4.1)', () => {
+  it('a task with no size and no deadline earns exactly the base (AC6)', () => {
+    expect(calculateCompletionStars(makeTask(), [], NOW)).toEqual({
+      base: 10,
+      urgencyBonus: 0,
+      sizeBonus: 0,
+      earlyBonus: 0,
+      total: 10,
+    });
+  });
+
+  it('composes base + urgency + size + early into the total', () => {
+    // Sole deadline-bearing task -> full urgency (5); 2 full days early -> 2.
+    const task = makeTask({
+      id: 'due',
+      size: 'big_time',
+      deadline: new Date('2026-06-12T13:00:00Z'),
+    });
+    expect(calculateCompletionStars(task, [makeTask({ id: 'peer' })], NOW)).toEqual({
+      base: 10,
+      urgencyBonus: 5,
+      sizeBonus: 5,
+      earlyBonus: 2,
+      total: 22,
+    });
+  });
+
+  it('ranks urgency against the active pool (2nd of 3 deadlines -> 3)', () => {
+    const soonest = makeTask({ id: 'soonest', deadline: new Date('2026-06-11') });
+    const middle = makeTask({ id: 'middle', deadline: new Date('2026-06-15') });
+    const latest = makeTask({ id: 'latest', deadline: new Date('2026-06-20') });
+
+    const breakdown = calculateCompletionStars(middle, [soonest, middle, latest], NOW);
+    expect(breakdown.urgencyBonus).toBe(3);
+    // 2026-06-15T00:00Z is 4.5 days after NOW -> early capped at 3.
+    expect(breakdown.total).toBe(10 + 3 + 0 + 3);
+  });
+
+  it('a post-deadline completion still earns base + size (never negative framing)', () => {
+    const task = makeTask({ size: 'big_time', deadline: new Date('2026-06-01') });
+    const breakdown = calculateCompletionStars(task, [], NOW);
+    expect(breakdown.earlyBonus).toBe(0);
+    // Sole deadline task still ranks first for urgency.
+    expect(breakdown.total).toBe(10 + 5 + 5);
+  });
+
+  it('matches the card-front preview plus the early bonus (no drift)', () => {
+    const task = makeTask({ size: 'quick_win', deadline: new Date('2026-06-11T13:00:00Z') });
+    const peers = [makeTask({ id: 'p1', deadline: new Date('2026-06-10T18:00:00Z') })];
+
+    const breakdown = calculateCompletionStars(task, peers, NOW);
+    expect(breakdown.total).toBe(potentialStars(task, peers, NOW) + breakdown.earlyBonus);
   });
 });

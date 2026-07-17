@@ -1,27 +1,27 @@
 /**
- * Centralized star-reward weights (architecture: importable by both mobile
- * and server; OTA-tunable via sync in a future version).
+ * Centralized star-reward weights (UX-DR 9; architecture: importable by both
+ * mobile and server; OTA-tunable via sync in a future version). No magic
+ * numbers at call sites — every award amount derives from these.
  *
- * Values are provisional defaults — Epic 4 (Story 4.1) adds urgency/size/
- * deadline bonus weights and the real earning pipeline. Until then these are
- * display-only amounts shown in reward toasts (Stories 2.3/2.4).
+ * Story 4.1 reconciled the provisional 2.3/2.4 display-only amounts into the
+ * real earning pipeline: `completionBase` (+ bonuses) replaced the old flat
+ * `taskCompletion`.
  */
 export const STAR_WEIGHTS = {
-  taskCompletion: 5,
-  /** Story 2.4 — must stay strictly less than taskCompletion. */
-  cutLoose: 2,
-  /** Epic 6. */
-  subtaskCompletion: 1,
-  /** Epic 6. */
-  triageConfirmation: 1,
-  // --- Story 3.3 / Epic 4 completion-award components (FR11/FR44). Used by
-  // the card-front star preview now; Story 4.1 reuses the SAME keys for the
-  // real award pipeline (one formula, no preview/award drift) and reconciles
-  // the taskCompletion duplication when it rewires the reward toast.
-  /** Base stars for completing any task. */
+  /** FR43 — base stars for completing any task. */
   completionBase: 10,
-  /** Full bonus for the soonest-deadline active task (FR44, rank-based). */
+  /** FR44 — full bonus for the soonest-deadline active task (rank-based). */
   urgencyBonusMax: 5,
-  /** Extra stars by declared size (unsized earns no size bonus). */
+  /** FR45 — extra stars by declared size (unsized earns no size bonus). */
   sizeBonus: { quick_win: 0, big_time: 5 },
+  /** FR46 — stars per full day the task is completed before its deadline. */
+  earlyBonusPerDay: 1,
+  /** FR46 — "up to a limit": cap on the early-completion bonus. */
+  earlyBonusMax: 3,
+  /** FR66 — deliberately < completionBase (release is rewarded, not equal). */
+  cutLoose: 3,
+  /** Reserved, Epic 6. */
+  subtaskCompleted: 1,
+  /** Reserved, Epic 6. */
+  triageConfirmed: 1,
 } as const;

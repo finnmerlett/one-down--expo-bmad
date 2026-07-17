@@ -37,6 +37,15 @@ export type AnalyticsEventMap = EnforceFlatProps<{
   mode_toggled: { mode: TaskSize; now_active: boolean };
   /** Story 3.4 — all filters reset atomically (a semantic mutation, not individual toggles). */
   stack_filters_cleared: { via: 'empty_state' };
+  /** Story 4.1 — a star transaction was recorded (amounts only, never task text). */
+  stars_awarded: {
+    action: 'task_completed' | 'task_cut_loose';
+    amount: number;
+    base: number;
+    urgency_bonus: number;
+    size_bonus: number;
+    early_bonus: number; // all zero except amount/base for cut_loose
+  };
 }>;
 
 export type AnalyticsEventName = keyof AnalyticsEventMap;

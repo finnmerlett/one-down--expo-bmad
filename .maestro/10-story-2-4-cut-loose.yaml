@@ -23,11 +23,11 @@ appId: com.onedown.mobile
 - tapOn: 'Cut loose'
 # Assert the toast fast — it auto-dismisses after ~2 s
 - assertVisible: 'Released'
-- assertVisible: '+2 stars'
+- assertVisible: '+3 stars'
 - takeScreenshot: .claude/run-notes/screenshots/2-4-released-toast
 # Back on home, the released card is gone (AC5)
 - extendedWaitUntil:
-    visible: 'Nothing to browse right now'
+    visible: 'All clear'
     timeout: 5000
 - assertNotVisible: 'Release from running'
 
@@ -42,7 +42,7 @@ appId: com.onedown.mobile
 - assertVisible: 'Released'
 # Overlay unmounted, card gone — no route push involved (AC6)
 - extendedWaitUntil:
-    visible: 'Nothing to browse right now'
+    visible: 'All clear'
     timeout: 5000
 - assertNotVisible: 'Release from overlay'
 
@@ -69,7 +69,7 @@ appId: com.onedown.mobile
 # --- All tasks released: home shows the empty-browse state (AC2 tail) ---
 - tapOn: 'Back to home'
 - waitForAnimationToEnd
-- assertVisible: 'Nothing to browse right now'
+- assertVisible: 'All clear'
 
 - assertNotVisible: 'Unhandled'
 - assertNotVisible: 'error occurred'

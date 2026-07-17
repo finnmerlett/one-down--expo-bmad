@@ -35,7 +35,7 @@ appId: com.onedown.mobile
 # Complete it — assert the toast fast (it auto-dismisses after ~2 s)
 - tapOn: 'Done'
 - assertVisible: 'One down!'
-- assertVisible: '+5 stars'
+- assertVisible: '+10 stars'
 - takeScreenshot: .claude/run-notes/screenshots/2-3-completion-toast
 
 # The running screen closed and the stack promoted the next card (AC3)

@@ -1,0 +1,36 @@
+# Story 4.1 — star earning system: completing a task persists a star
+# transaction and the toast shows the ACTUAL calculated amount (a task with
+# no size and no deadline earns exactly the base 10 — AC6, deterministic);
+# cutting loose awards the smaller flat amount (AC3).
+appId: com.onedown.mobile
+---
+- runFlow: common/launch-app.yaml
+
+# --- Leg 1: completion award (base amount, no size/deadline) ---
+- runFlow:
+    file: common/add-task.yaml
+    env:
+      TITLE: 'Earn stars task'
+- tapOn: 'Task: Earn stars task. Worth 10 stars. Card 1 of 1'
+- waitForAnimationToEnd
+- tapOn: 'Start task'
+- waitForAnimationToEnd
+# Assert the toast fast — it auto-dismisses after ~2 s
+- tapOn: 'Done'
+- assertVisible: 'One down!'
+- assertVisible: '+10 stars'
+- takeScreenshot: .claude/run-notes/screenshots/4-1-star-toast
+
+# --- Leg 2: cut-loose award (flat, smaller than completion) ---
+- runFlow:
+    file: common/add-task.yaml
+    env:
+      TITLE: 'Let go task'
+- tapOn: 'Task: Let go task. Worth 10 stars. Card 1 of 1'
+- waitForAnimationToEnd
+- tapOn: 'Cut loose'
+- assertVisible: 'Released'
+- assertVisible: '+3 stars'
+
+- assertNotVisible: 'Unhandled'
+- assertNotVisible: 'error occurred'

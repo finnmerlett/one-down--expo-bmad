@@ -10,14 +10,14 @@ describe('RewardToast (portable stories)', () => {
     await render(<Completion />);
 
     expect(screen.getByText('One down!')).toBeTruthy();
-    expect(screen.getByText('+5 stars')).toBeTruthy();
+    expect(screen.getByText('+10 stars')).toBeTruthy();
   });
 
   it('shows the cut-loose acknowledgment copy (Story 2.4)', async () => {
     await render(<Released />);
 
     expect(screen.getByText('Released')).toBeTruthy();
-    expect(screen.getByText('+2 stars')).toBeTruthy();
+    expect(screen.getByText('+3 stars')).toBeTruthy();
   });
 
   it('uses singular copy for a single star', async () => {

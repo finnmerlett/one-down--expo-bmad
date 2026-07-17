@@ -2,9 +2,9 @@ import { Toast, ToastDescription, ToastTitle, useToast } from '@/components/ui/t
 
 /**
  * Reward acknowledgment toast body (Stories 2.3/2.4, UX-DR 21): positive
- * title ("One down!" / "Released") plus the star amount. Stars are DISPLAY
- * ONLY until Epic 4 wires the real earning pipeline — the amount comes from
- * the shared STAR_WEIGHTS constant at the call site.
+ * title ("One down!" / "Released") plus the star amount. Since Story 4.1 the
+ * amount is the ACTUAL persisted award, fed from the star-awards service at
+ * the call site.
  *
  * Rendered via `useToast().show({ placement: 'top', duration: 2000, ... })`
  * at the provider root, so it survives the route pop that follows Done/Cut

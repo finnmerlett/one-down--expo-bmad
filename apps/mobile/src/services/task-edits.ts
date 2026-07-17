@@ -68,7 +68,8 @@ export function completeTask(task: TaskData): void {
   if (task.status === 'completed' || task.status === 'cut_loose') return;
   void setTaskStatus(db, task.id, 'completed')
     .then(() => {
-      // Epic 4 (4.1): awardStars(...) slots in here, next to the track call.
+      // Star awards live at the route seam (services/star-awards.ts) — the
+      // toast needs the breakdown total, which this fire-and-forget can't return.
       track('task_completed', { size: task.size, had_notes: task.notes !== null });
     })
     // oxlint-disable-next-line no-console
@@ -87,7 +88,7 @@ export function cutLooseTask(
   if (task.status === 'completed' || task.status === 'cut_loose') return;
   void setTaskStatus(db, task.id, 'cut_loose')
     .then(() => {
-      // Epic 4 (4.1): awardStars(...) slots in here, next to the track call.
+      // Star awards live at the route seam (services/star-awards.ts).
       track('task_cut_loose', { via, was_started: task.status === 'in_progress' });
     })
     // oxlint-disable-next-line no-console

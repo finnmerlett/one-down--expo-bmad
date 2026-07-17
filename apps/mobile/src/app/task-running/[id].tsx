@@ -3,8 +3,6 @@ import { useEffect, useMemo, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { cssInterop } from 'nativewind';
 
-import { STAR_WEIGHTS } from '@one-down/shared';
-
 import { showRewardToast } from '@/components/feedback/reward-toast';
 import {
   TaskRunningView,
@@ -15,6 +13,8 @@ import { ArrowLeftIcon, Icon } from '@/components/ui/icon';
 import { Pressable } from '@/components/ui/pressable';
 import { useToast } from '@/components/ui/toast';
 import { useTasks } from '@/hooks/use-tasks';
+import { db } from '@/lib/local-db';
+import { awardCompletionStars, awardCutLooseStars } from '@/services/star-awards';
 import { completeTask, createNotesAutosaver, cutLooseTask } from '@/services/task-edits';
 
 // Third-party component — NativeWind only auto-interops react-native core.
@@ -61,8 +61,12 @@ export default function TaskRunningScreen() {
     if (!task || actedRef.current) return;
     actedRef.current = true;
     completeTask(task);
-    // Shown from the provider root — survives the route pop below.
-    showRewardToast(toast, { title: 'One down!', stars: STAR_WEIGHTS.taskCompletion });
+    // Award AFTER completion is queued — a failed award never blocks the
+    // completion (4.1 AC7). The toast shows the actual persisted amount and
+    // renders from the provider root, so it survives the route pop below.
+    void awardCompletionStars(db, task).then((breakdown) => {
+      showRewardToast(toast, { title: 'One down!', stars: breakdown.total });
+    });
     close();
   };
 
@@ -72,7 +76,9 @@ export default function TaskRunningScreen() {
     if (!task || actedRef.current) return;
     actedRef.current = true;
     cutLooseTask(task, 'task_running');
-    showRewardToast(toast, { title: 'Released', stars: STAR_WEIGHTS.cutLoose });
+    void awardCutLooseStars(db, task).then((stars) => {
+      showRewardToast(toast, { title: 'Released', stars });
+    });
     close();
   };
 

@@ -3,13 +3,13 @@ import { useCallback, useEffect, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { cssInterop } from 'nativewind';
 
-import { STAR_WEIGHTS } from '@one-down/shared';
-
 import { CardBack, type CardBackHandle } from '@/components/card-stack/card-back';
 import { showRewardToast } from '@/components/feedback/reward-toast';
 import { Box } from '@/components/ui/box';
 import { useToast } from '@/components/ui/toast';
 import { useTasks } from '@/hooks/use-tasks';
+import { db } from '@/lib/local-db';
+import { awardCutLooseStars } from '@/services/star-awards';
 import { applyTaskPatch, cutLooseTask, startTask } from '@/services/task-edits';
 
 // Third-party component — NativeWind only auto-interops react-native core.
@@ -102,8 +102,11 @@ export default function TaskDetailScreen() {
             if (cutLoosingRef.current) return;
             cutLoosingRef.current = true;
             cutLooseTask(task, 'list_detail');
-            // Toast renders at the provider root — it survives the pop.
-            showRewardToast(toast, { title: 'Released', stars: STAR_WEIGHTS.cutLoose });
+            // Toast renders at the provider root — it survives the pop and
+            // shows the persisted award amount (Story 4.1).
+            void awardCutLooseStars(db, task).then((stars) => {
+              showRewardToast(toast, { title: 'Released', stars });
+            });
             // Explicit pop for responsiveness; the not-browsable self-pop
             // above is the backstop.
             close();

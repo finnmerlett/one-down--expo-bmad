@@ -1,0 +1,103 @@
+import { inArray } from 'drizzle-orm';
+import { randomUUID } from 'expo-crypto';
+
+import { STAR_WEIGHTS, type TaskData } from '@one-down/shared';
+import { starActivityLog, tasks } from '@one-down/shared/schema-local';
+
+import { track } from '@/lib/analytics/track';
+import { calculateCompletionStars, type StarBreakdown } from '@/services/star-calculator';
+import type { TasksDb } from '@/services/tasks-repository';
+
+/**
+ * Star award persistence (Story 4.1) — writes signed transactions to the
+ * local `star_activity_log` ledger. db injected like tasks-repository so
+ * integration tests run the real schema. Persistence failures never block
+ * the task action (AC7): warn, still return the amount for the toast.
+ */
+
+async function insertAward(
+  db: TasksDb,
+  entry: { taskId: string; taskTitle: string; action: 'task_completed' | 'task_cut_loose' },
+  breakdown: StarBreakdown,
+  now: Date,
+): Promise<void> {
+  await db.insert(starActivityLog).values({
+    // expo-crypto, NOT global crypto.randomUUID() (unreliable under Hermes)
+    id: randomUUID(),
+    taskId: entry.taskId,
+    taskTitle: entry.taskTitle,
+    action: entry.action,
+    amount: breakdown.total,
+    createdAt: now,
+  });
+  // After a successful write only — amounts and action, never task text (NFR-S3).
+  track('stars_awarded', {
+    action: entry.action,
+    amount: breakdown.total,
+    base: breakdown.base,
+    urgency_bonus: breakdown.urgencyBonus,
+    size_bonus: breakdown.sizeBonus,
+    early_bonus: breakdown.earlyBonus,
+  });
+}
+
+/**
+ * Award stars for completing a task (FR43–46): selects the active set itself
+ * (relative urgency ranks against the user's whole backlog), runs the pure
+ * calculator, persists the transaction, and returns the breakdown for the
+ * completion toast.
+ */
+export async function awardCompletionStars(
+  db: TasksDb,
+  task: TaskData,
+  now = new Date(),
+): Promise<StarBreakdown> {
+  // The calculator dedupes `task` by id, so it counts whether or not the
+  // completion write has already landed when this select runs.
+  const activeTasks = await db
+    .select()
+    .from(tasks)
+    .where(inArray(tasks.status, ['pending', 'in_progress']))
+    // oxlint-disable-next-line no-console
+    .catch((error: unknown): TaskData[] => (console.warn('Star award select failed', error), []));
+  const breakdown = calculateCompletionStars(task, activeTasks, now);
+  try {
+    await insertAward(
+      db,
+      { taskId: task.id, taskTitle: task.title, action: 'task_completed' },
+      breakdown,
+      now,
+    );
+  } catch (error) {
+    // oxlint-disable-next-line no-console
+    console.warn('Star award insert failed', error);
+  }
+  return breakdown;
+}
+
+/**
+ * Award the flat cut-loose amount (FR66) — releasing is rewarded too, just
+ * less than completing. Returns the amount for the "Released" toast.
+ */
+export async function awardCutLooseStars(db: TasksDb, task: TaskData): Promise<number> {
+  const amount = STAR_WEIGHTS.cutLoose;
+  const breakdown: StarBreakdown = {
+    base: amount,
+    urgencyBonus: 0,
+    sizeBonus: 0,
+    earlyBonus: 0,
+    total: amount,
+  };
+  try {
+    await insertAward(
+      db,
+      { taskId: task.id, taskTitle: task.title, action: 'task_cut_loose' },
+      breakdown,
+      new Date(),
+    );
+  } catch (error) {
+    // oxlint-disable-next-line no-console
+    console.warn('Star award insert failed', error);
+  }
+  return amount;
+}

@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
 
-import { STAR_WEIGHTS, type TaskContext, type TaskData, type TaskSize } from '@one-down/shared';
+import type { TaskContext, TaskData, TaskSize } from '@one-down/shared';
 
 import { AppShell } from '@/components/app-shell/app-shell';
 import { CardBackOverlay } from '@/components/card-stack/card-back-overlay';
@@ -18,6 +18,7 @@ import { useTasks } from '@/hooks/use-tasks';
 import { track } from '@/lib/analytics/track';
 import { db } from '@/lib/local-db';
 import { availableContexts, curateTasks, urgentContexts } from '@/services/curation';
+import { awardCutLooseStars } from '@/services/star-awards';
 import { potentialStars } from '@/services/star-calculator';
 import { applyTaskPatch, cutLooseTask, startTask } from '@/services/task-edits';
 import { createTask, type CreateTaskInput } from '@/services/tasks-repository';
@@ -166,9 +167,12 @@ export default function HomeScreen() {
             cutLooseFiredRef.current = openTask.id;
             cutLooseTask(openTask, 'card_back_overlay');
             // Unmount-then-toast — no route push, so no BackHandler landmine;
-            // the stack simply advances to the next curated card.
+            // the stack simply advances to the next curated card. The toast
+            // shows the persisted award amount (Story 4.1).
             setOpenTaskId(null);
-            showRewardToast(toast, { title: 'Released', stars: STAR_WEIGHTS.cutLoose });
+            void awardCutLooseStars(db, openTask).then((stars) => {
+              showRewardToast(toast, { title: 'Released', stars });
+            });
           }}
         />
       ) : null}
