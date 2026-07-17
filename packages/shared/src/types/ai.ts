@@ -44,3 +44,26 @@ export interface BreakdownResult {
   mode: BreakdownMode;
   provider: AiProviderName;
 }
+
+/**
+ * Response DTO of the `ai.refineBreakdown` tRPC mutation (Story 6.4).
+ * `steps` REPLACE the task's uncompleted AI subtasks when the user accepts
+ * the refined proposal (completed subtasks are never touched — UX-DR7).
+ * `notesDistillation` is durable info distilled from the user's feedback —
+ * the client appends it to the task's notes immediately, accept or reject.
+ */
+export interface RefineBreakdownResult {
+  steps: string[];
+  notesDistillation: string | null;
+  provider: AiProviderName;
+}
+
+/**
+ * Response DTO of the `ai.suggestMicroTask` tRPC mutation (Story 6.4, FR39):
+ * one tiny first step for a task the user keeps skipping. Accepted via the
+ * nudge UI as a single local subtask (`source: 'micro'`).
+ */
+export interface MicroTaskResult {
+  step: string;
+  provider: AiProviderName;
+}

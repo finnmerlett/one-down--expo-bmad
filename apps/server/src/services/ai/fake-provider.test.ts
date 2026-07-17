@@ -202,6 +202,101 @@ describe('fake provider task breakdown (Story 6.3 E2E contract)', () => {
   });
 });
 
+describe('fake provider breakdown refine (Story 6.4 E2E contract)', () => {
+  const baseInput = {
+    title: 'Sort the paperwork mountain',
+    details: null,
+    notes: null,
+    feedback: 'Too vague, give me physical actions',
+    subtasks: [
+      {
+        title: 'Get everything you need for "Sort the paperwork mountain" in one place',
+        completed: true,
+      },
+      { title: 'Do just the first two minutes', completed: false },
+    ],
+  };
+
+  it('returns the three first_steps starters prefixed "Refined: "', async () => {
+    const { steps } = await provider.refineBreakdown(baseInput);
+
+    expect(steps).toEqual([
+      'Refined: Get everything you need for "Sort the paperwork mountain" in one place',
+      'Refined: Do just the first two minutes',
+      'Refined: Set a 10-minute timer and keep going',
+    ]);
+  });
+
+  it('distills the trimmed feedback behind an "Approach note: " prefix', async () => {
+    const { notesDistillation } = await provider.refineBreakdown({
+      ...baseInput,
+      feedback: '  Too vague, give me physical actions \n',
+    });
+
+    expect(notesDistillation).toBe('Approach note: Too vague, give me physical actions');
+  });
+
+  it('caps the distilled feedback at 140 chars (after trimming)', async () => {
+    const { notesDistillation } = await provider.refineBreakdown({
+      ...baseInput,
+      feedback: ` ${'f'.repeat(300)} `,
+    });
+
+    expect(notesDistillation).toBe(`Approach note: ${'f'.repeat(140)}`);
+  });
+
+  it('never splits a surrogate pair at the 140-char cap', async () => {
+    // 139 ASCII chars, then an emoji (2 UTF-16 code units) straddling the cap.
+    const { notesDistillation } = await provider.refineBreakdown({
+      ...baseInput,
+      feedback: `${'f'.repeat(139)}🎯${'g'.repeat(50)}`,
+    });
+
+    // The whole emoji is dropped rather than leaving a lone high surrogate.
+    expect(notesDistillation).toBe(`Approach note: ${'f'.repeat(139)}`);
+    expect(notesDistillation?.length).toBe('Approach note: '.length + 139);
+  });
+
+  it('steps depend only on the title; distillation only on the feedback', async () => {
+    const bare = await provider.refineBreakdown({ ...baseInput, subtasks: [] });
+    const contextual = await provider.refineBreakdown({
+      ...baseInput,
+      details: 'Three boxes of unopened post',
+      notes: 'Started on the recycling pile',
+    });
+
+    expect(contextual).toEqual(bare);
+  });
+});
+
+describe('fake provider micro-task suggestion (Story 6.4 E2E contract)', () => {
+  it('returns the tiny first step with the title interpolated', async () => {
+    const step = await provider.suggestMicroTask({
+      title: 'Ring the council office',
+      details: null,
+      notes: null,
+    });
+
+    expect(step).toBe('Do just the very first minute of "Ring the council office"');
+  });
+
+  it('depends only on the title — details and notes are ignored', async () => {
+    const bare = await provider.suggestMicroTask({
+      title: 'Fix the bike',
+      details: null,
+      notes: null,
+    });
+    const contextual = await provider.suggestMicroTask({
+      title: 'Fix the bike',
+      details: 'The back brake is rubbing',
+      notes: 'Allen keys are in the shed',
+    });
+
+    expect(contextual).toBe(bare);
+    expect(bare).toBe('Do just the very first minute of "Fix the bike"');
+  });
+});
+
 describe('fake provider determinism', () => {
   it('produces deep-equal output for the same input parsed twice', async () => {
     const text =

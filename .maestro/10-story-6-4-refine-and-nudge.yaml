@@ -1,0 +1,129 @@
+# Story 6.4 — AI breakdown feedback & retry: 'Refine' on the subtask list
+# sends feedback to ai.refineBreakdown, the distillation lands in the notes
+# and the refined proposal replaces only the UNCOMPLETED subtasks (AC1–AC4);
+# skipping a card 5+ times surfaces the micro-task nudge, whose accepted step
+# is saved as a subtask (AC5–AC6). Runs entirely on the deterministic fake
+# provider (AC7).
+# Fake-provider 6.4 contract (fake-provider.ts — lockstep with this flow):
+#   refine steps: the three first_steps starters prefixed 'Refined: '
+#   distillation: 'Approach note: ' + trimmed feedback (capped at 140 chars)
+#   micro step:   Do just the very first minute of "<title>"
+# Prereq (batched wave-end run): local server running WITHOUT GEMINI_API_KEY
+# (fake mode) and the APK built with EXPO_PUBLIC_API_URL=http://10.0.2.2:3000
+# (Story 5.1).
+# Flake guard: the fake provider answers in tens of ms — the 'Rethinking the
+# steps...' loading state needs a minimum visible duration (~500ms, same as
+# 6.3's 'Breaking this down...') or the assert below may race the response.
+# 3.3-proofing: card taps use PREFIX regex ('Task: <title>\..*') and the two
+# tasks in the nudge leg have DISTINCT titles, so label extensions or
+# curation reordering cannot make a tap ambiguous.
+appId: com.onedown.mobile
+---
+- runFlow: common/launch-app.yaml
+- runFlow:
+    file: common/seed-task.yaml
+    env:
+      TASK_TITLE: 'Sort the paperwork mountain'
+
+# --- Leg 1: refine an accepted breakdown (AC1–AC4) ---
+
+# Start the task and accept the initial first_steps breakdown (6.3 surface)
+- tapOn: 'Task: Sort the paperwork mountain\..*'
+- waitForAnimationToEnd
+- tapOn: 'Start task'
+- waitForAnimationToEnd
+- tapOn: 'Help me with this'
+- extendedWaitUntil:
+    visible: 'Do just the first two minutes'
+    timeout: 15000
+- tapOn: 'Add these steps'
+- extendedWaitUntil:
+    visible: 'Subtask: Do just the first two minutes'
+    timeout: 5000
+
+# Tick the FIRST subtask — it must survive the refine untouched (UX-DR7)
+- tapOn: 'Subtask: Get everything you need for "Sort the paperwork mountain" in one place'
+- assertVisible:
+    text: 'Subtask: Get everything you need for "Sort the paperwork mountain" in one place'
+    checked: true
+
+# 'Refine' expands the inline feedback input; empty feedback can't submit (AC1)
+- tapOn: 'Refine'
+- assertVisible: 'Why does this miss the mark?'
+- tapOn: 'Breakdown feedback'
+- inputText: 'Too vague, give me physical actions'
+- tapOn: 'Send feedback'
+
+# Loading lives in the subtask area only (AC2)
+- assertVisible: 'Rethinking the steps...'
+
+# Refined proposal arrives, labeled as such (AC3)
+- extendedWaitUntil:
+    visible: 'Refined: Do just the first two minutes'
+    timeout: 15000
+- assertVisible: 'Refined steps'
+- takeScreenshot: .maestro/screenshots/10-story-6-4-refined-proposal
+
+# Accept: uncompleted subtasks are replaced, the completed one is kept (AC4)
+- tapOn: 'Add these steps'
+- extendedWaitUntil:
+    visible: 'Subtask: Refined: Do just the first two minutes'
+    timeout: 5000
+- assertVisible: 'Subtask: Refined: Set a 10-minute timer and keep going'
+- assertVisible:
+    text: 'Subtask: Get everything you need for "Sort the paperwork mountain" in one place'
+    checked: true
+# Full-string regex: the old uncompleted rows are gone ('Subtask: Refined: …'
+# does NOT match this pattern)
+- assertNotVisible: 'Subtask: Do just the first two minutes'
+- assertNotVisible: 'Subtask: Set a 10-minute timer and keep going'
+
+# The distillation was appended to the notes immediately (AC3 — visible via
+# the draft-or-stored resync; notes were empty, so it is the whole value)
+- assertVisible: 'Approach note: Too vague, give me physical actions'
+
+# --- Leg 2: skip-count nudge → micro task (AC5–AC6) ---
+
+- tapOn: 'Pause and go back'
+- waitForAnimationToEnd
+- runFlow:
+    file: common/seed-task.yaml
+    env:
+      TASK_TITLE: 'Ring the council office'
+
+# Two cards cycle (newest-created 'Ring the council office' starts on top);
+# ten committed swipes = five skips each, landing back on the council task
+- repeat:
+    times: 10
+    commands:
+      - swipe:
+          start: 80%, 45%
+          end: 5%, 45%
+      - waitForAnimationToEnd
+
+# The calm nudge chip appears under the stack for the skipped top card (AC5)
+- assertVisible: 'Stuck on this? Get a tiny first step'
+- tapOn: 'Get a tiny first step'
+
+# The fake micro step for the top card arrives inline (AC6)
+- extendedWaitUntil:
+    visible: 'Do just the very first minute of "Ring the council office"'
+    timeout: 15000
+- assertVisible: 'Add it'
+- assertVisible: 'No thanks'
+
+# Add it → saved as a subtask, skip count resets, the chip goes quiet
+- tapOn: 'Add it'
+- assertNotVisible: 'Stuck on this? Get a tiny first step'
+
+# The micro subtask shows on the task's running screen via 6.3's list
+- tapOn: 'Task: Ring the council office\..*'
+- waitForAnimationToEnd
+- tapOn: 'Start task'
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: 'Subtask: Do just the very first minute of "Ring the council office"'
+    timeout: 5000
+
+- assertNotVisible: 'Unhandled'
+- assertNotVisible: 'error occurred'

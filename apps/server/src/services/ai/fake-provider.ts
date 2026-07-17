@@ -5,7 +5,14 @@ import {
   type TaskSize,
 } from '@one-down/shared';
 
-import type { AiProvider, BreakdownTaskInput } from './provider';
+import { truncateChars } from '../../lib/text';
+import type {
+  AiProvider,
+  BreakdownTaskInput,
+  RefineBreakdownInput,
+  RefineBreakdownOutput,
+  TaskPromptContext,
+} from './provider';
 
 // Deterministic fake provider — the no-GEMINI_API_KEY local mode (AC6).
 // The rules below are a CONTRACT: Maestro E2E flows assert against these
@@ -116,6 +123,25 @@ export function createFakeProvider(): AiProvider {
       return Promise.resolve(
         mode === 'full' ? [...firstSteps, ...FAKE_REMAINING_STEPS] : firstSteps,
       );
+    },
+
+    // Story 6.4 refine contract (Maestro asserts these exact strings):
+    // steps = the three first_steps starters prefixed 'Refined: ' (title is
+    // the only input that matters); distillation = 'Approach note: ' + the
+    // trimmed feedback capped at 140 chars (feedback is the only input that
+    // matters). Existing subtasks and details/notes are ignored.
+    refineBreakdown({ title, feedback }: RefineBreakdownInput): Promise<RefineBreakdownOutput> {
+      return Promise.resolve({
+        steps: fakeFirstSteps(title).map((step) => `Refined: ${step}`),
+        // truncateChars (not bare slice) — never splits a surrogate pair.
+        notesDistillation: `Approach note: ${truncateChars(feedback.trim(), 140)}`,
+      });
+    },
+
+    // Story 6.4 micro-task contract (Maestro asserts this exact string):
+    // depends ONLY on the title.
+    suggestMicroTask({ title }: TaskPromptContext): Promise<string> {
+      return Promise.resolve(`Do just the very first minute of "${title}"`);
     },
   };
 }

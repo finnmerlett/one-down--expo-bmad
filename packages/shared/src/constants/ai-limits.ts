@@ -26,3 +26,30 @@ export const MAX_BREAKDOWN_STEPS = 10;
 
 /** Breakdown steps longer than this are truncated server-side. */
 export const MAX_BREAKDOWN_STEP_CHARS = 140;
+
+/**
+ * Refine feedback cap (Story 6.4). Unlike task fields, feedback comes from a
+ * BOUNDED input the client owns — over-length is REJECTED (BAD_REQUEST), and
+ * the client should enforce this as the input maxLength.
+ */
+export const MAX_REFINE_FEEDBACK_CHARS = 500;
+
+/** Hard cap on the current-subtasks array sent to `ai.refineBreakdown`. */
+export const MAX_REFINE_SUBTASKS = 20;
+
+/** Notes distillations longer than this are truncated server-side (Story 6.4). */
+export const MAX_NOTES_DISTILLATION_CHARS = 200;
+
+/**
+ * Swipes-past before the micro-task nudge appears (Story 6.4, FR39). Starting
+ * the task or answering the nudge resets the count. Epic 7 avoidance
+ * detection should REUSE `skipCount` + this constant (planning: "avoided" =
+ * 5 skips) rather than invent a parallel signal.
+ *
+ * OWNERSHIP: the persisted `skipCount` field itself (TaskData + schema-local
+ * tasks + pg schema tasks + drizzle migrations on both sides) is NOT added by
+ * the server half — it lands with the MOBILE half of Story 6.4, which owns
+ * the client migration chain. This constant is shared here so both halves
+ * agree on the threshold.
+ */
+export const MICRO_TASK_SKIP_THRESHOLD = 5;

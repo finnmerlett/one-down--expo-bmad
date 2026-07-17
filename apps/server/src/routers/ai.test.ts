@@ -4,6 +4,8 @@ import {
   MAX_BRAIN_DUMP_CHARS,
   MAX_BREAKDOWN_CONTEXT_CHARS,
   MAX_BREAKDOWN_TITLE_CHARS,
+  MAX_REFINE_FEEDBACK_CHARS,
+  MAX_REFINE_SUBTASKS,
 } from '@one-down/shared';
 
 import { buildServer } from '../index';
@@ -35,6 +37,24 @@ function breakdownTask(payload: unknown) {
   return app.inject({
     method: 'POST',
     url: '/trpc/ai.breakdownTask',
+    headers: { 'content-type': 'application/json' },
+    payload: JSON.stringify(payload),
+  });
+}
+
+function refineBreakdown(payload: unknown) {
+  return app.inject({
+    method: 'POST',
+    url: '/trpc/ai.refineBreakdown',
+    headers: { 'content-type': 'application/json' },
+    payload: JSON.stringify(payload),
+  });
+}
+
+function suggestMicroTask(payload: unknown) {
+  return app.inject({
+    method: 'POST',
+    url: '/trpc/ai.suggestMicroTask',
     headers: { 'content-type': 'application/json' },
     payload: JSON.stringify(payload),
   });
@@ -190,5 +210,133 @@ describe('ai.breakdownTask (fake mode)', () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json().result.data.steps).toHaveLength(6);
+  });
+});
+
+describe('ai.refineBreakdown (fake mode)', () => {
+  // Same task title + feedback the Maestro E2E flow uses — pins the on-wire
+  // contract.
+  const e2eInput = {
+    title: 'Sort the paperwork mountain',
+    feedback: 'Too vague, give me physical actions',
+    subtasks: [
+      {
+        title: 'Get everything you need for "Sort the paperwork mountain" in one place',
+        completed: true,
+      },
+      { title: 'Do just the first two minutes', completed: false },
+      { title: 'Set a 10-minute timer and keep going', completed: false },
+    ],
+  };
+
+  it('returns the prefixed replacement steps plus the feedback distillation (Maestro contract input)', async () => {
+    const response = await refineBreakdown(e2eInput);
+
+    expect(response.statusCode).toBe(200);
+    const { result } = response.json();
+    expect(result.data).toEqual({
+      steps: [
+        'Refined: Get everything you need for "Sort the paperwork mountain" in one place',
+        'Refined: Do just the first two minutes',
+        'Refined: Set a 10-minute timer and keep going',
+      ],
+      notesDistillation: 'Approach note: Too vague, give me physical actions',
+      provider: 'fake',
+    });
+  });
+
+  it('accepts an empty subtasks array and optional details/notes', async () => {
+    const response = await refineBreakdown({
+      title: 'Sort the paperwork mountain',
+      details: 'Three boxes of unopened post',
+      notes: null,
+      feedback: 'Start smaller',
+      subtasks: [],
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().result.data.provider).toBe('fake');
+  });
+
+  it('rejects empty feedback with BAD_REQUEST', async () => {
+    const response = await refineBreakdown({ ...e2eInput, feedback: '' });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error.data.code).toBe('BAD_REQUEST');
+  });
+
+  it('rejects whitespace-only feedback with BAD_REQUEST (trim runs before min)', async () => {
+    const response = await refineBreakdown({ ...e2eInput, feedback: '  \n ' });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error.data.code).toBe('BAD_REQUEST');
+  });
+
+  it(`rejects feedback longer than ${MAX_REFINE_FEEDBACK_CHARS} chars with BAD_REQUEST`, async () => {
+    // Unlike task fields, feedback comes from a bounded client-owned input —
+    // over-length is a client bug, not user data to accommodate.
+    const response = await refineBreakdown({
+      ...e2eInput,
+      feedback: 'f'.repeat(MAX_REFINE_FEEDBACK_CHARS + 1),
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error.data.code).toBe('BAD_REQUEST');
+  });
+
+  it(`rejects more than ${MAX_REFINE_SUBTASKS} subtasks with BAD_REQUEST`, async () => {
+    const response = await refineBreakdown({
+      ...e2eInput,
+      subtasks: Array.from({ length: MAX_REFINE_SUBTASKS + 1 }, (_, i) => ({
+        title: `Step ${i + 1}`,
+        completed: false,
+      })),
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error.data.code).toBe('BAD_REQUEST');
+  });
+
+  it('rejects a missing subtasks array with BAD_REQUEST', async () => {
+    const response = await refineBreakdown({
+      title: 'Sort the paperwork mountain',
+      feedback: 'Too vague',
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error.data.code).toBe('BAD_REQUEST');
+  });
+});
+
+describe('ai.suggestMicroTask (fake mode)', () => {
+  it('returns the single micro step with the provider name (Maestro contract input)', async () => {
+    // Same task title the Maestro E2E flow seeds — pins the on-wire contract.
+    const response = await suggestMicroTask({ title: 'Ring the council office' });
+
+    expect(response.statusCode).toBe(200);
+    const { result } = response.json();
+    expect(result.data).toEqual({
+      step: 'Do just the very first minute of "Ring the council office"',
+      provider: 'fake',
+    });
+  });
+
+  it('rejects an empty title with BAD_REQUEST', async () => {
+    const response = await suggestMicroTask({ title: '   ' });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error.data.code).toBe('BAD_REQUEST');
+  });
+
+  it(`truncates an over-length title to ${MAX_BREAKDOWN_TITLE_CHARS} chars instead of rejecting`, async () => {
+    const response = await suggestMicroTask({
+      title: 'T'.repeat(MAX_BREAKDOWN_TITLE_CHARS + 50),
+    });
+
+    expect(response.statusCode).toBe(200);
+    // The fake provider interpolates the title — proves the transform ran.
+    expect(response.json().result.data.step).toBe(
+      `Do just the very first minute of "${'T'.repeat(MAX_BREAKDOWN_TITLE_CHARS)}"`,
+    );
   });
 });

@@ -2,9 +2,14 @@ import {
   BREAKDOWN_MODES,
   MAX_BRAIN_DUMP_CHARS,
   MAX_BREAKDOWN_CONTEXT_CHARS,
+  MAX_BREAKDOWN_STEP_CHARS,
   MAX_BREAKDOWN_TITLE_CHARS,
+  MAX_REFINE_FEEDBACK_CHARS,
+  MAX_REFINE_SUBTASKS,
   type BrainDumpResult,
   type BreakdownResult,
+  type MicroTaskResult,
+  type RefineBreakdownResult,
 } from '@one-down/shared';
 import { z } from 'zod';
 
@@ -21,6 +26,14 @@ const breakdownContextField = z
   .string()
   .nullish()
   .transform((value) => (value ? truncateChars(value, MAX_BREAKDOWN_CONTEXT_CHARS) : null));
+
+// Same rationale for the task title: empty/whitespace is a client bug
+// (BAD_REQUEST), over-length is truncated.
+const taskTitleField = z
+  .string()
+  .trim()
+  .min(1)
+  .transform((value) => truncateChars(value, MAX_BREAKDOWN_TITLE_CHARS));
 
 export const aiRouter = router({
   /**
@@ -62,11 +75,7 @@ export const aiRouter = router({
       z.object({
         // Empty/whitespace title is still BAD_REQUEST (a client bug, not user
         // data); over-length fields are truncated — see breakdownContextField.
-        title: z
-          .string()
-          .trim()
-          .min(1)
-          .transform((value) => truncateChars(value, MAX_BREAKDOWN_TITLE_CHARS)),
+        title: taskTitleField,
         details: breakdownContextField,
         notes: breakdownContextField,
         mode: z.enum(BREAKDOWN_MODES),
@@ -95,5 +104,99 @@ export const aiRouter = router({
       );
 
       return { steps, mode: input.mode, provider: name };
+    }),
+
+  /**
+   * Refine an existing breakdown from user feedback (Story 6.4). Returns
+   * replacement steps for the UNCOMPLETED portion plus a distillation of
+   * durable facts from the feedback (the client appends it to the task's
+   * notes). Nothing is persisted server-side — the client swaps its local
+   * uncompleted subtasks on accept.
+   *
+   * publicProcedure by the same recorded 6.1 decision — gating lands in 8.2b.
+   */
+  refineBreakdown: publicProcedure
+    .input(
+      z.object({
+        title: taskTitleField,
+        details: breakdownContextField,
+        notes: breakdownContextField,
+        // Feedback comes from a BOUNDED client-owned input (unlike the
+        // unbounded task fields) — empty and over-length are both client
+        // bugs, so they are REJECTED rather than truncated.
+        feedback: z.string().trim().min(1).max(MAX_REFINE_FEEDBACK_CHARS),
+        subtasks: z
+          .array(
+            z.object({
+              // Subtask titles are prompt context — truncate, never reject.
+              title: z
+                .string()
+                .transform((value) => truncateChars(value, MAX_BREAKDOWN_STEP_CHARS)),
+              completed: z.boolean(),
+            }),
+          )
+          .max(MAX_REFINE_SUBTASKS),
+      }),
+    )
+    .mutation(async ({ ctx, input }): Promise<RefineBreakdownResult> => {
+      const { provider, name } = createAiProvider(ctx.env);
+
+      const startedAt = Date.now();
+      const { steps, notesDistillation } = await provider.refineBreakdown({
+        title: input.title,
+        details: input.details,
+        notes: input.notes,
+        feedback: input.feedback,
+        subtasks: input.subtasks,
+      });
+
+      // NFR-S3: counts + flags only — never task text, feedback, steps or
+      // the distillation.
+      ctx.req.log.info(
+        {
+          provider: name,
+          stepCount: steps.length,
+          subtaskCount: input.subtasks.length,
+          hasDistillation: notesDistillation !== null,
+          durationMs: Date.now() - startedAt,
+        },
+        'breakdown refined',
+      );
+
+      return { steps, notesDistillation, provider: name };
+    }),
+
+  /**
+   * Suggest one tiny first step for a task the user keeps skipping
+   * (Story 6.4, FR39 — the "Stuck on this?" nudge). Nothing is persisted
+   * server-side — the client saves an accepted step as one local subtask.
+   *
+   * publicProcedure by the same recorded 6.1 decision — gating lands in 8.2b.
+   */
+  suggestMicroTask: publicProcedure
+    .input(
+      z.object({
+        title: taskTitleField,
+        details: breakdownContextField,
+        notes: breakdownContextField,
+      }),
+    )
+    .mutation(async ({ ctx, input }): Promise<MicroTaskResult> => {
+      const { provider, name } = createAiProvider(ctx.env);
+
+      const startedAt = Date.now();
+      const step = await provider.suggestMicroTask({
+        title: input.title,
+        details: input.details,
+        notes: input.notes,
+      });
+
+      // NFR-S3: provider + duration only — never the task text or the step.
+      ctx.req.log.info(
+        { provider: name, durationMs: Date.now() - startedAt },
+        'micro task suggested',
+      );
+
+      return { step, provider: name };
     }),
 });

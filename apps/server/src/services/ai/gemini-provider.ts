@@ -3,6 +3,7 @@ import {
   GEMINI_MODEL,
   MAX_BREAKDOWN_STEP_CHARS,
   MAX_BREAKDOWN_STEPS,
+  MAX_NOTES_DISTILLATION_CHARS,
   MAX_PARSED_TASKS,
   TASK_CONTEXTS,
   TASK_SIZES,
@@ -14,7 +15,13 @@ import {
 import { z } from 'zod';
 
 import { truncateChars } from '../../lib/text';
-import type { AiProvider, BreakdownTaskInput } from './provider';
+import type {
+  AiProvider,
+  BreakdownTaskInput,
+  RefineBreakdownInput,
+  RefineBreakdownOutput,
+  TaskPromptContext,
+} from './provider';
 
 // Real Gemini provider — selected only when GEMINI_API_KEY is configured.
 // NFR-S3: nothing in this module may log or embed the user's dump text or
@@ -193,7 +200,7 @@ function buildBreakdownSystemInstruction(mode: BreakdownMode): string {
 }
 
 /** Assemble the user content from the task fields (details/notes optional). */
-function buildBreakdownContents({ title, details, notes }: BreakdownTaskInput): string {
+function buildTaskContents({ title, details, notes }: TaskPromptContext): string {
   const parts = [`Task: ${title}`];
   if (details) parts.push(`Details: ${details}`);
   if (notes) parts.push(`Working notes so far: ${notes}`);
@@ -245,6 +252,161 @@ export function decodeBreakdownResponse(body: string): string[] {
   return mapBreakdownResponse(raw);
 }
 
+// ---------------------------------------------------------------------------
+// Breakdown refine (Story 6.4)
+// ---------------------------------------------------------------------------
+
+const refineResponseSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    steps: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.STRING,
+        description: 'One short, concrete, self-contained step (plain text, no numbering).',
+      },
+      description: 'Replacement steps for the not-yet-completed portion of the task.',
+    },
+    notesDistillation: {
+      type: Type.STRING,
+      nullable: true,
+      description:
+        'One line of durable facts distilled from the user feedback, or null when there are none.',
+    },
+  },
+  required: ['steps'],
+};
+
+function buildRefineSystemInstruction(): string {
+  return [
+    'You revise a step-by-step task breakdown for a person with ADHD, based on their feedback about why the current steps miss the mark.',
+    'Rules:',
+    '- Steps marked [completed — keep, do not regenerate] are already done: NEVER restate or replace them. Return replacement steps for the remaining (not completed) portion only.',
+    '- Return 3 to 8 replacement steps. The first must be tiny and physical — doable in under two minutes.',
+    '- Each step is one short imperative sentence, self-contained, no numbering or bullet prefixes.',
+    `- Keep every step under ${MAX_BREAKDOWN_STEP_CHARS} characters.`,
+    `- notesDistillation: distill DURABLE facts from the feedback (constraints, preferences, context worth remembering) into one line under ${MAX_NOTES_DISTILLATION_CHARS} characters — or null when the feedback carries none.`,
+    '- Output a JSON object with "steps" (array of strings) and "notesDistillation" (string or null), nothing else.',
+  ].join('\n');
+}
+
+/** Task context + the current step list (completed ones flagged) + feedback. */
+function buildRefineContents(input: RefineBreakdownInput): string {
+  const parts = [buildTaskContents(input)];
+  if (input.subtasks.length > 0) {
+    parts.push('Current steps:');
+    for (const subtask of input.subtasks) {
+      const marker = subtask.completed
+        ? '[completed — keep, do not regenerate]'
+        : '[not completed — replace]';
+      parts.push(`- ${marker} ${subtask.title}`);
+    }
+  }
+  parts.push(`User feedback about the current steps: ${input.feedback}`);
+  return parts.join('\n');
+}
+
+// Tolerant object check: steps must be present, distillation is coerced.
+const rawRefineSchema = z.object({
+  steps: z.array(z.unknown()),
+  notesDistillation: z.unknown().optional(),
+});
+
+function coerceDistillation(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const distilled = truncateChars(value.trim(), MAX_NOTES_DISTILLATION_CHARS).trimEnd();
+  return distilled.length > 0 ? distilled : null;
+}
+
+/**
+ * Map a decoded refine response to validated output. Pure — unit-tested with
+ * canned JSON, no network. Steps run through the same tolerance layer as a
+ * breakdown (trim/drop/truncate/clamp; zero usable steps throws); the
+ * distillation is coerced to null unless it is a non-empty string, and
+ * truncated to MAX_NOTES_DISTILLATION_CHARS. A top level without a steps
+ * array is a broken model contract (throw → INTERNAL_SERVER_ERROR).
+ */
+export function mapRefineResponse(raw: unknown): RefineBreakdownOutput {
+  const parsed = rawRefineSchema.safeParse(raw);
+  if (!parsed.success) {
+    throw new Error('AI model response was not a JSON object with a steps array');
+  }
+  return {
+    steps: mapBreakdownResponse(parsed.data.steps),
+    notesDistillation: coerceDistillation(parsed.data.notesDistillation),
+  };
+}
+
+/** Decode the raw refine body — generic parse-failure message (NFR-S3). */
+export function decodeRefineResponse(body: string): RefineBreakdownOutput {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(body) as unknown;
+  } catch {
+    throw new Error('AI model response was not valid JSON');
+  }
+  return mapRefineResponse(raw);
+}
+
+// ---------------------------------------------------------------------------
+// Micro-task suggestion (Story 6.4, FR39)
+// ---------------------------------------------------------------------------
+
+const microResponseSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    step: {
+      type: Type.STRING,
+      description: 'The single smallest physical first step, under 100 characters.',
+    },
+  },
+  required: ['step'],
+};
+
+function buildMicroSystemInstruction(): string {
+  return [
+    'You suggest ONE tiny first step for a task that a person with ADHD keeps skipping.',
+    'Rules:',
+    '- Return the single smallest PHYSICAL first step — something doable in under a minute, so small it feels almost silly.',
+    '- One short imperative sentence, under 100 characters, no numbering.',
+    '- Use the task details and working notes for context when they are provided.',
+    '- Output a JSON object with a single "step" string, nothing else.',
+  ].join('\n');
+}
+
+// Tolerant object check for the micro response.
+const rawMicroSchema = z.object({ step: z.unknown() });
+
+/**
+ * Map a decoded micro-task response to a validated step. Pure — unit-tested
+ * with canned JSON, no network. The step is trimmed and truncated to
+ * MAX_BREAKDOWN_STEP_CHARS (it becomes a subtask title). A missing/non-string
+ * /empty step is a broken model contract (throw → INTERNAL_SERVER_ERROR).
+ */
+export function mapMicroResponse(raw: unknown): string {
+  const parsed = rawMicroSchema.safeParse(raw);
+  if (!parsed.success || typeof parsed.data.step !== 'string') {
+    throw new Error('AI model response was not a JSON object with a step string');
+  }
+
+  const step = truncateChars(parsed.data.step.trim(), MAX_BREAKDOWN_STEP_CHARS).trimEnd();
+  if (step.length === 0) {
+    throw new Error('AI model returned no usable step');
+  }
+  return step;
+}
+
+/** Decode the raw micro-task body — generic parse-failure message (NFR-S3). */
+export function decodeMicroResponse(body: string): string {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(body) as unknown;
+  } catch {
+    throw new Error('AI model response was not valid JSON');
+  }
+  return mapMicroResponse(raw);
+}
+
 export function createGeminiProvider(apiKey: string): AiProvider {
   const ai = new GoogleGenAI({ apiKey });
 
@@ -272,7 +434,7 @@ export function createGeminiProvider(apiKey: string): AiProvider {
     async breakdownTask(input: BreakdownTaskInput): Promise<string[]> {
       const response = await ai.models.generateContent({
         model: GEMINI_MODEL,
-        contents: buildBreakdownContents(input),
+        contents: buildTaskContents(input),
         config: {
           systemInstruction: buildBreakdownSystemInstruction(input.mode),
           responseMimeType: 'application/json',
@@ -287,6 +449,46 @@ export function createGeminiProvider(apiKey: string): AiProvider {
         throw new Error('AI model returned an empty response');
       }
       return decodeBreakdownResponse(body);
+    },
+
+    async refineBreakdown(input: RefineBreakdownInput): Promise<RefineBreakdownOutput> {
+      const response = await ai.models.generateContent({
+        model: GEMINI_MODEL,
+        contents: buildRefineContents(input),
+        config: {
+          systemInstruction: buildRefineSystemInstruction(),
+          responseMimeType: 'application/json',
+          responseSchema: refineResponseSchema,
+          // No thinking — fast + cheap; a short revision needs none (NFR-P3 <3s).
+          thinkingConfig: { thinkingBudget: 0 },
+        },
+      });
+
+      const body = response.text;
+      if (!body) {
+        throw new Error('AI model returned an empty response');
+      }
+      return decodeRefineResponse(body);
+    },
+
+    async suggestMicroTask(input: TaskPromptContext): Promise<string> {
+      const response = await ai.models.generateContent({
+        model: GEMINI_MODEL,
+        contents: buildTaskContents(input),
+        config: {
+          systemInstruction: buildMicroSystemInstruction(),
+          responseMimeType: 'application/json',
+          responseSchema: microResponseSchema,
+          // No thinking — fast + cheap; one tiny step needs none (NFR-P3 <3s).
+          thinkingConfig: { thinkingBudget: 0 },
+        },
+      });
+
+      const body = response.text;
+      if (!body) {
+        throw new Error('AI model returned an empty response');
+      }
+      return decodeMicroResponse(body);
     },
   };
 }

@@ -11,6 +11,8 @@ describe('createAiProvider', () => {
     expect(name).toBe('fake');
     expect(typeof provider.parseBrainDump).toBe('function');
     expect(typeof provider.breakdownTask).toBe('function');
+    expect(typeof provider.refineBreakdown).toBe('function');
+    expect(typeof provider.suggestMicroTask).toBe('function');
   });
 
   it('selects the gemini provider when GEMINI_API_KEY is set', () => {
@@ -21,5 +23,7 @@ describe('createAiProvider', () => {
     expect(name).toBe('gemini');
     expect(typeof provider.parseBrainDump).toBe('function');
     expect(typeof provider.breakdownTask).toBe('function');
+    expect(typeof provider.refineBreakdown).toBe('function');
+    expect(typeof provider.suggestMicroTask).toBe('function');
   });
 });

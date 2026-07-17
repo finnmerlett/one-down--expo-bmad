@@ -1,12 +1,21 @@
 import { describe, expect, it } from 'bun:test';
 
-import { MAX_BREAKDOWN_STEP_CHARS, MAX_BREAKDOWN_STEPS, MAX_PARSED_TASKS } from '@one-down/shared';
+import {
+  MAX_BREAKDOWN_STEP_CHARS,
+  MAX_BREAKDOWN_STEPS,
+  MAX_NOTES_DISTILLATION_CHARS,
+  MAX_PARSED_TASKS,
+} from '@one-down/shared';
 
 import {
   decodeBreakdownResponse,
+  decodeMicroResponse,
   decodeModelResponse,
+  decodeRefineResponse,
   mapBreakdownResponse,
+  mapMicroResponse,
   mapModelResponse,
+  mapRefineResponse,
 } from './gemini-provider';
 
 // Pure mapping layer only — no network. The live generateContent path is
@@ -181,6 +190,142 @@ describe('decodeBreakdownResponse', () => {
     let caught: unknown;
     try {
       decodeBreakdownResponse(body);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(Error);
+    expect((caught as Error).message).toBe('AI model response was not valid JSON');
+  });
+});
+
+describe('mapRefineResponse', () => {
+  it('maps steps and a distillation, trimming both', () => {
+    const result = mapRefineResponse({
+      steps: ['  Clear the desk  ', 'Open the folder'],
+      notesDistillation: '  Prefers physical actions over planning  ',
+    });
+
+    expect(result).toEqual({
+      steps: ['Clear the desk', 'Open the folder'],
+      notesDistillation: 'Prefers physical actions over planning',
+    });
+  });
+
+  it('runs steps through the breakdown tolerance layer (drop/truncate/clamp)', () => {
+    const longStep = `Sort ${'papers '.repeat(40)}into piles`;
+    const raw = {
+      steps: [
+        longStep,
+        '',
+        42,
+        null,
+        ...Array.from({ length: MAX_BREAKDOWN_STEPS + 5 }, (_, i) => `Step ${i + 1}`),
+      ],
+      notesDistillation: null,
+    };
+
+    const { steps } = mapRefineResponse(raw);
+
+    expect(steps).toHaveLength(MAX_BREAKDOWN_STEPS);
+    expect(steps[0]?.length).toBeLessThanOrEqual(MAX_BREAKDOWN_STEP_CHARS);
+  });
+
+  it.each([
+    ['null', null],
+    ['missing', undefined],
+    ['empty string', ''],
+    ['whitespace-only', '   '],
+    ['non-string', 42],
+  ] as const)('coerces a %s distillation to null', (_label, value) => {
+    const raw: Record<string, unknown> = { steps: ['Clear the desk'] };
+    if (value !== undefined) raw.notesDistillation = value;
+
+    expect(mapRefineResponse(raw).notesDistillation).toBeNull();
+  });
+
+  it(`truncates the distillation to ${MAX_NOTES_DISTILLATION_CHARS} chars`, () => {
+    const { notesDistillation } = mapRefineResponse({
+      steps: ['Clear the desk'],
+      notesDistillation: 'd'.repeat(MAX_NOTES_DISTILLATION_CHARS + 50),
+    });
+
+    expect(notesDistillation).toBe('d'.repeat(MAX_NOTES_DISTILLATION_CHARS));
+  });
+
+  it('throws when the top level has no steps array (broken model contract)', () => {
+    expect(() => mapRefineResponse(['just', 'an', 'array'])).toThrow(/JSON object/);
+    expect(() => mapRefineResponse({ notesDistillation: 'x' })).toThrow(/JSON object/);
+    expect(() => mapRefineResponse({ steps: 'not an array' })).toThrow(/JSON object/);
+    expect(() => mapRefineResponse(undefined)).toThrow(/JSON object/);
+  });
+
+  it('throws when no usable steps survive mapping', () => {
+    expect(() => mapRefineResponse({ steps: [], notesDistillation: 'x' })).toThrow(
+      /no usable steps/,
+    );
+    expect(() => mapRefineResponse({ steps: ['   ', 42] })).toThrow(/no usable steps/);
+  });
+});
+
+describe('decodeRefineResponse', () => {
+  it('decodes a valid JSON object body', () => {
+    const result = decodeRefineResponse('{"steps":["Clear the desk"],"notesDistillation":null}');
+
+    expect(result).toEqual({ steps: ['Clear the desk'], notesDistillation: null });
+  });
+
+  it('replaces JSON parse failures with a generic message that never embeds the body (NFR-S3)', () => {
+    // Non-JSON model output — a bare JSON.parse SyntaxError would quote a
+    // fragment of this feedback-derived text.
+    const body = 'The user is behind on their rent paperwork';
+    let caught: unknown;
+    try {
+      decodeRefineResponse(body);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(Error);
+    expect((caught as Error).message).toBe('AI model response was not valid JSON');
+  });
+});
+
+describe('mapMicroResponse', () => {
+  it('trims the step', () => {
+    expect(mapMicroResponse({ step: '  Pick up one envelope  ' })).toBe('Pick up one envelope');
+  });
+
+  it(`truncates steps longer than ${MAX_BREAKDOWN_STEP_CHARS} chars (subtask title cap)`, () => {
+    const step = mapMicroResponse({ step: 'p'.repeat(MAX_BREAKDOWN_STEP_CHARS + 60) });
+
+    expect(step).toBe('p'.repeat(MAX_BREAKDOWN_STEP_CHARS));
+  });
+
+  it('throws when the step is missing, non-string or not an object (broken model contract)', () => {
+    expect(() => mapMicroResponse({})).toThrow(/step string/);
+    expect(() => mapMicroResponse({ step: 42 })).toThrow(/step string/);
+    expect(() => mapMicroResponse('just a string')).toThrow(/step string/);
+    expect(() => mapMicroResponse(['Pick up one envelope'])).toThrow(/step string/);
+    expect(() => mapMicroResponse(undefined)).toThrow(/step string/);
+  });
+
+  it('throws when the step is empty or whitespace-only', () => {
+    expect(() => mapMicroResponse({ step: '' })).toThrow(/no usable step/);
+    expect(() => mapMicroResponse({ step: '   ' })).toThrow(/no usable step/);
+  });
+});
+
+describe('decodeMicroResponse', () => {
+  it('decodes a valid JSON object body', () => {
+    expect(decodeMicroResponse('{"step":"Pick up one envelope"}')).toBe('Pick up one envelope');
+  });
+
+  it('replaces JSON parse failures with a generic message that never embeds the body (NFR-S3)', () => {
+    const body = 'Just start with the tax letter from HMRC';
+    let caught: unknown;
+    try {
+      decodeMicroResponse(body);
     } catch (error) {
       caught = error;
     }
