@@ -45,9 +45,11 @@ appId: com.onedown.mobile
 - assertNotVisible: 'Finish me first'
 
 # Task list: completed task is a display-only Done row, gone from To do (AC5)
+# (Story 4.4: done rows show plain title text — no `Completed:` label)
 - tapOn: 'Open task list'
 - waitForAnimationToEnd
-- assertVisible: 'Completed: Finish me first'
+- assertVisible: 'Done'
+- assertVisible: 'Finish me first'
 - assertVisible: 'Open task: Next in line'
 - assertNotVisible: 'Open task: Finish me first'
 

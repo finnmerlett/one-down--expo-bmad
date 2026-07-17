@@ -57,12 +57,14 @@ appId: com.onedown.mobile
 - waitForAnimationToEnd
 - tapOn: 'Cut loose'
 - assertVisible: 'Released'
-# Lands back on the task list; released tasks are in NEITHER section (AC7)
+# Lands back on the task list; released tasks are in NEITHER section (AC7).
+# All tasks are now cut loose, so the list shows its empty state (4.4: no
+# section headers without content).
 - extendedWaitUntil:
-    visible: 'To do'
+    visible: 'No tasks yet'
     timeout: 5000
 - assertNotVisible: 'Open task: Release from list'
-- assertNotVisible: 'Completed: Release from list'
+- assertNotVisible: 'Release from list'
 - assertNotVisible: 'Release from running'
 - assertNotVisible: 'Release from overlay'
 

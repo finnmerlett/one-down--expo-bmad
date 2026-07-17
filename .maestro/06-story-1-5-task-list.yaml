@@ -1,17 +1,16 @@
-# Story 1.5 — task overview list: top-bar icon opens the list (AC1) with the
-# done placeholder section at the top (AC2); tapping a row opens an isolated
-# full-screen card back whose edits persist back to the list (AC3); with no
-# tasks an empty state guides adding some (AC4).
+# Story 1.5 — task overview list: top-bar icon opens the list (AC1); tapping
+# a row opens an isolated full-screen card back whose edits persist back to
+# the list (AC3); with no tasks an empty state guides adding some (AC4).
+# Updated for Story 4.4: with no completed tasks the section headers are
+# hidden entirely — the done section (and its flow coverage) lives in 18.
 appId: com.onedown.mobile
 ---
 - runFlow: common/launch-app.yaml
 
-# Clean launch has no tasks — empty state first (AC4), under the done
-# placeholder (AC2)
+# Clean launch has no tasks — empty state (AC4); no section headers (4.4 AC3)
 - tapOn: 'Open task list'
 - waitForAnimationToEnd
-- assertVisible: 'Done'
-- assertVisible: 'Completed tasks will land here.'
+- assertNotVisible: 'Done'
 - assertVisible: 'No tasks yet'
 - tapOn: 'Back to home'
 - waitForAnimationToEnd
@@ -34,10 +33,11 @@ appId: com.onedown.mobile
 - tapOn: 'Close add task'
 - waitForAnimationToEnd
 
-# Every active task appears in the list (AC1)
+# Every active task appears in the list (AC1); headers stay hidden with
+# nothing completed (4.4 AC3)
 - tapOn: 'Open task list'
 - waitForAnimationToEnd
-- assertVisible: 'To do'
+- assertNotVisible: 'To do'
 - assertVisible: 'First listed task'
 - assertVisible: 'Second listed task'
 

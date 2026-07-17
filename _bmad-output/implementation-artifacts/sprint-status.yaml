@@ -76,11 +76,11 @@ development_status:
   epic-3-retrospective: optional
 
   # Epic 4: Rewards & Motivation
-  epic-4: in-progress
+  epic-4: done
   4-1-star-earning-system: done
   4-2-star-counter-display: done
   4-3-star-activity-log: done
-  4-4-done-section-in-task-list: backlog
+  4-4-done-section-in-task-list: done
   epic-4-retrospective: optional
 
   # Epic 5: Account & Cloud Sync

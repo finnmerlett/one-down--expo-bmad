@@ -23,7 +23,8 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Populated: Story = {
+/** Story 4.4 — no completed tasks: both section headers hidden (AC3). */
+export const NoDoneTasks: Story = {
   args: {
     tasks: [
       makeTask({
@@ -47,24 +48,35 @@ export const Empty: Story = {
   },
 };
 
-/** Story 2.3 — completed tasks fill the Done section; cut-loose ones vanish. */
+/**
+ * Story 4.4 — the visual reference: Done section on top (oldest completion
+ * first, latest nearest the To do boundary), muted check rows, cut-loose
+ * tasks in neither section.
+ */
 export const WithDoneTasks: Story = {
   args: {
     tasks: [
       makeTask({ id: 'task-1', title: 'Water the plants' }),
+      makeTask({ id: 'task-2', title: 'Email the plumber' }),
       makeTask({
-        id: 'task-2',
+        id: 'task-3',
         title: 'Book dentist appointment',
         status: 'completed',
         updatedAt: new Date('2026-06-03T10:00:00Z'),
       }),
       makeTask({
-        id: 'task-3',
+        id: 'task-4',
         title: 'Sort out the garage',
         status: 'completed',
         updatedAt: new Date('2026-06-05T10:00:00Z'),
       }),
-      makeTask({ id: 'task-4', title: 'Cancel gym membership', status: 'cut_loose' }),
+      makeTask({
+        id: 'task-5',
+        title: 'Renew car insurance',
+        status: 'completed',
+        updatedAt: new Date('2026-06-04T10:00:00Z'),
+      }),
+      makeTask({ id: 'task-6', title: 'Cancel gym membership', status: 'cut_loose' }),
     ],
   },
 };

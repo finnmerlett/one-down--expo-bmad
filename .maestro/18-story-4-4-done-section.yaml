@@ -1,0 +1,75 @@
+# Story 4.4 — done section in the task list: completed tasks fill a "Done"
+# section at the TOP (headers hidden entirely while nothing is completed),
+# done rows are display-only plain-text rows (todo rows keep the `Open task:`
+# label — full-string selectors can't collide), and the entry scroll parks
+# "To do" near the top with the latest completions peeking above.
+appId: com.onedown.mobile
+---
+- runFlow: common/launch-app.yaml
+
+# Seed four tasks
+- runFlow:
+    file: common/add-task.yaml
+    env:
+      TITLE: 'Alpha task'
+- runFlow:
+    file: common/add-task.yaml
+    env:
+      TITLE: 'Beta task'
+- runFlow:
+    file: common/add-task.yaml
+    env:
+      TITLE: 'Gamma task'
+- runFlow:
+    file: common/add-task.yaml
+    env:
+      TITLE: 'Delta task'
+
+# Nothing completed yet: no Done header, rows are plain To do rows (AC3)
+- tapOn: 'Open task list'
+- waitForAnimationToEnd
+- assertNotVisible: 'Done'
+- assertVisible: 'Open task: Alpha task'
+- tapOn: 'Back to home'
+- waitForAnimationToEnd
+
+# Complete Alpha, Beta, Gamma through the list detail (deterministic — no
+# dependence on the seed-jittered stack order)
+- tapOn: 'Open task list'
+- waitForAnimationToEnd
+- tapOn: 'Open task: Alpha task'
+- waitForAnimationToEnd
+- tapOn: 'Start task'
+- waitForAnimationToEnd
+- tapOn: 'Done'
+- waitForAnimationToEnd
+- tapOn: 'Open task: Beta task'
+- waitForAnimationToEnd
+- tapOn: 'Start task'
+- waitForAnimationToEnd
+- tapOn: 'Done'
+- waitForAnimationToEnd
+- tapOn: 'Open task: Gamma task'
+- waitForAnimationToEnd
+- tapOn: 'Start task'
+- waitForAnimationToEnd
+- tapOn: 'Done'
+- waitForAnimationToEnd
+
+# Done section on top: latest completion (Gamma) peeks above "To do" after
+# the entry scroll; Delta stays a pressable To do row (AC1/AC2/AC4/AC5)
+- assertVisible: 'Done'
+- assertVisible: 'To do'
+- assertVisible: 'Gamma task'
+- assertVisible: 'Open task: Delta task'
+- assertNotVisible: 'Open task: Gamma task'
+- assertNotVisible: 'Completed tasks will land here.'
+- takeScreenshot: .claude/run-notes/screenshots/4-4-done-section
+
+# Home is intact afterwards
+- tapOn: 'Back to home'
+- waitForAnimationToEnd
+- assertVisible: 'Task: Delta task. Worth 10 stars. Card 1 of 1'
+
+- assertNotVisible: 'Unhandled'
+- assertNotVisible: 'error occurred'
