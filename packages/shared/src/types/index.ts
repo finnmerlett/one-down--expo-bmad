@@ -4,4 +4,5 @@ export type HealthStatus = {
   timestamp: string;
 };
 
+export * from './ai';
 export * from './task';

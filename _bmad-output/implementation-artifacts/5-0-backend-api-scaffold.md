@@ -1,103 +1,50 @@
 # Story 5.0: Backend API Scaffold
 
-Status: ready-for-dev
+Status: review (implemented, awaiting fresh-context review; do not mark done here — sprint-status.yaml is the source of truth)
 Date: 2026-07-16
-Mode: wave-based autonomous run (spec written up front; implementer reads ONLY this + CLAUDE.md + code)
+Mode: wave-based autonomous run (server track worktree, branch `server-track`)
 
 ## Story
 
-As a developer, I want the backend server scaffolded with tRPC and database connectivity, So that server-side features (auth 5.2, sync 5.3, AI Epic 6) have a working foundation.
-
-FRs: infrastructure for 62–65 · NFRs: SC1
-
-## Local-mode strategy (decisions-log 2026-07-16)
-
-No Railway on this machine. Postgres = the **local Supabase stack's DB** (already running via `supabase` CLI, config in `supabase/config.toml`):
-
-- Postgres: `postgresql://postgres:postgres@127.0.0.1:54322/postgres`
-- Supabase API (GoTrue etc., used from 5.2): `http://127.0.0.1:54321`
-- CLI binary: `/private/tmp/claude-501/-Users-finnmerlett-Repos-one-down--expo-bmad--alt/55ea75bf-120f-4f68-89b9-f1cc6d9d2b79/scratchpad/bin/supabase` (v2.109.1); `supabase status` prints URLs/keys. Start with `supabase start` from repo root if containers are down (`docker ps | grep supabase`).
-
-Our tables live in the `public` schema of that DB via Drizzle direct connection (postgres.js). We do NOT use PostgREST/RLS — with `auto_expose_new_tables` unset, new tables are not exposed through the Supabase Data API. Production would be Railway PG; only `DATABASE_URL` changes.
+As a developer, I want the backend server scaffolded with database connectivity, So that server-side features have a working foundation.
 
 ## Acceptance Criteria
 
-1. `bun run server:dev` boots Fastify 5; `GET /health` responds `{ status: 'ok', service: 'one-down-api', timestamp }` (existing endpoint, kept as liveness check).
-2. tRPC v11 router is mounted via `@trpc/server/adapters/fastify` at `/trpc`; a tRPC `health` query returns `{ status: 'ok', service, sharedPackage, timestamp }` end-to-end (timestamp = ISO **string** — no Dates on the wire until superjson lands in 5.3; tRPC v11 enforces transformer symmetry, so NO transformer anywhere in this story).
-3. Server Drizzle connects to Postgres via postgres.js. `createDbClient(url)` must NOT eagerly connect at import/construction (postgres.js connects lazily on first query) — server boot and non-DB tests succeed with a placeholder `DATABASE_URL`.
-4. Server `tasks` pgTable exists in `@one-down/shared/schema`, mapping the full canonical `TaskData` shape plus `userId` (uuid NOT NULL). `tasks.id` has **no** `defaultRandom()` — client-generated UUIDs accepted as-is. Compile-time conformance check against `TaskData` (mirror the `AssertExact` pattern in `packages/shared/src/schema-local/tasks.ts`).
-5. drizzle-kit migration generated and applied to the local Postgres; an integration test proves a real insert/select round trip through the pgTable.
-6. All `process.env` reads stay confined to `apps/server/src/lib/env.ts` (`loadEnv()` + Zod).
-7. `publicProcedure` only — `protectedProcedure` is Story 5.2.
-8. Server tests join the root `bun run test` chain (CLAUDE.md: "server tests join the chain in Epic 5").
+1. The server project is scaffolded (apps/server with Fastify 5 + TypeScript + Bun); starting via `bun run dev` serves a health check endpoint (`GET /health`) that responds successfully
+2. tRPC router is configured with the Fastify adapter
+3. Server Drizzle ORM connects to PostgreSQL
+4. Server-side task schema mirrors the local schema (via packages/shared)
 
-## Implementation Plan
+Infrastructure: apps/server scaffold, tRPC + Fastify, PostgreSQL + Drizzle (server), packages/shared schemas · NFRs: SC1
 
-Dependencies (exact pins from architecture): server `@trpc/server@11.17.0`, `postgres@3.4.9`, `drizzle-orm@^0.45.2` (declare directly — the server executes queries; don't rely on it transitively via `@one-down/shared`); dev `drizzle-kit@^0.31.10`.
+Epics notes honored: `createDbClient(url)` never connects eagerly (boot/tests succeed with placeholder `DATABASE_URL`); two health endpoints by design (Fastify-native `GET /health` liveness + tRPC `health` query end-to-end); `process.env` reads confined to `lib/env.ts` (`loadEnv()` + Zod); server `tasks` = full canonical `TaskData` + `userId` (uuid NOT NULL); `tasks.id` has NO `defaultRandom()` (client UUIDs accepted as-is); `publicProcedure` only (`protectedProcedure` in 5.2).
 
-**packages/shared/src/schema/tasks.ts** (new; barrel `schema/index.ts` re-exports it, replacing the placeholder):
+## Implementation decisions
 
-```ts
-import { boolean, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+- **tRPC v11 (`@trpc/server@11.17.0`, pinned) + `fastifyTRPCPlugin`** mounted at `/trpc` on the existing Fastify 5 `buildServer(env)`. `src/trpc.ts` owns `initTRPC.context<Context>()`, `router`, `publicProcedure`, and `createContextFactory({ env, db })` — server-scoped deps baked in, `req`/`res` added per request (5.2's auth middleware will read headers from there). **No transformer** — superjson deferred to 5.3 (must be wired client+server simultaneously).
+- **Root router** `src/routers/index.ts` with the single `health` query returning `{ status: 'ok', service, sharedPackage, timestamp }` — `sharedPackage` echoes `SHARED_PACKAGE_NAME` (new shared constant) to prove the shared import end-to-end. `export type { AppRouter }` re-exported from `src/index.ts` for 5.1's **type-only** client import.
+- **pg schema lives in `@one-down/shared/schema`** (`packages/shared/src/schema/tasks.ts`): `pgTable` mirror of schema-local — `uuid` id (no default), `user_id` uuid NOT NULL, `timestamptz` dates, `contexts` stays a JSON string. Compile-time `AssertExact<Omit<ServerTaskRow,'userId'>, TaskData>` — same drift guard as the sqlite side. Package barrel still re-exports NO schema entry (mobile bundle must never see `drizzle-orm/pg-core`); server re-imports via `src/db/schema.ts`.
+- **`createDbClient(url)`** in `src/db/client.ts`: postgres.js (`postgres@3.4.9`) + `drizzle-orm/postgres-js` — construction is side-effect free (lazy connect). Underlying pool reachable via `db.$client` (tests call `.end()`). `buildServer` accepts an optional injected `db` for future tests.
+- **`DATABASE_URL` added to `lib/env.ts`** defaulting to the local supabase Postgres (`postgresql://postgres:postgres@127.0.0.1:54322/postgres` — well-known local dev credentials, not a secret; Railway injects the real one). `.env.example` updated; `.env` stays gitignored.
+- **`drizzle.config.ts` scaffolded** (dialect postgresql, schema → shared pg entry, out `./drizzle`) but NO migration generated — first server migration + `drizzle-kit migrate` wiring are explicitly deferred to Story 5.3 (planning scope-deferral list). Connectivity is proven with `select 1`, not a tasks round-trip (table doesn't exist in the DB until 5.3).
+- **Server tests use `bun:test`** (native to the Bun runtime, zero config) — co-located `src/index.test.ts` + `src/db/client.test.ts`. Root `test` script now chains `bun --cwd apps/server test && bun --cwd apps/mobile test` (server joins the chain per Epic 5; shared has no tests yet so it's not in the chain). Verified: `bun --cwd <dir> test` dispatches to the package script, and `bun test` inside a script invokes the builtin runner (no recursion).
+- Fastify logger disabled under `NODE_ENV=test` (keeps test output clean); tRPC adapter `onError` logs through `app.log`.
 
-export const tasks = pgTable('tasks', {
-  id: uuid('id').primaryKey(), // NO defaultRandom() — client UUIDs are permanent
-  userId: uuid('user_id').notNull(), // Supabase auth user id; no FK (auth schema is GoTrue-owned)
-  title: text('title').notNull(),
-  details: text('details'),
-  notes: text('notes'),
-  status: text('status').$type<TaskStatus>().notNull().default('pending'),
-  size: text('size').$type<TaskSize>(),
-  contexts: text('contexts'), // JSON-encoded array, same encoding as local
-  deadline: timestamp('deadline', { withTimezone: true }),
-  hasCheckNeeded: boolean('has_check_needed').notNull().default(false),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
-});
-```
+## Tasks
 
-Conformance check: `Omit<ServerTaskRow, 'userId'>` must be exactly `TaskData`. The mobile bundle must NEVER import `drizzle-orm/pg-core` — the `.` barrel of `@one-down/shared` continues to re-export neither schema entry point.
+- [x] Shared pg schema (`schema/tasks.ts`) + conformance assert + `SHARED_PACKAGE_NAME` constant
+- [x] `db/client.ts` (`createDbClient`, lazy) + `db/schema.ts` re-export + `drizzle.config.ts`
+- [x] `trpc.ts` (context factory, router, publicProcedure) + `routers/index.ts` (`health` query, `AppRouter`)
+- [x] `index.ts`: fastifyTRPCPlugin at `/trpc`, db built from `env.DATABASE_URL`, `AppRouter` type re-export
+- [x] `env.ts` + `.env.example`: `DATABASE_URL` (placeholder-safe default)
+- [x] Tests: liveness `/health`, tRPC `/trpc/health` (+ NOT_FOUND path), lazy-client placeholder boot, real `select 1` against local supabase Postgres (integration)
+- [x] Root test chain includes server; gates: typecheck, test, lint:check
+- [x] Live smoke: `bun src/index.ts` → curl `/health` + `/trpc/health` green, process killed
 
-**apps/server/src/db/client.ts**: `createDbClient(url: string)` → `drizzle(postgres(url), { schema: { tasks } })`. Export the return type as `Db`.
+## Dev Notes / Deviations
 
-**apps/server/src/trpc.ts**: `initTRPC.context<AppContext>().create()` (no transformer). `AppContext = { db: Db }` built by a `createContext` factory closed over the db instance. Export `router`, `publicProcedure`.
-
-**apps/server/src/routers/index.ts**: `appRouter = router({ health: publicProcedure.query(...) })` returning the AC-2 contract (`sharedPackage: APP_NAME` proves the shared import chain). Export `type AppRouter = typeof appRouter` and re-export it from `src/index.ts` (the package `exports` map already points at `./src/index.ts` — mobile imports it type-only in 5.1).
-
-**apps/server/src/index.ts**: extend `buildServer(env, deps: { db })` — register `fastifyTRPCPlugin` with `{ prefix: '/trpc', trpcOptions: { router: appRouter, createContext } }`. Keep the Fastify-native `/health`. `import.meta.main` block: `loadEnv()` → `createDbClient(env.DATABASE_URL)` → `buildServer` → listen.
-
-**apps/server/src/lib/env.ts**: add `DATABASE_URL: z.string().default('postgresql://postgres:postgres@127.0.0.1:54322/postgres')`. Update `.env.example` (Bun auto-loads `.env`; root `.gitignore` already ignores `.env`, keeps `.env.example`).
-
-**apps/server/drizzle.config.ts** (new): `dialect: 'postgresql'`, `schema: '../../packages/shared/src/schema/index.ts'`, `out: './drizzle'`, `dbCredentials: { url: process.env.DATABASE_URL ?? <local default> }`. Scripts: `"db:generate": "drizzle-kit generate"`, `"db:migrate": "drizzle-kit migrate"`. Generate + migrate once; commit `apps/server/drizzle/`.
-
-**Scripts**: server `"test": "bun test src"`. Root `package.json` `"test"` becomes mobile chain + `bun --cwd apps/server test`.
-
-## Analytics
-
-None. Server-side PostHog (`posthog-node` + posthog-trpc middleware) is Story 8.3. Fastify's built-in pino logger (already on) is the ops log.
-
-## Testing Plan
-
-`bun:test` (co-located under `apps/server/src/`, `*.test.ts`):
-
-- `index.test.ts` — `buildServer` with a **placeholder** `DATABASE_URL` db client (proves lazy connect): `app.inject GET /health` → 200 + shape; `app.inject GET /trpc/health` (tRPC GET query over the adapter) → 200, `result.data.status === 'ok'`, `sharedPackage === 'one-down'`. No network, no DB touched.
-- `db/client.test.ts` — integration against the local stack (prereq: `supabase start`): insert a task row (random `crypto.randomUUID()` id/userId — Node/Bun global is fine server-side), select it back, assert field round-trip incl. `timestamptz` Dates and JSON `contexts` string; delete the row in `afterAll` (shared dev DB hygiene). Fail fast with a clear "is the supabase stack running?" message on connection refusal.
-- No zod-env test (trivial passthrough), no mock-DB tests (methodology: don't test mocks).
-
-**Maestro E2E: none** — no user-facing change (CLAUDE.md rule binds user-facing changes; the 5.1 flow proves connectivity through the app). Gates: `bun run lint:check`, `bun run typecheck`, `bun run test` (now incl. server) before commit.
-
-## UX Notes
-
-None — no UI in this story.
-
-## Dependencies
-
-- None on other stories (runs parallel to the mobile track; touches only `apps/server`, `packages/shared/src/schema`, root `package.json`).
-- Environment: local Supabase stack running (see Local-mode section) for the DB integration test and `db:migrate`.
-
-## Out of Scope
-
-- Auth middleware / `protectedProcedure` / JWKS (5.2). Sync router, superjson, `syncedAt` column, indexes (5.3).
-- `@fastify/rate-limit` (deferred per architecture; not in any Epic 5 AC).
-- PostHog server middleware (8.3). Railway deploy / CI pipeline / EAS (deferred infra).
-- No `users` table — Supabase GoTrue owns identity; `tasks.userId` is a plain uuid column.
+- **Story spec file was absent** in this worktree (`5-0-backend-api-scaffold.md` did not exist under implementation-artifacts) — scope reconstructed at implementation time from `epics.md` Story 5.0 (+ its verbatim notes) and `architecture.md` digest (tRPC setup, health contract, monorepo tree, pinned versions). This file records the reconstructed spec.
+- **PostgreSQL is the local supabase stack** (127.0.0.1:54322), not Railway — per run coordination (local-first strategy); Railway deploy is a later Epic 5 concern. Integration tests hit it for real.
+- **No Maestro flow / no Storybook stories** — server-only story, zero user-facing or visual surface; mobile↔server connectivity E2E arrives with 5.1.
+- **No env-schema unit tests** — declarative Zod config, would be testing the framework (project testing philosophy).
+- tRPC response envelope without transformer is `{ result: { data } }` — 5.1's client assertions should target `data.status === 'ok'` via the typed client, not the raw envelope.
