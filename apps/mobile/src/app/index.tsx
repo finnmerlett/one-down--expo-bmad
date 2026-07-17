@@ -6,12 +6,14 @@ import type { TaskContext, TaskData, TaskSize } from '@one-down/shared';
 import { AppShell } from '@/components/app-shell/app-shell';
 import { CardBackOverlay } from '@/components/card-stack/card-back-overlay';
 import { CardStack } from '@/components/card-stack/card-stack';
+import { ConnectionStatus } from '@/components/connection-status/connection-status';
 import { EmptyState } from '@/components/empty-state/empty-state';
 import { emptyStackCopy } from '@/components/empty-state/empty-stack-copy';
 import { showRewardToast } from '@/components/feedback/reward-toast';
 import { QuickAddSheet } from '@/components/quick-add-sheet/quick-add-sheet';
 import { ContextToggleBar } from '@/components/stack-filters/context-toggle-bar';
 import { ModeToggle } from '@/components/stack-filters/mode-toggle';
+import { HStack } from '@/components/ui/hstack';
 import { useToast } from '@/components/ui/toast';
 import { VStack } from '@/components/ui/vstack';
 import { useStarTotals } from '@/hooks/use-star-totals';
@@ -109,6 +111,11 @@ export default function HomeScreen() {
           must always be able to un-filter. The CardBackOverlay paints over
           it. Tight gap so the stack loses minimal height. */}
       <VStack className="gap-1">
+        {/* Fixed-height slot: the reachability dot can flip states without
+            ever shifting the card stack below (Story 5.1 AC-5). */}
+        <HStack className="h-4 items-center justify-end px-1">
+          <ConnectionStatus />
+        </HStack>
         <ContextToggleBar
           activeContexts={activeContexts}
           availableContexts={available}

@@ -13,6 +13,7 @@ import { Text } from '@/components/ui/text';
 import migrations from '../../drizzle/migrations';
 import { useNotificationResync } from '../hooks/use-notification-resync';
 import { AppPostHogProvider } from '../lib/posthog';
+import { TrpcProvider } from '../lib/trpc';
 import { db } from '../lib/local-db';
 import { refreshEntitlements } from '../services/entitlements/entitlements-service';
 
@@ -60,12 +61,16 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <GluestackUIProvider mode="light">
         <AppPostHogProvider>
-          <MigrationGate>
-            <NotificationResync />
-            <Stack screenOptions={{ headerShown: false }} />
-          </MigrationGate>
-          {/* Fake billing sheet (8.2b local mode) — no DB, outside the gate. */}
-          <FakeBillingSheet />
+          {/* TrpcProvider sits OUTSIDE MigrationGate — it must never depend on
+              SQLite readiness (AuthProvider slots in outside it in 5.2). */}
+          <TrpcProvider>
+            <MigrationGate>
+              <NotificationResync />
+              <Stack screenOptions={{ headerShown: false }} />
+            </MigrationGate>
+            {/* Fake billing sheet (8.2b local mode) — no DB, outside the gate. */}
+            <FakeBillingSheet />
+          </TrpcProvider>
         </AppPostHogProvider>
       </GluestackUIProvider>
     </GestureHandlerRootView>

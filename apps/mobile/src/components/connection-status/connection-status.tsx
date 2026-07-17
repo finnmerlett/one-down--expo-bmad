@@ -1,0 +1,43 @@
+import { Box } from '@/components/ui/box';
+import { HStack } from '@/components/ui/hstack';
+import { Text } from '@/components/ui/text';
+import { trpc } from '@/lib/trpc';
+
+export type ConnectionState = 'checking' | 'connected' | 'offline';
+
+const DOT_CLASSES: Record<ConnectionState, string> = {
+  checking: 'bg-background-400',
+  connected: 'bg-success-500',
+  offline: 'bg-warning-400',
+};
+
+// Presentational half — deliberately subtle (ADHD-first calm home screen):
+// a small dot, plus the UX-spec offline line. Never red, never a modal.
+export function ConnectionStatusView({ status }: { status: ConnectionState }) {
+  return (
+    <HStack
+      // RN has no 'status' role — the label + polite live region carry it.
+      accessibilityLabel={`Server connection: ${status}`}
+      accessibilityLiveRegion="polite"
+      className="items-center gap-1.5"
+    >
+      {status === 'offline' ? (
+        <Text className="text-xs text-typography-500">
+          Couldn't reach the server — working offline
+        </Text>
+      ) : null}
+      <Box className={`h-2 w-2 rounded-full ${DOT_CLASSES[status]}`} />
+    </HStack>
+  );
+}
+
+// Container half — needs a live TrpcProvider above it.
+export function ConnectionStatus() {
+  const health = trpc.health.useQuery(undefined, { refetchOnWindowFocus: false });
+  const status: ConnectionState = health.isPending
+    ? 'checking'
+    : health.isError
+      ? 'offline'
+      : 'connected';
+  return <ConnectionStatusView status={status} />;
+}
