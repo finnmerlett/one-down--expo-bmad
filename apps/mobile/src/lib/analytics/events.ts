@@ -35,6 +35,8 @@ export type AnalyticsEventMap = EnforceFlatProps<{
   context_toggled: { context: TaskContext; now_active: boolean; active_count: number };
   /** Story 3.2 — the mode segmented control toggled (`now_active: false` = re-press deactivated it). */
   mode_toggled: { mode: TaskSize; now_active: boolean };
+  /** Story 3.4 — all filters reset atomically (a semantic mutation, not individual toggles). */
+  stack_filters_cleared: { via: 'empty_state' };
 }>;
 
 export type AnalyticsEventName = keyof AnalyticsEventMap;

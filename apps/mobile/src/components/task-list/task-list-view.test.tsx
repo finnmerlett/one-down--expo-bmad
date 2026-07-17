@@ -61,13 +61,18 @@ describe('TaskListView (portable stories)', () => {
     expect(screen.queryByText('Completed tasks will land here.')).toBeNull();
   });
 
-  it('guides the user to add tasks when the list is empty', async () => {
-    await render(<Empty />);
+  it('guides the user to add tasks when the list is empty (Story 3.4)', async () => {
+    const onAddPress = jest.fn();
+    await render(<Empty onAddPress={onAddPress} />);
 
     expect(screen.getByText('No tasks yet')).toBeTruthy();
-    expect(screen.getByText('Head back and tap the + button to add your first task.')).toBeTruthy();
+    expect(screen.getByText('Tasks you add will show up here.')).toBeTruthy();
     // The done placeholder still frames the (future) completed section.
     expect(screen.getByText('Done')).toBeTruthy();
     expect(screen.queryByLabelText(/^Open task:/)).toBeNull();
+
+    // The CTA routes to the home quick-add sheet.
+    await fireEvent.press(screen.getByLabelText('Add a task'));
+    expect(onAddPress).toHaveBeenCalledTimes(1);
   });
 });

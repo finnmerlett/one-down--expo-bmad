@@ -8,6 +8,7 @@ import { ArrowLeftIcon, Icon } from '@/components/ui/icon';
 import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
 import { useTasks } from '@/hooks/use-tasks';
+import { useQuickAddStore } from '@/stores/quick-add-store';
 
 // Third-party component — NativeWind only auto-interops react-native core.
 cssInterop(SafeAreaView, { className: 'style' });
@@ -30,7 +31,17 @@ export default function TaskListScreen() {
         </Pressable>
         <Text className="text-xl font-semibold text-typography-900">Tasks</Text>
       </HStack>
-      <TaskListView tasks={tasks} onTaskPress={(task) => router.push(`/task/${task.id}`)} />
+      <TaskListView
+        tasks={tasks}
+        onTaskPress={(task) => router.push(`/task/${task.id}`)}
+        onAddPress={() => {
+          // The quick-add sheet is mounted on the home screen — open it via
+          // the global UI store, then pop back so it shows as home regains
+          // focus (Story 3.4 AC4).
+          useQuickAddStore.getState().open();
+          router.back();
+        }}
+      />
     </SafeAreaView>
   );
 }

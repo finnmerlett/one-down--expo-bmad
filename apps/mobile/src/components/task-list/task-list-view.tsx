@@ -10,6 +10,7 @@ import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 
 import { CONTEXT_LABELS, SIZE_LABELS } from '@/components/card-stack/task-card';
+import { EmptyState } from '@/components/empty-state/empty-state';
 
 function TaskRow({ task, onPress }: { task: TaskData; onPress: () => void }) {
   const contexts = parseTaskContexts(task.contexts);
@@ -88,17 +89,6 @@ function ListHeader({ done }: { done: TaskData[] }) {
   );
 }
 
-function EmptyState() {
-  return (
-    <VStack className="items-center gap-1 py-8">
-      <Text className="font-medium text-typography-900">No tasks yet</Text>
-      <Text className="text-center text-sm text-typography-500">
-        Head back and tap the + button to add your first task.
-      </Text>
-    </VStack>
-  );
-}
-
 // Scrollable backlog overview: active tasks newest first (FR30), completed
 // tasks in the Done section above (most recently finished first — updatedAt
 // desc; there is deliberately no completedAt column). Cut-loose tasks appear
@@ -106,9 +96,12 @@ function EmptyState() {
 export function TaskListView({
   tasks,
   onTaskPress,
+  onAddPress,
 }: {
   tasks: TaskData[];
   onTaskPress: (task: TaskData) => void;
+  /** Empty-state CTA (Story 3.4) — the route opens the home quick-add sheet. */
+  onAddPress?: () => void;
 }) {
   const todo = tasks.filter((task) => task.status === 'pending' || task.status === 'in_progress');
   const done = tasks
@@ -121,7 +114,16 @@ export function TaskListView({
       keyExtractor={(task) => task.id}
       renderItem={({ item }) => <TaskRow task={item} onPress={() => onTaskPress(item)} />}
       ListHeaderComponent={<ListHeader done={done} />}
-      ListEmptyComponent={EmptyState}
+      ListEmptyComponent={
+        <Box className="py-8">
+          <EmptyState
+            title="No tasks yet"
+            body="Tasks you add will show up here."
+            actionLabel="Add a task"
+            onAction={onAddPress}
+          />
+        </Box>
+      }
       className="flex-1"
       contentContainerClassName="gap-2 px-4 pb-8"
     />

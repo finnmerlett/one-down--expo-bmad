@@ -68,11 +68,11 @@ development_status:
   epic-2-retrospective: optional
 
   # Epic 3: Smart Curation
-  epic-3: in-progress
+  epic-3: done
   3-1-context-toggle-bar: done
   3-2-mode-toggle-quick-wins-big-time: done
   3-3-stack-curation-algorithm: done
-  3-4-empty-state-guidance: backlog
+  3-4-empty-state-guidance: done
   epic-3-retrospective: optional
 
   # Epic 4: Rewards & Motivation

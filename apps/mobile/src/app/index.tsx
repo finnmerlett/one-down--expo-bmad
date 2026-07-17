@@ -6,12 +6,12 @@ import { STAR_WEIGHTS, type TaskContext, type TaskData, type TaskSize } from '@o
 import { AppShell } from '@/components/app-shell/app-shell';
 import { CardBackOverlay } from '@/components/card-stack/card-back-overlay';
 import { CardStack } from '@/components/card-stack/card-stack';
+import { EmptyState } from '@/components/empty-state/empty-state';
+import { emptyStackCopy } from '@/components/empty-state/empty-stack-copy';
 import { showRewardToast } from '@/components/feedback/reward-toast';
 import { QuickAddSheet } from '@/components/quick-add-sheet/quick-add-sheet';
 import { ContextToggleBar } from '@/components/stack-filters/context-toggle-bar';
 import { ModeToggle } from '@/components/stack-filters/mode-toggle';
-import { Box } from '@/components/ui/box';
-import { Text } from '@/components/ui/text';
 import { useToast } from '@/components/ui/toast';
 import { VStack } from '@/components/ui/vstack';
 import { useTasks } from '@/hooks/use-tasks';
@@ -45,6 +45,7 @@ export default function HomeScreen() {
   const toggleContext = useStackFiltersStore((state) => state.toggleContext);
   const mode = useStackFiltersStore((state) => state.mode);
   const toggleMode = useStackFiltersStore((state) => state.toggleMode);
+  const clearFilters = useStackFiltersStore((state) => state.clearFilters);
 
   // Session curation seed — stable across re-renders/live-query emits (the
   // order can't shuffle under the user's fingers mid-browse), fresh per app
@@ -110,19 +111,34 @@ export default function HomeScreen() {
         <ModeToggle mode={mode} onToggle={handleToggleMode} />
       </VStack>
       {tasks.length === 0 ? (
-        <Box className="flex-1 items-center justify-center px-8">
-          <Text className="text-center text-typography-400">Your tasks will appear here</Text>
-        </Box>
+        // New-user empty state (AC2). Epic 6 swaps this CTA to brain dump.
+        <EmptyState
+          title="No tasks yet"
+          body="Get things out of your head — add your first task."
+          actionLabel="Add a task"
+          onAction={openTask ? undefined : open}
+        />
       ) : curated.length === 0 ? (
-        // Tasks exist but none are curated — everything is completed/cut
-        // loose OR the active filters match nothing. The "no tasks" message
-        // must not show here. (Full guidance treatment is Story 3.4.)
-        <Box className="flex-1 items-center justify-center gap-1 px-8">
-          <Text className="text-center text-typography-400">Nothing to browse right now</Text>
-          <Text className="text-center text-typography-400">
-            Try another context or add a task.
-          </Text>
-        </Box>
+        activeContexts.length > 0 || mode !== null ? (
+          // Filters match nothing (AC1) — never show "no tasks" copy here,
+          // tasks exist but fail the filter (1.3 AC8 guard).
+          <EmptyState
+            {...emptyStackCopy(activeContexts, mode)}
+            actionLabel="Show all tasks"
+            onAction={() => {
+              clearFilters();
+              track('stack_filters_cleared', { via: 'empty_state' });
+            }}
+          />
+        ) : (
+          // Everything completed/cut loose (AC3) — achievement framing.
+          <EmptyState
+            title="All clear"
+            body="Nothing waiting right now. Add a task or check your list."
+            actionLabel="Add a task"
+            onAction={openTask ? undefined : open}
+          />
+        )
       ) : (
         <CardStack
           tasks={curated}

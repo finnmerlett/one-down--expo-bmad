@@ -1,0 +1,55 @@
+# Story 3.4 — empty state guidance: the new-user empty state carries an
+# add-task CTA (AC2), the task list empty state routes back to the home
+# quick-add sheet (AC4), a filtered-empty stack names the active filters
+# (AC1), and "Show all tasks" clears them atomically so the stack reappears.
+appId: com.onedown.mobile
+---
+- runFlow: common/launch-app.yaml
+
+# AC2: global empty state on home (zero tasks)
+- assertVisible: 'No tasks yet'
+- assertVisible: 'Get things out of your head — add your first task.'
+- assertVisible: 'Add a task'
+
+# AC4: task list empty state; its CTA lands back on home with quick-add open
+- tapOn: 'Open task list'
+- waitForAnimationToEnd
+- assertVisible: 'Tasks you add will show up here.'
+- tapOn: 'Add a task'
+- extendedWaitUntil:
+    visible: 'Task title'
+    timeout: 3000
+- tapOn: 'Task title'
+- inputText: 'Solo task'
+- tapOn: 'Save task'
+- extendedWaitUntil:
+    visible: 'What needs doing?'
+    timeout: 3000
+- tapOn: 'Close add task'
+- waitForAnimationToEnd
+
+# Tag the task Home + Quick win on the card back
+- tapOn: 'Task: Solo task. Worth 10 stars. Card 1 of 1'
+- waitForAnimationToEnd
+- tapOn: 'Context: Home'
+- tapOn: 'Size: Quick win'
+- tapOn: 'Back to card front'
+- waitForAnimationToEnd
+
+# AC1: filters that match nothing name the active filter(s), never "no tasks"
+- tapOn: 'Filter context: Home'
+- waitForAnimationToEnd
+- tapOn: 'Mode: Big time'
+- waitForAnimationToEnd
+- assertVisible: 'No big time tasks for Home'
+- assertVisible: 'Try another context or switch mode.'
+- assertNotVisible: 'No tasks yet'
+- takeScreenshot: .claude/run-notes/screenshots/3-4-filtered-empty-state
+
+# AC1: "Show all tasks" clears all filters atomically — the stack reappears
+- tapOn: 'Show all tasks'
+- waitForAnimationToEnd
+- assertVisible: 'Task: Solo task. Worth 10 stars. Card 1 of 1'
+
+- assertNotVisible: 'Unhandled'
+- assertNotVisible: 'error occurred'

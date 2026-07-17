@@ -39,9 +39,11 @@ export const Populated: Story = {
   },
 };
 
+/** Story 3.4 — shared EmptyState with the add-task CTA. */
 export const Empty: Story = {
   args: {
     tasks: [],
+    onAddPress: () => {},
   },
 };
 
