@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 import { randomUUID } from 'expo-crypto';
 
@@ -219,6 +219,30 @@ export async function updateTask(
     confirmedItems,
     reviewCleared: confirmedItems.length > 0 && values.hasCheckNeeded === false,
   };
+}
+
+/**
+ * Skip counting (Story 6.4, FR39). Behavioral metadata, NOT content: the
+ * explicit `updatedAt = updatedAt` self-assignment defeats the schema's
+ * $onUpdate stamp (explicit values win — the 5.3 pre-work pin), so a skip
+ * can never mark the row content-changed and win a sync conflict.
+ */
+export async function incrementSkipCount(db: TasksDb, id: string): Promise<void> {
+  await db
+    .update(tasks)
+    .set({
+      skipCount: sql`${tasks.skipCount} + 1`,
+      updatedAt: sql`${tasks.updatedAt}`,
+    })
+    .where(eq(tasks.id, id));
+}
+
+/** Same no-updatedAt-bump contract as incrementSkipCount. */
+export async function resetSkipCount(db: TasksDb, id: string): Promise<void> {
+  await db
+    .update(tasks)
+    .set({ skipCount: 0, updatedAt: sql`${tasks.updatedAt}` })
+    .where(eq(tasks.id, id));
 }
 
 /**

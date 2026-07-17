@@ -215,6 +215,8 @@ export function CardStack({
   getStarValue,
   onCardPress,
   onReviewPress,
+  onSwipe,
+  onTopChange,
 }: {
   tasks: TaskData[];
   /** Star preview per task (Story 3.3) — home closes over the full browsable
@@ -223,6 +225,10 @@ export function CardStack({
   onCardPress?: (task: TaskData) => void;
   /** Info-icon tap on a flagged top card → review mode (Story 6.2). */
   onReviewPress?: (task: TaskData) => void;
+  /** A swipe COMMITTED past this task (Story 6.4 skip counting) — pure pass-through. */
+  onSwipe?: (task: TaskData) => void;
+  /** Reports which task currently sits on top (Story 6.4 nudge targeting). */
+  onTopChange?: (task: TaskData) => void;
 }) {
   const [topTaskId, setTopTaskId] = useState<string | null>(null);
   // Bumped on every dismiss: remounts the keyed top card (fresh zeroed
@@ -235,15 +241,26 @@ export function CardStack({
   }, [tasks, topTaskId]);
 
   // advance() fires from an animation callback up to 250ms after the gesture
-  // ended — read the freshest list/index via a ref so a task created or
-  // removed mid-flight can't desync the cycle.
-  const latest = useRef({ tasks, topIndex });
+  // ended — read the freshest list/index/handler via a ref so a task created
+  // or removed mid-flight can't desync the cycle.
+  const latest = useRef({ tasks, topIndex, onSwipe });
   useEffect(() => {
-    latest.current = { tasks, topIndex };
+    latest.current = { tasks, topIndex, onSwipe };
   });
 
+  // Surface the current top task (Story 6.4): home renders the micro-task
+  // nudge for it, and only the stack knows its own cycle position.
+  useEffect(() => {
+    const top = tasks[topIndex];
+    if (top) onTopChange?.(top);
+  }, [tasks, topIndex, onTopChange]);
+
   const advance = () => {
-    const { tasks: currentTasks, topIndex: currentIndex } = latest.current;
+    const { tasks: currentTasks, topIndex: currentIndex, onSwipe: currentOnSwipe } = latest.current;
+    const skipped = currentTasks[currentIndex];
+    if (skipped) {
+      currentOnSwipe?.(skipped);
+    }
     const next = currentTasks[(currentIndex + 1) % currentTasks.length];
     if (next) {
       setTopTaskId(next.id);

@@ -4,6 +4,7 @@ import {
   createSubtasks,
   deleteSubtask,
   listSubtasks,
+  replaceUncompletedSubtasks,
   setSubtaskCompleted,
 } from './subtasks-repository';
 
@@ -63,6 +64,30 @@ describe('subtasks-repository (integration, real migration SQL)', () => {
     expect(await setSubtaskCompleted(testDb.db, subtask.id, false)).toBe(true);
     // Unknown id → no-op.
     expect(await setSubtaskCompleted(testDb.db, 'missing', true)).toBe(false);
+  });
+
+  it('replaceUncompletedSubtasks keeps completed rows and appends after the max index (6.4)', async () => {
+    const created = await createSubtasks(testDb.db, 'task-1', ['A', 'B', 'C'], 'ai');
+    const first = created[0];
+    if (!first) throw new Error('seed failed');
+    await setSubtaskCompleted(testDb.db, first.id, true);
+
+    const result = await replaceUncompletedSubtasks(
+      testDb.db,
+      'task-1',
+      ['Refined: B', 'Refined: C'],
+      'ai',
+    );
+    expect(result).toEqual({ deletedCount: 2, insertedCount: 2 });
+
+    const listed = await listSubtasks(testDb.db, 'task-1');
+    expect(listed.map((row) => row.title)).toEqual(['A', 'Refined: B', 'Refined: C']);
+    // The completed row is byte-identical untouched (UX-DR7)...
+    expect(listed[0]?.id).toBe(first.id);
+    expect(listed[0]?.completed).toBe(true);
+    // ...and the refined steps landed after the SURVIVING max orderIndex
+    // (the deleted rows' indices are free again).
+    expect(listed.map((row) => row.orderIndex)).toEqual([0, 1, 2]);
   });
 
   it('deleteSubtask returns the deleted row once, null after', async () => {

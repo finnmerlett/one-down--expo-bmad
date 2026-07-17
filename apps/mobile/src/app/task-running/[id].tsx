@@ -39,9 +39,10 @@ export default function TaskRunningScreen() {
 
   const viewRef = useRef<TaskRunningViewHandle>(null);
 
-  // AI breakdown (Story 6.3): controller + live subtask list.
+  // AI breakdown (Story 6.3): controller + live subtask list. The subtasks
+  // ride into the refine payload (Story 6.4) so completed steps are kept.
   const subtasks = useSubtasks(id);
-  const breakdown = useBreakdown(task);
+  const breakdown = useBreakdown(task, subtasks);
 
   // `?breakdown=1` (card-back "Help me with this") auto-fires the first_steps
   // request once per mount — the param is only ever set on a fresh push, so

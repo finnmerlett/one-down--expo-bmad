@@ -1,4 +1,4 @@
-import { asc, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq } from 'drizzle-orm';
 import { randomUUID } from 'expo-crypto';
 
 import type { SubtaskData, SubtaskSource } from '@one-down/shared';
@@ -64,6 +64,25 @@ export async function setSubtaskCompleted(
   if (!row || row.completed === completed) return false;
   await db.update(subtasks).set({ completed }).where(eq(subtasks.id, id));
   return true;
+}
+
+/**
+ * Swap the UNCOMPLETED portion of a task's breakdown for refined steps
+ * (Story 6.4, AC4): completed subtasks are never modified (UX-DR7); the new
+ * steps append after the highest surviving orderIndex.
+ */
+export async function replaceUncompletedSubtasks(
+  db: TasksDb,
+  taskId: string,
+  steps: string[],
+  source: SubtaskSource,
+): Promise<{ deletedCount: number; insertedCount: number }> {
+  const deleted = await db
+    .delete(subtasks)
+    .where(and(eq(subtasks.taskId, taskId), eq(subtasks.completed, false)))
+    .returning();
+  const inserted = await createSubtasks(db, taskId, steps, source);
+  return { deletedCount: deleted.length, insertedCount: inserted.length };
 }
 
 /** Delete a subtask, returning the deleted row (null when already gone). */

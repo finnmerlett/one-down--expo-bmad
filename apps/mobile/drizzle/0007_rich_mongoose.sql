@@ -1,0 +1,1 @@
+ALTER TABLE `tasks` ADD `skip_count` integer DEFAULT 0 NOT NULL;

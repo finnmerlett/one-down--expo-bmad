@@ -16,6 +16,8 @@ export const tasks = sqliteTable('tasks', {
   hasCheckNeeded: integer('has_check_needed', { mode: 'boolean' }).notNull().default(false),
   // JSON-encoded TaskReviewFlags (Story 6.1) — which fields the AI inferred.
   reviewFlags: text('review_flags'),
+  // Behavioral metadata (Story 6.4): increments must NOT bump updatedAt.
+  skipCount: integer('skip_count').notNull().default(0),
   // Timestamps are schema-managed (Story 5.3 pre-work) so updatedAt can never
   // be forgotten. CRITICAL drizzle semantics the sync-apply path relies on:
   // an explicit value in .values()/.set() WINS over $defaultFn/$onUpdate —

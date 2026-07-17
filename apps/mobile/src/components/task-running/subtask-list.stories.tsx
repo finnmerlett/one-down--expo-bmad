@@ -63,3 +63,19 @@ export const MixedCompletion: Story = {
     ],
   },
 };
+
+/** Story 6.4 — the inline feedback input, expanded ("Why does this miss the mark?"). */
+export const RefineOpen: Story = {
+  args: {
+    subtasks: [
+      makeSubtask({ id: 'subtask-1', title: 'Do just the first two minutes', completed: true }),
+      makeSubtask({
+        id: 'subtask-2',
+        title: 'Set a 10-minute timer and keep going',
+        orderIndex: 1,
+      }),
+    ],
+    onRefine: () => undefined,
+    initialRefineOpen: true,
+  },
+};

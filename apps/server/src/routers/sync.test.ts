@@ -46,6 +46,7 @@ function makeTask(overrides: Partial<TaskData> = {}): TaskData {
     deadline: null,
     hasCheckNeeded: false,
     reviewFlags: null,
+    skipCount: 0,
     createdAt: new Date('2026-07-01T10:00:00.000Z'),
     updatedAt: new Date('2026-07-01T10:00:00.000Z'),
     ...overrides,

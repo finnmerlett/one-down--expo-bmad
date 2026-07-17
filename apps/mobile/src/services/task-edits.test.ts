@@ -2,8 +2,14 @@ import { tasks } from '@one-down/shared/schema-local';
 
 import { track } from '@/lib/analytics/track';
 import { db } from '@/lib/local-db';
-import { completeTask, createNotesAutosaver, cutLooseTask } from './task-edits';
-import { createTask, setTaskStatus } from './tasks-repository';
+import {
+  appendDistillationToNotes,
+  completeTask,
+  createNotesAutosaver,
+  cutLooseTask,
+  startTask,
+} from './task-edits';
+import { createTask, incrementSkipCount, setTaskStatus } from './tasks-repository';
 
 // expo-crypto is a native module; under Node the equivalent is node:crypto.
 jest.mock('expo-crypto', () => ({
@@ -168,5 +174,51 @@ describe('cutLooseTask (Story 2.4)', () => {
     const [row] = await db.select().from(tasks);
     expect(row?.status).toBe('completed');
     expect(trackMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('startTask skip reset (Story 6.4)', () => {
+  beforeEach(async () => {
+    trackMock.mockClear();
+    await db.delete(tasks);
+  });
+
+  it('the pending → in_progress transition resets a positive skip count', async () => {
+    const task = await createTask(db, { title: 'Avoided task' });
+    await incrementSkipCount(db, task.id);
+    await incrementSkipCount(db, task.id);
+
+    startTask({ ...task, skipCount: 2 }, 'card_back_overlay');
+    await flushAsync();
+
+    const [row] = await db.select().from(tasks);
+    expect(row?.status).toBe('in_progress');
+    expect(row?.skipCount).toBe(0);
+  });
+
+  it('Continue (already started) neither writes nor resets', async () => {
+    const task = await createTask(db, { title: 'Already running' });
+    await setTaskStatus(db, task.id, 'in_progress');
+    await incrementSkipCount(db, task.id);
+
+    startTask({ ...task, status: 'in_progress', skipCount: 1 }, 'list_detail');
+    await flushAsync();
+
+    const [row] = await db.select().from(tasks);
+    expect(row?.skipCount).toBe(1);
+    expect(trackMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('appendDistillationToNotes (Story 6.4, pure)', () => {
+  it('covers null notes, null distillation, and both present', () => {
+    expect(appendDistillationToNotes(null, 'Approach note: go physical')).toBe(
+      'Approach note: go physical',
+    );
+    expect(appendDistillationToNotes('existing notes', null)).toBe('existing notes');
+    expect(appendDistillationToNotes(null, null)).toBeNull();
+    expect(appendDistillationToNotes('existing notes', 'Approach note: go physical')).toBe(
+      'existing notes\n\nApproach note: go physical',
+    );
   });
 });

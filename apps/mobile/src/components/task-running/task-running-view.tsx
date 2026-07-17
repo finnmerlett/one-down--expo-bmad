@@ -165,6 +165,18 @@ export function TaskRunningView({
               subtasks={subtasks}
               onToggle={onToggleSubtask}
               onDelete={onDeleteSubtask}
+              // Flush the notes draft BEFORE refining (Story 6.4): the
+              // distillation appends to the STORED notes, so an unflushed
+              // draft would otherwise be the write that gets appended over.
+              onRefine={
+                breakdown
+                  ? (feedback) => {
+                      flushNotes();
+                      breakdown.refine(feedback);
+                    }
+                  : undefined
+              }
+              refineDisabled={breakdown?.state === 'loading'}
             />
           ) : null}
           {breakdown && breakdown.state !== 'idle' ? (
@@ -172,8 +184,15 @@ export function TaskRunningView({
               state={breakdown.state}
               steps={breakdown.steps}
               mode={breakdown.mode}
+              heading={breakdown.via === 'refine' ? 'Refined steps' : undefined}
+              loadingLabel={breakdown.via === 'refine' ? 'Rethinking the steps...' : undefined}
               onAccept={breakdown.accept}
-              onShowAll={() => breakdown.request('full', 'task_running')}
+              // A refined proposal has no deeper list to expand into.
+              onShowAll={
+                breakdown.via === 'initial'
+                  ? () => breakdown.request('full', 'task_running')
+                  : undefined
+              }
               onReject={breakdown.reject}
               onRetry={breakdown.retry}
             />

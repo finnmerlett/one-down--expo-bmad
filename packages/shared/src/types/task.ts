@@ -44,6 +44,13 @@ export interface TaskData {
   hasCheckNeeded: boolean;
   /** JSON-encoded TaskReviewFlags (Story 6.1) — null when nothing needs review. */
   reviewFlags: string | null;
+  /**
+   * Swipes past this card since it was last started/nudged (Story 6.4, FR39).
+   * Behavioral metadata: increments deliberately do NOT bump `updatedAt`, so
+   * skip counting can never win a 5.3 last-content-changed sync conflict.
+   * Epic 7 avoidance detection reuses this + MICRO_TASK_SKIP_THRESHOLD.
+   */
+  skipCount: number;
   createdAt: Date;
   updatedAt: Date;
 }

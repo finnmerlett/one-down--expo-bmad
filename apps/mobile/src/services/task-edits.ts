@@ -5,10 +5,23 @@ import { db } from '@/lib/local-db';
 import { awardReviewConfirmStars } from '@/services/star-awards';
 import {
   confirmReviewItem as repoConfirmReviewItem,
+  resetSkipCount,
   setTaskStatus,
   updateTask,
   type UpdateTaskPatch,
 } from '@/services/tasks-repository';
+
+/**
+ * Append a refine distillation to the task's notes (Story 6.4, AC3). Pure —
+ * exported for unit tests. Null distillation = nothing to append.
+ */
+export function appendDistillationToNotes(
+  notes: string | null,
+  distillation: string | null,
+): string | null {
+  if (!distillation) return notes;
+  return notes ? `${notes}\n\n${distillation}` : distillation;
+}
 
 /** Analytics field name for a review item (snake_case in props — NFR-L1 taxonomy). */
 function reviewItemField(item: ReviewItem): 'size' | 'contexts' | 'deadline' | 'missing_deadline' {
@@ -91,7 +104,13 @@ export function createNotesAutosaver(taskId: string): (notes: string | null) => 
 export function startTask(task: TaskData, via: 'card_back_overlay' | 'list_detail'): void {
   if (task.status !== 'pending') return;
   void setTaskStatus(db, task.id, 'in_progress')
-    .then(() => {
+    .then(async () => {
+      // Starting answers the avoidance signal (Story 6.4): the skip counter
+      // resets on the same pending → in_progress transition that idempotency
+      // gates, so Continue taps never re-reset either.
+      if (task.skipCount > 0) {
+        await resetSkipCount(db, task.id);
+      }
       track('task_started', { via });
     })
     // oxlint-disable-next-line no-console

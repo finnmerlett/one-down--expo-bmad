@@ -72,6 +72,7 @@ export async function pushTasks(
             deadline: row.deadline,
             hasCheckNeeded: row.hasCheckNeeded,
             reviewFlags: row.reviewFlags,
+            skipCount: row.skipCount,
             createdAt: row.createdAt,
             updatedAt: row.updatedAt,
             syncedAt,

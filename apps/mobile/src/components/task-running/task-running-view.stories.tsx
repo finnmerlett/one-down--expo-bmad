@@ -9,16 +9,20 @@ import { TaskRunningView } from './task-running-view';
 
 /** Inert controller fixture — stories must never hit the network. */
 function makeBreakdown(overrides: Partial<BreakdownController> = {}): BreakdownController {
-  return {
+  const base: BreakdownController = {
     state: 'idle',
     steps: [],
     mode: 'first_steps',
+    via: 'initial',
     request: () => undefined,
+    refine: () => undefined,
     retry: () => undefined,
     accept: () => undefined,
     reject: () => undefined,
-    ...overrides,
   };
+  // exactOptionalPropertyTypes: the Partial spread widens fields with
+  // `| undefined`; every override here is always fully-formed.
+  return { ...base, ...overrides } as BreakdownController;
 }
 
 const meta = {

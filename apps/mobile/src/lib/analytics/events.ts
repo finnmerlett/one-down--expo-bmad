@@ -121,14 +121,34 @@ export type AnalyticsEventMap = EnforceFlatProps<{
   };
   /** Story 6.3 — the breakdown request failed; inline retry offered. */
   breakdown_failed: { reason: 'network' | 'server_error' };
-  /** Story 6.3 — proposal accepted and saved as subtasks. */
-  breakdown_accepted: { step_count: number; mode: 'first_steps' | 'full' };
+  /** Story 6.3 — proposal accepted and saved as subtasks (6.4 adds the refine leg). */
+  breakdown_accepted: {
+    step_count: number;
+    mode: 'first_steps' | 'full';
+    via: 'initial' | 'refine';
+  };
   /** Story 6.3 — proposal rejected ("Not helpful"); nothing saved. */
-  breakdown_rejected: { step_count: number };
+  breakdown_rejected: { step_count: number; via: 'initial' | 'refine' };
   /** Story 6.3 — a subtask was ticked (or unticked — `reversed: true`). */
   subtask_completed: { source: 'ai' | 'micro'; reversed: boolean };
   /** Story 6.3 — a subtask row was deleted. */
   subtask_deleted: { was_completed: boolean };
+  /** Story 6.4 — refine feedback sent (length only, never the text — NFR-S3). */
+  breakdown_feedback_submitted: { char_count: number };
+  /** Story 6.4 — the refined proposal arrived (counts and flags only). */
+  breakdown_refined: {
+    step_count: number;
+    kept_completed_count: number;
+    has_distillation: boolean;
+    duration_ms: number;
+    provider: 'gemini' | 'fake';
+  };
+  /** Story 6.4 — the micro-task proposal was shown (FR39 nudge). */
+  micro_task_suggested: { skip_count: number };
+  /** Story 6.4 — the micro step was saved as a subtask; skip counter reset. */
+  micro_task_added: { skip_count: number };
+  /** Story 6.4 — "No thanks"; quiet for another threshold's worth of skips. */
+  micro_task_dismissed: { skip_count: number };
 }>;
 
 export type AnalyticsEventName = keyof AnalyticsEventMap;

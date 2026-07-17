@@ -3,7 +3,12 @@ import type { BreakdownMode, SubtaskData } from '@one-down/shared';
 import { track } from '@/lib/analytics/track';
 import { db } from '@/lib/local-db';
 import { awardSubtaskStars } from '@/services/star-awards';
-import { createSubtasks, deleteSubtask, setSubtaskCompleted } from '@/services/subtasks-repository';
+import {
+  createSubtasks,
+  deleteSubtask,
+  replaceUncompletedSubtasks,
+  setSubtaskCompleted,
+} from '@/services/subtasks-repository';
 
 // Fire-and-forget subtask actions (Story 6.3), mirroring task-edits.ts:
 // module-scoped db writes survive screen unmounts; stars/analytics only after
@@ -47,8 +52,21 @@ export function removeSubtask(subtask: SubtaskData): void {
 export function acceptBreakdown(taskId: string, steps: string[], mode: BreakdownMode): void {
   void createSubtasks(db, taskId, steps, 'ai')
     .then((created) => {
-      track('breakdown_accepted', { step_count: created.length, mode });
+      track('breakdown_accepted', { step_count: created.length, mode, via: 'initial' });
     })
     // oxlint-disable-next-line no-console
     .catch((error: unknown) => console.warn('Breakdown accept failed', error));
+}
+
+/**
+ * Accept a REFINED proposal (Story 6.4, AC4): swap only the uncompleted
+ * subtasks — completed ones are never modified (UX-DR7).
+ */
+export function acceptRefinedBreakdown(taskId: string, steps: string[], mode: BreakdownMode): void {
+  void replaceUncompletedSubtasks(db, taskId, steps, 'ai')
+    .then(({ insertedCount }) => {
+      track('breakdown_accepted', { step_count: insertedCount, mode, via: 'refine' });
+    })
+    // oxlint-disable-next-line no-console
+    .catch((error: unknown) => console.warn('Refined breakdown accept failed', error));
 }

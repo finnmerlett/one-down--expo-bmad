@@ -91,8 +91,9 @@ appId: com.onedown.mobile
     env:
       TASK_TITLE: 'Ring the council office'
 
-# Two cards cycle (newest-created 'Ring the council office' starts on top);
-# ten committed swipes = five skips each, landing back on the council task
+# Two cards cycle; ten committed swipes = five skips each. Curation ordering
+# is seed-jittered (3.3), so if the paperwork card (in_progress — no nudge)
+# ended on top, one more swipe brings the pending council task around.
 - repeat:
     times: 10
     commands:
@@ -100,9 +101,19 @@ appId: com.onedown.mobile
           start: 80%, 45%
           end: 5%, 45%
       - waitForAnimationToEnd
+- runFlow:
+    when:
+      notVisible: 'Task: Ring the council office\..*'
+    commands:
+      - swipe:
+          start: 80%, 45%
+          end: 5%, 45%
+      - waitForAnimationToEnd
 
-# The calm nudge chip appears under the stack for the skipped top card (AC5)
-- assertVisible: 'Stuck on this? Get a tiny first step'
+# The calm nudge chip appears under the stack for the skipped top card (AC5).
+# The question copy is its own Text node; the tappable affordance carries the
+# a11y label (an accessible container would hide the inner text).
+- assertVisible: 'Stuck on this?'
 - tapOn: 'Get a tiny first step'
 
 # The fake micro step for the top card arrives inline (AC6)
@@ -114,7 +125,9 @@ appId: com.onedown.mobile
 
 # Add it → saved as a subtask, skip count resets, the chip goes quiet
 - tapOn: 'Add it'
-- assertNotVisible: 'Stuck on this? Get a tiny first step'
+- extendedWaitUntil:
+    notVisible: 'Stuck on this?'
+    timeout: 3000
 
 # The micro subtask shows on the task's running screen via 6.3's list
 - tapOn: 'Task: Ring the council office\..*'

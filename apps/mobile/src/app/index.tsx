@@ -1,11 +1,17 @@
 import { useRouter } from 'expo-router';
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
-import type { TaskContext, TaskData, TaskSize } from '@one-down/shared';
+import {
+  MICRO_TASK_SKIP_THRESHOLD,
+  type TaskContext,
+  type TaskData,
+  type TaskSize,
+} from '@one-down/shared';
 
 import { AppShell } from '@/components/app-shell/app-shell';
 import { CardBackOverlay } from '@/components/card-stack/card-back-overlay';
 import { CardStack } from '@/components/card-stack/card-stack';
+import { MicroTaskNudge } from '@/components/card-stack/micro-task-nudge';
 import { ConnectionStatus } from '@/components/connection-status/connection-status';
 import { EmptyState } from '@/components/empty-state/empty-state';
 import { emptyStackCopy } from '@/components/empty-state/empty-stack-copy';
@@ -18,6 +24,7 @@ import { HStack } from '@/components/ui/hstack';
 import { Text } from '@/components/ui/text';
 import { useToast } from '@/components/ui/toast';
 import { VStack } from '@/components/ui/vstack';
+import { useMicroTask } from '@/hooks/use-micro-task';
 import { useStarTotals } from '@/hooks/use-star-totals';
 import { useTasks } from '@/hooks/use-tasks';
 import { track } from '@/lib/analytics/track';
@@ -25,6 +32,7 @@ import { db } from '@/lib/local-db';
 import { availableContexts, curateTasks, urgentContexts } from '@/services/curation';
 import { awardCutLooseStars } from '@/services/star-awards';
 import { potentialStars } from '@/services/star-calculator';
+import { recordTaskSkipped } from '@/services/task-activity';
 import { applyTaskPatch, confirmReviewItem, cutLooseTask, startTask } from '@/services/task-edits';
 import { createTask, type CreateTaskInput } from '@/services/tasks-repository';
 import { useQuickAddStore } from '@/stores/quick-add-store';
@@ -78,6 +86,22 @@ export default function HomeScreen() {
     enterReview();
     track('review_mode_entered', { card_count: reviewCards.length });
   };
+
+  // Micro-task nudge (Story 6.4, FR39): the stack reports its top card; the
+  // quiet chip appears under it once that PENDING task has been skipped past
+  // the threshold. Never in review mode (its stack is a different cycle).
+  const [topTaskId, setTopTaskId] = useState<string | null>(null);
+  const handleTopChange = useCallback((task: TaskData) => setTopTaskId(task.id), []);
+  const topTask = useMemo(() => {
+    const tracked = topTaskId ? curated.find((task) => task.id === topTaskId) : undefined;
+    return tracked ?? curated[0] ?? null;
+  }, [curated, topTaskId]);
+  const micro = useMicroTask(topTask);
+  const showNudge =
+    !isReviewing &&
+    topTask !== null &&
+    topTask.status === 'pending' &&
+    topTask.skipCount >= MICRO_TASK_SKIP_THRESHOLD;
   const available = useMemo(() => availableContexts(tasks, mode), [tasks, mode]);
   const urgent = useMemo(() => urgentContexts(tasks, new Date()), [tasks]);
 
@@ -200,12 +224,26 @@ export default function HomeScreen() {
           />
         )
       ) : (
-        <CardStack
-          tasks={curated}
-          getStarValue={getStarValue}
-          onCardPress={(task) => setOpenTaskId(task.id)}
-          onReviewPress={handleReviewPress}
-        />
+        <>
+          <CardStack
+            tasks={curated}
+            getStarValue={getStarValue}
+            onCardPress={(task) => setOpenTaskId(task.id)}
+            onReviewPress={handleReviewPress}
+            onSwipe={recordTaskSkipped}
+            onTopChange={handleTopChange}
+          />
+          {showNudge ? (
+            <MicroTaskNudge
+              state={micro.state}
+              step={micro.step}
+              onRequest={micro.request}
+              onAdd={micro.accept}
+              onDismiss={micro.dismiss}
+              onRetry={micro.retry}
+            />
+          ) : null}
+        </>
       )}
       {openTask ? (
         <CardBackOverlay

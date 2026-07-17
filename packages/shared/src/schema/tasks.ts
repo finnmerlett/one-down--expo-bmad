@@ -1,4 +1,13 @@
-import { boolean, index, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  index,
+  integer,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+  uuid,
+} from 'drizzle-orm/pg-core';
 
 import type { TaskData, TaskSize, TaskStatus } from '../types/task';
 
@@ -23,6 +32,8 @@ export const tasks = pgTable(
     hasCheckNeeded: boolean('has_check_needed').notNull().default(false),
     // JSON-encoded TaskReviewFlags (Story 6.1) — mirrors schema-local.
     reviewFlags: text('review_flags'),
+    // Behavioral metadata (Story 6.4) — mirrors schema-local.
+    skipCount: integer('skip_count').notNull().default(0),
     // Schema-managed timestamps (Story 5.3 pre-work) — mirrors schema-local.
     // Explicit values in .values()/.set() win over $defaultFn/$onUpdate, so
     // sync writes always carry the client's content-change clock unchanged.

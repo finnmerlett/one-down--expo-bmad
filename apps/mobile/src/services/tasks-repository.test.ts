@@ -11,6 +11,8 @@ import {
   createTask,
   createTasksFromBrainDump,
   EmptyTitleError,
+  incrementSkipCount,
+  resetSkipCount,
   setTaskStatus,
   updateTask,
 } from './tasks-repository';
@@ -283,6 +285,35 @@ describe('tasks-repository (integration, real migration SQL)', () => {
       const [done] = await testDb.db.select().from(tasks);
       expect(done?.reviewFlags).toBeNull();
       expect(done?.hasCheckNeeded).toBe(false);
+    });
+  });
+
+  describe('skip counting (Story 6.4)', () => {
+    it('increments without bumping updatedAt (behavioral metadata must not win sync conflicts)', async () => {
+      const created = await createTask(testDb.db, { title: 'Keep skipping me' });
+      const backdated = new Date('2026-01-01T00:00:00Z');
+      await testDb.db.update(tasks).set({ updatedAt: backdated }).where(eq(tasks.id, created.id));
+
+      await incrementSkipCount(testDb.db, created.id);
+      await incrementSkipCount(testDb.db, created.id);
+
+      const [row] = await testDb.db.select().from(tasks);
+      expect(row?.skipCount).toBe(2);
+      // The $onUpdate stamp was defeated by the explicit self-assignment.
+      expect(row?.updatedAt.getTime()).toBe(backdated.getTime());
+    });
+
+    it('resets to zero, also without bumping updatedAt', async () => {
+      const created = await createTask(testDb.db, { title: 'Answer the nudge' });
+      const backdated = new Date('2026-01-01T00:00:00Z');
+      await testDb.db.update(tasks).set({ updatedAt: backdated }).where(eq(tasks.id, created.id));
+      await incrementSkipCount(testDb.db, created.id);
+
+      await resetSkipCount(testDb.db, created.id);
+
+      const [row] = await testDb.db.select().from(tasks);
+      expect(row?.skipCount).toBe(0);
+      expect(row?.updatedAt.getTime()).toBe(backdated.getTime());
     });
   });
 
