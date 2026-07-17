@@ -1,0 +1,59 @@
+# Story 3.2 — mode toggle: Quick wins / Big time segmented control re-curates
+# the stack to the matching size (AC2/AC3), re-pressing the active option
+# deactivates it and both sizes return (AC4), and mode combines with the
+# context filter with AND semantics (AC5). Sizes are set one task at a time
+# right after creation (the newest task is always the top card), so the flow
+# never depends on multi-card ordering.
+appId: com.onedown.mobile
+---
+- runFlow: common/launch-app.yaml
+
+# Seed 'Tiny chore' and size it Quick win via the card back
+- runFlow:
+    file: common/add-task.yaml
+    env:
+      TITLE: 'Tiny chore'
+- tapOn: 'Task: Tiny chore. Card 1 of 1'
+- waitForAnimationToEnd
+- tapOn: 'Size: Quick win'
+- tapOn: 'Back to card front'
+- waitForAnimationToEnd
+
+# Seed 'Giant project' (newest -> top card) and size it Big time
+- runFlow:
+    file: common/add-task.yaml
+    env:
+      TITLE: 'Giant project'
+- tapOn: 'Task: Giant project. Card 1 of 2'
+- waitForAnimationToEnd
+- tapOn: 'Size: Big time'
+- tapOn: 'Back to card front'
+- waitForAnimationToEnd
+
+# AC2: Quick wins mode leaves only the quick-win task
+- tapOn: 'Mode: Quick wins'
+- assertVisible: 'Task: Tiny chore. Card 1 of 1'
+- takeScreenshot: .claude/run-notes/screenshots/3-2-quick-wins-mode
+
+# AC3: Big time mode swaps to the big task
+- tapOn: 'Mode: Big time'
+- assertVisible: 'Task: Giant project. Card 1 of 1'
+
+# AC4: re-pressing the active option deactivates it — both sizes return
+# (newest-created sorts first, so Giant project stays on top)
+- tapOn: 'Mode: Big time'
+- assertVisible: 'Task: Giant project. Card 1 of 2'
+
+# AC5 combined: isolate Tiny chore via Quick wins mode, tag it Home, then
+# filter Home + Quick wins -> only the task matching BOTH remains
+- tapOn: 'Mode: Quick wins'
+- tapOn: 'Task: Tiny chore. Card 1 of 1'
+- waitForAnimationToEnd
+- tapOn: 'Context: Home'
+- tapOn: 'Back to card front'
+- waitForAnimationToEnd
+- tapOn: 'Filter context: Home'
+- assertVisible: 'Task: Tiny chore. Card 1 of 1'
+
+- assertNotVisible: 'Unhandled'
+- assertNotVisible: 'error occurred'

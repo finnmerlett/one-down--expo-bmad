@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
 
-import { STAR_WEIGHTS, type TaskContext } from '@one-down/shared';
+import { STAR_WEIGHTS, type TaskContext, type TaskSize } from '@one-down/shared';
 
 import { AppShell } from '@/components/app-shell/app-shell';
 import { CardBackOverlay } from '@/components/card-stack/card-back-overlay';
@@ -9,9 +9,11 @@ import { CardStack } from '@/components/card-stack/card-stack';
 import { showRewardToast } from '@/components/feedback/reward-toast';
 import { QuickAddSheet } from '@/components/quick-add-sheet/quick-add-sheet';
 import { ContextToggleBar } from '@/components/stack-filters/context-toggle-bar';
+import { ModeToggle } from '@/components/stack-filters/mode-toggle';
 import { Box } from '@/components/ui/box';
 import { Text } from '@/components/ui/text';
 import { useToast } from '@/components/ui/toast';
+import { VStack } from '@/components/ui/vstack';
 import { useTasks } from '@/hooks/use-tasks';
 import { track } from '@/lib/analytics/track';
 import { db } from '@/lib/local-db';
@@ -40,9 +42,14 @@ export default function HomeScreen() {
 
   const activeContexts = useStackFiltersStore((state) => state.activeContexts);
   const toggleContext = useStackFiltersStore((state) => state.toggleContext);
+  const mode = useStackFiltersStore((state) => state.mode);
+  const toggleMode = useStackFiltersStore((state) => state.toggleMode);
 
-  const curated = useMemo(() => curateTasks(tasks, activeContexts), [tasks, activeContexts]);
-  const available = useMemo(() => availableContexts(tasks), [tasks]);
+  const curated = useMemo(
+    () => curateTasks(tasks, { contexts: activeContexts, size: mode }),
+    [tasks, activeContexts, mode],
+  );
+  const available = useMemo(() => availableContexts(tasks, mode), [tasks, mode]);
 
   const handleSubmit = async (input: CreateTaskInput) => {
     const task = await createTask(db, input);
@@ -59,6 +66,12 @@ export default function HomeScreen() {
     });
   };
 
+  const handleToggleMode = (size: TaskSize) => {
+    const nowActive = mode !== size;
+    toggleMode(size);
+    track('mode_toggled', { mode: size, now_active: nowActive });
+  };
+
   return (
     <AppShell
       onAddPress={openTask ? undefined : open}
@@ -66,13 +79,17 @@ export default function HomeScreen() {
       // would leave the overlay's BackHandler swallowing hardware back.
       onListPress={openTask ? undefined : () => router.push('/task-list')}
     >
-      {/* The filter bar stays visible in every home state — the user must
-          always be able to un-filter. The CardBackOverlay paints over it. */}
-      <ContextToggleBar
-        activeContexts={activeContexts}
-        availableContexts={available}
-        onToggle={handleToggleContext}
-      />
+      {/* Shared filter chrome stays visible in every home state — the user
+          must always be able to un-filter. The CardBackOverlay paints over
+          it. Tight gap so the stack loses minimal height. */}
+      <VStack className="gap-1">
+        <ContextToggleBar
+          activeContexts={activeContexts}
+          availableContexts={available}
+          onToggle={handleToggleContext}
+        />
+        <ModeToggle mode={mode} onToggle={handleToggleMode} />
+      </VStack>
       {tasks.length === 0 ? (
         <Box className="flex-1 items-center justify-center px-8">
           <Text className="text-center text-typography-400">Your tasks will appear here</Text>

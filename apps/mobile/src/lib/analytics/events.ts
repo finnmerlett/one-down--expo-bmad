@@ -1,4 +1,4 @@
-import type { TaskContext } from '@one-down/shared';
+import type { TaskContext, TaskSize } from '@one-down/shared';
 
 // Event taxonomy for custom domain events routed through track().
 // Grows story-by-story ("instrument as built" — NFR-L1). Names are
@@ -33,6 +33,8 @@ export type AnalyticsEventMap = EnforceFlatProps<{
   };
   /** Story 3.1 — a context filter button toggled on the home screen (enum names only). */
   context_toggled: { context: TaskContext; now_active: boolean; active_count: number };
+  /** Story 3.2 — the mode segmented control toggled (`now_active: false` = re-press deactivated it). */
+  mode_toggled: { mode: TaskSize; now_active: boolean };
 }>;
 
 export type AnalyticsEventName = keyof AnalyticsEventMap;

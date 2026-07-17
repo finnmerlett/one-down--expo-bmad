@@ -1,30 +1,35 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import type { TaskContext } from '@one-down/shared';
+import type { TaskContext, TaskSize } from '@one-down/shared';
 
 // UI state only — task data lives in SQLite, never mirrored into Zustand.
-// Persisted (AC5): the stack filter selection survives app restarts.
+// Persisted: the stack filter selection survives app restarts.
 // Rehydration is async — the first frame may render unfiltered/default.
 // Accepted (<1s local filter NFR); never gate rendering on hydration.
 interface StackFiltersState {
   /** Multi-select context filter — empty array = unfiltered stack. */
   activeContexts: TaskContext[];
+  /** Story 3.2 mode — quick_win/big_time, or null when neither is active. */
+  mode: TaskSize | null;
   toggleContext: (context: TaskContext) => void;
-  // Extension points: Story 3.2 adds `mode: TaskSize | null` + toggleMode;
-  // Story 3.4 adds clearFilters().
+  toggleMode: (size: TaskSize) => void;
+  // Extension point: Story 3.4 adds clearFilters().
 }
 
 export const useStackFiltersStore = create<StackFiltersState>()(
   persist(
     (set) => ({
       activeContexts: [],
+      mode: null,
       toggleContext: (context) =>
         set((state) => ({
           activeContexts: state.activeContexts.includes(context)
             ? state.activeContexts.filter((c) => c !== context)
             : [...state.activeContexts, context],
         })),
+      // Re-press deactivates: quick wins / big time / neither (3-state).
+      toggleMode: (size) => set((state) => ({ mode: state.mode === size ? null : size })),
     }),
     { name: 'stack-filters', storage: createJSONStorage(() => AsyncStorage) },
   ),

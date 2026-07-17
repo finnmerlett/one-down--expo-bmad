@@ -68,7 +68,10 @@ describe('curateTasks', () => {
       makeTask({ id: 'laptop-only', contexts: '["laptop"]', createdAt: new Date('2026-06-03') }),
     ];
 
-    expect(curateTasks(tasks, ['home']).map((t) => t.id)).toEqual(['phone-or-home', 'home-only']);
+    expect(curateTasks(tasks, { contexts: ['home'] }).map((t) => t.id)).toEqual([
+      'phone-or-home',
+      'home-only',
+    ]);
   });
 
   it('always includes context-free tasks when filtering (doable anywhere)', () => {
@@ -78,13 +81,55 @@ describe('curateTasks', () => {
       makeTask({ id: 'laptop-only', contexts: '["laptop"]' }),
     ];
 
-    expect(curateTasks(tasks, ['home']).map((t) => t.id)).toEqual(['anywhere', 'empty-list']);
+    expect(curateTasks(tasks, { contexts: ['home'] }).map((t) => t.id)).toEqual([
+      'anywhere',
+      'empty-list',
+    ]);
   });
 
   it('treats malformed contexts JSON as context-free rather than crashing', () => {
     const tasks = [makeTask({ id: 'broken', contexts: 'not-json' })];
 
-    expect(curateTasks(tasks, ['home']).map((t) => t.id)).toEqual(['broken']);
+    expect(curateTasks(tasks, { contexts: ['home'] }).map((t) => t.id)).toEqual(['broken']);
+  });
+
+  it('mode keeps matching-size and unsized tasks, drops the other size', () => {
+    const tasks = [
+      makeTask({ id: 'quick', size: 'quick_win', createdAt: new Date('2026-06-03') }),
+      makeTask({ id: 'big', size: 'big_time', createdAt: new Date('2026-06-02') }),
+      makeTask({ id: 'unsized', size: null, createdAt: new Date('2026-06-01') }),
+    ];
+
+    expect(curateTasks(tasks, { size: 'quick_win' }).map((t) => t.id)).toEqual([
+      'quick',
+      'unsized',
+    ]);
+    expect(curateTasks(tasks, { size: 'big_time' }).map((t) => t.id)).toEqual(['big', 'unsized']);
+  });
+
+  it('null/undefined mode keeps every size', () => {
+    const tasks = [
+      makeTask({ id: 'quick', size: 'quick_win', createdAt: new Date('2026-06-02') }),
+      makeTask({ id: 'big', size: 'big_time', createdAt: new Date('2026-06-01') }),
+    ];
+
+    expect(curateTasks(tasks, { size: null }).map((t) => t.id)).toEqual(['quick', 'big']);
+    expect(curateTasks(tasks, {}).map((t) => t.id)).toEqual(['quick', 'big']);
+  });
+
+  it('combines context and mode filters with AND semantics (AC5)', () => {
+    const tasks = [
+      makeTask({ id: 'home-quick', contexts: '["home"]', size: 'quick_win' }),
+      makeTask({ id: 'home-big', contexts: '["home"]', size: 'big_time' }),
+      makeTask({ id: 'phone-quick', contexts: '["phone"]', size: 'quick_win' }),
+      makeTask({ id: 'anywhere-unsized', contexts: null, size: null }),
+    ];
+
+    expect(
+      curateTasks(tasks, { contexts: ['home'], size: 'quick_win' })
+        .map((t) => t.id)
+        .sort(),
+    ).toEqual(['anywhere-unsized', 'home-quick']);
   });
 
   it('does not mutate the input array', () => {
@@ -137,5 +182,18 @@ describe('availableContexts', () => {
     const tasks = [makeTask({ id: 'a', contexts: '["home","garden_shed"]' })];
 
     expect(availableContexts(tasks)).toEqual(new Set(['home']));
+  });
+
+  it('respects the mode: contexts whose only tasks fail the size filter are unavailable', () => {
+    const tasks = [
+      makeTask({ id: 'big-laptop', size: 'big_time', contexts: '["laptop"]' }),
+      makeTask({ id: 'quick-home', size: 'quick_win', contexts: '["home"]' }),
+      makeTask({ id: 'unsized-phone', size: null, contexts: '["phone"]' }),
+    ];
+
+    // Unsized tasks pass both modes, so phone stays available either way.
+    expect(availableContexts(tasks, 'quick_win')).toEqual(new Set(['home', 'phone']));
+    expect(availableContexts(tasks, 'big_time')).toEqual(new Set(['laptop', 'phone']));
+    expect(availableContexts(tasks, null)).toEqual(new Set(['laptop', 'home', 'phone']));
   });
 });
