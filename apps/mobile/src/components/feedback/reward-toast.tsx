@@ -1,4 +1,4 @@
-import { Toast, ToastDescription, ToastTitle } from '@/components/ui/toast';
+import { Toast, ToastDescription, ToastTitle, useToast } from '@/components/ui/toast';
 
 /**
  * Reward acknowledgment toast body (Stories 2.3/2.4, UX-DR 21): positive
@@ -31,4 +31,20 @@ export function RewardToast({
       <ToastDescription>{`+${stars} ${stars === 1 ? 'star' : 'stars'}`}</ToastDescription>
     </Toast>
   );
+}
+
+/**
+ * Show the standard reward toast (top placement, ~2 s) — one helper so the
+ * presentation stays identical across every surface (Done, Cut loose from
+ * the running screen / overlay / list detail).
+ */
+export function showRewardToast(
+  toast: ReturnType<typeof useToast>,
+  { title, stars }: { title: string; stars: number },
+): void {
+  toast.show({
+    placement: 'top',
+    duration: 2000,
+    render: ({ id }) => <RewardToast nativeID={`toast-${id}`} title={title} stars={stars} />,
+  });
 }

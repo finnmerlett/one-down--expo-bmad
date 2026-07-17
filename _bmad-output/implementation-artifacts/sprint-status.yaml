@@ -60,11 +60,11 @@ development_status:
   epic-1-retrospective: optional
 
   # Epic 2: Task Execution
-  epic-2: in-progress
+  epic-2: done
   2-1-start-and-continue-a-task: done
   2-2-add-notes-during-execution: done
   2-3-complete-a-task: done
-  2-4-cut-loose-a-task: backlog
+  2-4-cut-loose-a-task: done
   epic-2-retrospective: optional
 
   # Epic 3: Smart Curation

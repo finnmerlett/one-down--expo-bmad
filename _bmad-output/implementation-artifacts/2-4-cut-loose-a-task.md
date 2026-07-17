@@ -1,6 +1,6 @@
 # Story 2.4: Cut Loose a Task
 
-Status: ready-for-dev
+Status: done
 Date: 2026-07-16
 Mode: Full-completion run (wave orchestration; spec-first)
 

@@ -3,10 +3,14 @@ import { useCallback, useEffect, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { cssInterop } from 'nativewind';
 
+import { STAR_WEIGHTS } from '@one-down/shared';
+
 import { CardBack, type CardBackHandle } from '@/components/card-stack/card-back';
+import { showRewardToast } from '@/components/feedback/reward-toast';
 import { Box } from '@/components/ui/box';
+import { useToast } from '@/components/ui/toast';
 import { useTasks } from '@/hooks/use-tasks';
-import { applyTaskPatch, startTask } from '@/services/task-edits';
+import { applyTaskPatch, cutLooseTask, startTask } from '@/services/task-edits';
 
 // Third-party component — NativeWind only auto-interops react-native core.
 cssInterop(SafeAreaView, { className: 'style' });
@@ -17,6 +21,7 @@ export default function TaskDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const navigation = useNavigation();
+  const toast = useToast();
   const tasks = useTasks();
   const task = tasks.find((candidate) => candidate.id === id) ?? null;
 
@@ -51,6 +56,11 @@ export default function TaskDetailScreen() {
       startingRef.current = false;
     }, []),
   );
+
+  // Once-guard for Cut Loose (Story 2.4): the stale `task.status` prop
+  // defeats the service's status gate on a double tap. Never re-armed —
+  // cutting loose always pops this route.
+  const cutLoosingRef = useRef(false);
 
   // Not-browsable self-pop (Story 2.3, AC7): this route stays mounted beneath
   // the running screen — if the task was completed (or cut loose, 2.4) up
@@ -87,6 +97,16 @@ export default function TaskDetailScreen() {
             startingRef.current = true;
             startTask(task, 'list_detail');
             router.push(`/task-running/${task.id}`);
+          }}
+          onCutLoose={() => {
+            if (cutLoosingRef.current) return;
+            cutLoosingRef.current = true;
+            cutLooseTask(task, 'list_detail');
+            // Toast renders at the provider root — it survives the pop.
+            showRewardToast(toast, { title: 'Released', stars: STAR_WEIGHTS.cutLoose });
+            // Explicit pop for responsiveness; the not-browsable self-pop
+            // above is the backstop.
+            close();
           }}
           backLabel="Back to task list"
         />

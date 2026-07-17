@@ -24,6 +24,11 @@ export type AnalyticsEventMap = EnforceFlatProps<{
   task_started: { via: 'card_back_overlay' | 'list_detail' };
   /** Story 2.3 — task marked completed (star earning is Epic 4's `stars_awarded`). */
   task_completed: { size: 'quick_win' | 'big_time' | null; had_notes: boolean };
+  /** Story 2.4 — task archived guilt-free (recycle bin restore is Epic 7). */
+  task_cut_loose: {
+    via: 'card_back_overlay' | 'list_detail' | 'task_running';
+    was_started: boolean;
+  };
 }>;
 
 export type AnalyticsEventName = keyof AnalyticsEventMap;

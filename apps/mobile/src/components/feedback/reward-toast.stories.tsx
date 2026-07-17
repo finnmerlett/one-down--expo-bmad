@@ -30,6 +30,15 @@ export const Completion: Story = {
   },
 };
 
+/** Story 2.4 — cut-loose acknowledgment (strictly smaller award than completion). */
+export const Released: Story = {
+  args: {
+    nativeID: 'toast-released',
+    title: 'Released',
+    stars: STAR_WEIGHTS.cutLoose,
+  },
+};
+
 /** Singular star copy ("+1 star", not "+1 stars"). */
 export const SingleStar: Story = {
   args: {

@@ -74,3 +74,22 @@ export function completeTask(task: TaskData): void {
     // oxlint-disable-next-line no-console
     .catch((error: unknown) => console.warn('Task complete failed', error));
 }
+
+/**
+ * Archive a task guilt-free (Story 2.4). Fire-and-forget, mirrors
+ * completeTask — cut-loose tasks keep their notes for the Epic 7 recycle
+ * bin restore. `pending` is allowed for the same 2.1 startTask race.
+ */
+export function cutLooseTask(
+  task: TaskData,
+  via: 'card_back_overlay' | 'list_detail' | 'task_running',
+): void {
+  if (task.status === 'completed' || task.status === 'cut_loose') return;
+  void setTaskStatus(db, task.id, 'cut_loose')
+    .then(() => {
+      // Epic 4 (4.1): awardStars(...) slots in here, next to the track call.
+      track('task_cut_loose', { via, was_started: task.status === 'in_progress' });
+    })
+    // oxlint-disable-next-line no-console
+    .catch((error: unknown) => console.warn('Task cut loose failed', error));
+}

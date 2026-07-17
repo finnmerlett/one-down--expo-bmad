@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import * as cardBackStories from './card-back.stories';
 
-const { FullDetails, Minimal, InProgress } = composeStories(cardBackStories);
+const { FullDetails, Minimal, InProgress, FullyWired } = composeStories(cardBackStories);
 
 describe('CardBack (portable stories)', () => {
   it('renders all sections with the stored values', async () => {
@@ -107,6 +107,33 @@ describe('CardBack (portable stories)', () => {
     await render(<InProgress />);
 
     expect(screen.getByLabelText('Continue task')).toBeTruthy();
+  });
+
+  it('disables Cut loose when onCutLoose is not provided (Story 2.4)', async () => {
+    // FullDetails omits onCutLoose (meta args only wire onStart).
+    await render(<FullDetails />);
+    expect(screen.getByLabelText('Cut loose').props.accessibilityState?.disabled).toBe(true);
+
+    await render(<FullyWired />);
+    expect(screen.getByLabelText('Cut loose').props.accessibilityState?.disabled).toBeFalsy();
+  });
+
+  it('flushes pending text drafts before reporting Cut loose (Story 2.4, AC4)', async () => {
+    const onPatch = jest.fn();
+    const onCutLoose = jest.fn();
+    await render(<FullDetails onPatch={onPatch} onCutLoose={onCutLoose} />);
+
+    // Edited but NOT blurred — released tasks keep their latest notes for
+    // the Epic 7 recycle bin restore.
+    await fireEvent.changeText(screen.getByLabelText('Task notes'), 'Half-written thought');
+    await fireEvent.press(screen.getByLabelText('Cut loose'));
+
+    expect(onPatch).toHaveBeenCalledWith({ notes: 'Half-written thought' });
+    expect(onCutLoose).toHaveBeenCalledTimes(1);
+    // The invariant is the ORDER: persist first, then release.
+    expect(onPatch.mock.invocationCallOrder[0] ?? Infinity).toBeLessThan(
+      onCutLoose.mock.invocationCallOrder[0] ?? 0,
+    );
   });
 
   it('flushes pending text drafts before reporting Start', async () => {

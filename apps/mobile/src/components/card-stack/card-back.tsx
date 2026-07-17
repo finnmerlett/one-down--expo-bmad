@@ -80,14 +80,17 @@ export function CardBack({
   onPatch,
   onClose,
   onStart,
+  onCutLoose,
   backLabel = 'Back to card front',
   ref,
 }: {
   task: TaskData;
   onPatch: (patch: UpdateTaskPatch) => void;
   onClose: () => void;
-  /** Start/Continue → task running screen (Story 2.1). Omitted = disabled placeholder. */
+  /** Start/Continue → task running screen (Story 2.1). Omitted = disabled. */
   onStart?: () => void;
+  /** Cut loose → guilt-free archive (Story 2.4). Omitted = disabled. */
+  onCutLoose?: () => void;
   /** A11y label for the back button — contextual per surface (overlay vs list detail). */
   backLabel?: string;
   ref?: Ref<CardBackHandle>;
@@ -176,6 +179,15 @@ export function CardBack({
     flushDetails();
     flushNotes();
     onStart?.();
+  };
+
+  // Flush-then-act (Story 2.4, AC4): released tasks keep their latest text
+  // for the Epic 7 recycle bin restore — persist drafts BEFORE reporting.
+  const handleCutLoose = () => {
+    flushTitle();
+    flushDetails();
+    flushNotes();
+    onCutLoose?.();
   };
 
   const startLabel = task.status === 'in_progress' ? 'Continue' : 'Start';
@@ -277,7 +289,8 @@ export function CardBack({
                 ))}
               </HStack>
             </VStack>
-            {/* Cut Loose is wired in Story 2.4. */}
+            {/* Cut loose is deliberately frictionless — no confirm, no warning
+                color (zero-guilt release; the recycle bin restore is Epic 7). */}
             <HStack className="gap-3 pt-2">
               <Button
                 size="lg"
@@ -292,7 +305,8 @@ export function CardBack({
                 size="lg"
                 variant="outline"
                 className="flex-1"
-                isDisabled
+                isDisabled={!onCutLoose}
+                onPress={handleCutLoose}
                 aria-label="Cut loose"
               >
                 <ButtonText>Cut loose</ButtonText>

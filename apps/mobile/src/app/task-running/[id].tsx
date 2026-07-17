@@ -5,7 +5,7 @@ import { cssInterop } from 'nativewind';
 
 import { STAR_WEIGHTS } from '@one-down/shared';
 
-import { RewardToast } from '@/components/feedback/reward-toast';
+import { showRewardToast } from '@/components/feedback/reward-toast';
 import {
   TaskRunningView,
   type TaskRunningViewHandle,
@@ -15,7 +15,7 @@ import { ArrowLeftIcon, Icon } from '@/components/ui/icon';
 import { Pressable } from '@/components/ui/pressable';
 import { useToast } from '@/components/ui/toast';
 import { useTasks } from '@/hooks/use-tasks';
-import { completeTask, createNotesAutosaver } from '@/services/task-edits';
+import { completeTask, createNotesAutosaver, cutLooseTask } from '@/services/task-edits';
 
 // Third-party component — NativeWind only auto-interops react-native core.
 cssInterop(SafeAreaView, { className: 'style' });
@@ -53,8 +53,8 @@ export default function TaskRunningScreen() {
     router.back();
   };
 
-  // Once-guard shared by the terminal actions (Done now, Cut Loose in 2.4):
-  // the `task.status` prop is stale until the live query re-emits, so the
+  // Once-guard shared by the terminal actions (Done and Cut Loose): the
+  // `task.status` prop is stale until the live query re-emits, so the
   // service-level status gate alone can't stop a double tap here.
   const actedRef = useRef(false);
   const handleDone = () => {
@@ -62,17 +62,17 @@ export default function TaskRunningScreen() {
     actedRef.current = true;
     completeTask(task);
     // Shown from the provider root — survives the route pop below.
-    toast.show({
-      placement: 'top',
-      duration: 2000,
-      render: ({ id: toastId }) => (
-        <RewardToast
-          nativeID={`toast-${toastId}`}
-          title="One down!"
-          stars={STAR_WEIGHTS.taskCompletion}
-        />
-      ),
-    });
+    showRewardToast(toast, { title: 'One down!', stars: STAR_WEIGHTS.taskCompletion });
+    close();
+  };
+
+  // If we were pushed from the list detail, the detail beneath self-pops on
+  // focus (its not-browsable guard covers cut_loose) → user lands on the list.
+  const handleCutLoose = () => {
+    if (!task || actedRef.current) return;
+    actedRef.current = true;
+    cutLooseTask(task, 'task_running');
+    showRewardToast(toast, { title: 'Released', stars: STAR_WEIGHTS.cutLoose });
     close();
   };
 
@@ -101,6 +101,7 @@ export default function TaskRunningScreen() {
         task={task}
         onPatch={(patch) => saveNotes(patch.notes ?? null)}
         onDone={handleDone}
+        onCutLoose={handleCutLoose}
       />
     </SafeAreaView>
   );

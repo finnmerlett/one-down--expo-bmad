@@ -56,3 +56,11 @@ export const InProgress: Story = {
     }),
   },
 };
+
+/** Story 2.4 — both actions live (Start + Cut loose), as wired on every surface. */
+export const FullyWired: Story = {
+  args: {
+    task: makeTask({ id: 'task-wired', title: 'Cancel gym membership' }),
+    onCutLoose: () => {},
+  },
+};

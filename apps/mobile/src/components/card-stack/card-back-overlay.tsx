@@ -31,12 +31,15 @@ export function CardBackOverlay({
   onPatch,
   onDismiss,
   onStart,
+  onCutLoose,
 }: {
   task: TaskData;
   onPatch: (patch: UpdateTaskPatch) => void;
   onDismiss: () => void;
   /** Start/Continue → task running screen (Story 2.1). CardBack flushes drafts itself. */
   onStart?: () => void;
+  /** Cut loose → guilt-free archive (Story 2.4). CardBack flushes drafts itself. */
+  onCutLoose?: () => void;
 }) {
   const cardBackRef = useRef<CardBackHandle>(null);
   const progress = useSharedValue(0);
@@ -97,6 +100,7 @@ export function CardBackOverlay({
           onPatch={onPatch}
           onClose={close}
           onStart={onStart}
+          onCutLoose={onCutLoose}
         />
       </Animated.View>
     </>

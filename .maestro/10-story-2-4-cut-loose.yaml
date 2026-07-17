@@ -1,0 +1,74 @@
+# Story 2.4 — cut loose a task: frictionless guilt-free release from all
+# three surfaces (running screen, home card-back overlay, list detail). Each
+# release shows the "Released" toast with the cut-loose star amount
+# (display-only until Epic 4); released tasks appear in NEITHER task-list
+# section, and releasing every task shows the empty-browse state.
+appId: com.onedown.mobile
+---
+- runFlow: common/launch-app.yaml
+
+# Seed three tasks. Curation shows newest-created first, so the running-screen
+# subject is seeded LAST to sit on top of the stack.
+- runFlow:
+    file: common/add-task.yaml
+    env:
+      TITLE: 'Release from list'
+- runFlow:
+    file: common/add-task.yaml
+    env:
+      TITLE: 'Release from overlay'
+- runFlow:
+    file: common/add-task.yaml
+    env:
+      TITLE: 'Release from running'
+
+# --- Surface 1: task running screen ---
+- tapOn: 'Task: Release from running. Card 1 of 3'
+- waitForAnimationToEnd
+- tapOn: 'Start task'
+- waitForAnimationToEnd
+- tapOn: 'Cut loose'
+# Assert the toast fast — it auto-dismisses after ~2 s
+- assertVisible: 'Released'
+- assertVisible: '+2 stars'
+- takeScreenshot: .claude/run-notes/screenshots/2-4-released-toast
+# Back on home, the released card is gone and the stack advanced (AC5)
+- extendedWaitUntil:
+    visible: 'Task: Release from overlay. Card 1 of 2'
+    timeout: 5000
+- assertNotVisible: 'Release from running'
+
+# --- Surface 2: home card-back overlay ---
+- tapOn: 'Task: Release from overlay. Card 1 of 2'
+- waitForAnimationToEnd
+- tapOn: 'Cut loose'
+- assertVisible: 'Released'
+# Overlay unmounted, stack advanced — no route push involved (AC6)
+- extendedWaitUntil:
+    visible: 'Task: Release from list. Card 1 of 1'
+    timeout: 5000
+- assertNotVisible: 'Release from overlay'
+
+# --- Surface 3: task list detail ---
+- tapOn: 'Open task list'
+- waitForAnimationToEnd
+- tapOn: 'Open task: Release from list'
+- waitForAnimationToEnd
+- tapOn: 'Cut loose'
+- assertVisible: 'Released'
+# Lands back on the task list; released tasks are in NEITHER section (AC7)
+- extendedWaitUntil:
+    visible: 'To do'
+    timeout: 5000
+- assertNotVisible: 'Open task: Release from list'
+- assertNotVisible: 'Completed: Release from list'
+- assertNotVisible: 'Release from running'
+- assertNotVisible: 'Release from overlay'
+
+# --- All tasks released: home shows the empty-browse state (AC2 tail) ---
+- tapOn: 'Back to home'
+- waitForAnimationToEnd
+- assertVisible: 'Nothing to browse right now'
+
+- assertNotVisible: 'Unhandled'
+- assertNotVisible: 'error occurred'

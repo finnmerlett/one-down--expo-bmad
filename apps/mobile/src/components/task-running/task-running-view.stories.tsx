@@ -45,8 +45,11 @@ export const Bare: Story = {
   },
 };
 
-/** Story 2.3 — Done wired (enabled); Cut loose still a placeholder until 2.4. */
-export const DoneEnabled: Story = {
+/**
+ * Stories 2.3/2.4 — Done and Cut loose wired, as the running route renders
+ * it; only "Help me with this" (Epic 6) remains a disabled placeholder.
+ */
+export const AllActionsEnabled: Story = {
   args: {
     task: makeTask({
       id: 'task-running-done',
@@ -54,5 +57,6 @@ export const DoneEnabled: Story = {
       status: 'in_progress',
     }),
     onDone: () => {},
+    onCutLoose: () => {},
   },
 };

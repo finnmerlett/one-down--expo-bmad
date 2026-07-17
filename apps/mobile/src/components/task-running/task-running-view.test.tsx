@@ -45,6 +45,30 @@ describe('TaskRunningView (portable stories)', () => {
     expect(screen.getByLabelText('Done').props.accessibilityState?.disabled).toBeFalsy();
   });
 
+  it('enables Cut loose when onCutLoose is provided (Story 2.4)', async () => {
+    await render(<WithDetailsAndNotes onCutLoose={() => {}} />);
+
+    expect(screen.getByLabelText('Cut loose').props.accessibilityState?.disabled).toBeFalsy();
+  });
+
+  it('flushes the notes draft BEFORE reporting Cut loose (Story 2.4, AC4)', async () => {
+    const onPatch = jest.fn();
+    const onCutLoose = jest.fn();
+    await render(<WithDetailsAndNotes onPatch={onPatch} onCutLoose={onCutLoose} />);
+
+    // Keyboard still up, debounce not yet fired — released tasks keep their
+    // latest notes for the Epic 7 recycle bin restore.
+    await fireEvent.changeText(screen.getByLabelText('Task notes'), 'Keep this for later');
+    await fireEvent.press(screen.getByLabelText('Cut loose'));
+
+    expect(onPatch).toHaveBeenCalledWith({ notes: 'Keep this for later' });
+    expect(onCutLoose).toHaveBeenCalledTimes(1);
+    // The invariant is the ORDER: persist first, then release.
+    expect(onPatch.mock.invocationCallOrder[0] ?? Infinity).toBeLessThan(
+      onCutLoose.mock.invocationCallOrder[0] ?? 0,
+    );
+  });
+
   it('flushes the notes draft BEFORE reporting Done (Story 2.3, AC4)', async () => {
     const onPatch = jest.fn();
     const onDone = jest.fn();

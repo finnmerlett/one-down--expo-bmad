@@ -27,18 +27,21 @@ export const NOTES_AUTOSAVE_DEBOUNCE_MS = 500;
  * Task running screen body (UX-DR 6): title + description for focus, an
  * editable notes area for working thoughts (draft/blur/flush auto-save like
  * the card back, PLUS a while-typing debounced autosave — Story 2.2), and the
- * action row. Done completes the task (Story 2.3); "Help me with this" stays
- * a disabled placeholder (Epic 6); Cut Loose lands in Story 2.4.
+ * action row. Done completes the task (Story 2.3); Cut loose releases it
+ * guilt-free (Story 2.4); only "Help me with this" stays a disabled
+ * placeholder (Epic 6).
  */
 export function TaskRunningView({
   task,
   onPatch,
   onDone,
+  onCutLoose,
   ref,
 }: {
   task: TaskData;
   onPatch: (patch: UpdateTaskPatch) => void;
   onDone?: () => void;
+  onCutLoose?: () => void;
   ref?: Ref<TaskRunningViewHandle>;
 }) {
   // Draft-or-stored: null draft = not editing, the field follows the DB.
@@ -114,11 +117,17 @@ export function TaskRunningView({
   useImperativeHandle(ref, () => ({ flush: flushNotes }));
 
   // Flush-then-act (2.1 handleStart pattern): the in-flight notes draft must
-  // be persisted BEFORE completion is reported — tapping Done with the
-  // keyboard up must not lose the typed note (AC4).
+  // be persisted BEFORE the terminal action is reported — tapping Done (or
+  // Cut loose, whose task keeps its notes for the Epic 7 restore) with the
+  // keyboard up must not lose the typed note (2.3 AC4 / 2.4 AC4).
   const handleDone = () => {
     flushNotes();
     onDone?.();
+  };
+
+  const handleCutLoose = () => {
+    flushNotes();
+    onCutLoose?.();
   };
 
   return (
@@ -150,11 +159,18 @@ export function TaskRunningView({
             <Button size="xl" isDisabled={!onDone} onPress={handleDone} aria-label="Done">
               <ButtonText>Done</ButtonText>
             </Button>
-            {/* AI breakdown placeholder (Epic 6) and Cut Loose (Story 2.4). */}
+            {/* AI breakdown placeholder (Epic 6). */}
             <Button size="lg" variant="outline" isDisabled aria-label="Help me with this">
               <ButtonText>Help me with this</ButtonText>
             </Button>
-            <Button size="lg" variant="outline" isDisabled aria-label="Cut loose">
+            {/* Frictionless release (Story 2.4) — no confirm, no warning color. */}
+            <Button
+              size="lg"
+              variant="outline"
+              isDisabled={!onCutLoose}
+              onPress={handleCutLoose}
+              aria-label="Cut loose"
+            >
               <ButtonText>Cut loose</ButtonText>
             </Button>
           </VStack>

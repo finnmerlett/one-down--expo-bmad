@@ -2,7 +2,7 @@ import { tasks } from '@one-down/shared/schema-local';
 
 import { track } from '@/lib/analytics/track';
 import { db } from '@/lib/local-db';
-import { completeTask, createNotesAutosaver } from './task-edits';
+import { completeTask, createNotesAutosaver, cutLooseTask } from './task-edits';
 import { createTask, setTaskStatus } from './tasks-repository';
 
 // expo-crypto is a native module; under Node the equivalent is node:crypto.
@@ -117,6 +117,56 @@ describe('completeTask (Story 2.3)', () => {
 
     const [row] = await db.select().from(tasks);
     expect(row?.status).toBe('cut_loose');
+    expect(trackMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('cutLooseTask (Story 2.4)', () => {
+  beforeEach(async () => {
+    trackMock.mockClear();
+    await db.delete(tasks);
+  });
+
+  it('persists cut_loose from pending and emits task_cut_loose once', async () => {
+    const task = await createTask(db, { title: 'Not happening' });
+
+    cutLooseTask(task, 'card_back_overlay');
+    await flushAsync();
+
+    const [row] = await db.select().from(tasks);
+    expect(row?.status).toBe('cut_loose');
+    expect(trackMock).toHaveBeenCalledTimes(1);
+    expect(trackMock).toHaveBeenCalledWith('task_cut_loose', {
+      via: 'card_back_overlay',
+      was_started: false,
+    });
+  });
+
+  it('archives an in_progress task with was_started true', async () => {
+    const task = await createTask(db, { title: 'Started then dropped' });
+    await setTaskStatus(db, task.id, 'in_progress');
+
+    cutLooseTask({ ...task, status: 'in_progress' }, 'task_running');
+    await flushAsync();
+
+    const [row] = await db.select().from(tasks);
+    expect(row?.status).toBe('cut_loose');
+    expect(trackMock).toHaveBeenCalledWith('task_cut_loose', {
+      via: 'task_running',
+      was_started: true,
+    });
+  });
+
+  it('is a no-op (no write, no event) from completed and cut_loose', async () => {
+    const task = await createTask(db, { title: 'Already done' });
+    await setTaskStatus(db, task.id, 'completed');
+
+    cutLooseTask({ ...task, status: 'completed' }, 'list_detail');
+    cutLooseTask({ ...task, status: 'cut_loose' }, 'list_detail');
+    await flushAsync();
+
+    const [row] = await db.select().from(tasks);
+    expect(row?.status).toBe('completed');
     expect(trackMock).not.toHaveBeenCalled();
   });
 });
