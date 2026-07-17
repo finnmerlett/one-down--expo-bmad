@@ -3,7 +3,8 @@ import { render, screen, userEvent } from '@testing-library/react-native';
 
 import * as stories from './context-toggle-bar.stories';
 
-const { AllInactive, TwoActive, SomeDisabled, ActiveButEmpty } = composeStories(stories);
+const { AllInactive, TwoActive, SomeDisabled, ActiveButEmpty, WithUrgentDot } =
+  composeStories(stories);
 
 describe('ContextToggleBar (portable stories)', () => {
   it('renders all five context buttons with filter labels', async () => {
@@ -58,5 +59,15 @@ describe('ContextToggleBar (portable stories)', () => {
 
     await user.press(laptop);
     expect(onToggle).toHaveBeenCalledWith('laptop');
+  });
+
+  it('announces urgent dots on inactive urgent contexts only (Story 3.3)', async () => {
+    await render(<WithUrgentDot />);
+
+    // phone: urgent + inactive while a filter is active -> dot + label suffix
+    expect(screen.getByLabelText('Filter context: Phone, has urgent tasks')).toBeTruthy();
+    // home: urgent but ACTIVE -> no dot, plain label
+    expect(screen.getByLabelText('Filter context: Home')).toBeTruthy();
+    expect(screen.queryByLabelText('Filter context: Home, has urgent tasks')).toBeNull();
   });
 });

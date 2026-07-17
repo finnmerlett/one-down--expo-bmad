@@ -2,23 +2,32 @@
 # completed, a "One down!" reward toast shows the star amount (display-only
 # until Epic 4), the stack advances to the next card, and the task list shows
 # the completed task under Done (display-only) instead of To do.
+# Updated for Story 3.3: curation order is seed-jittered, so the completion
+# subject is sized Quick win while it is the only card — the momentum rule
+# then deterministically keeps it on top after the second task is added.
 appId: com.onedown.mobile
 ---
 - runFlow: common/launch-app.yaml
 
-# Seed two tasks. Curation shows newest-created first, so 'Finish me first'
-# is seeded SECOND to sit on top of the stack (card 1 of 2).
-- runFlow:
-    file: common/add-task.yaml
-    env:
-      TITLE: 'Next in line'
+# Seed the completion subject and make it a quick win while it's alone
 - runFlow:
     file: common/add-task.yaml
     env:
       TITLE: 'Finish me first'
+- tapOn: 'Task: Finish me first. Worth 10 stars. Card 1 of 1'
+- waitForAnimationToEnd
+- tapOn: 'Size: Quick win'
+- tapOn: 'Back to card front'
+- waitForAnimationToEnd
+
+# Seed the follow-up task; momentum keeps the quick win on top
+- runFlow:
+    file: common/add-task.yaml
+    env:
+      TITLE: 'Next in line'
 
 # Open the top card's back, start the task, land on the running screen
-- tapOn: 'Task: Finish me first. Card 1 of 2'
+- tapOn: 'Task: Finish me first. Worth 10 stars. Card 1 of 2'
 - waitForAnimationToEnd
 - tapOn: 'Start task'
 - waitForAnimationToEnd
@@ -31,7 +40,7 @@ appId: com.onedown.mobile
 
 # The running screen closed and the stack promoted the next card (AC3)
 - extendedWaitUntil:
-    visible: 'Task: Next in line. Card 1 of 1'
+    visible: 'Task: Next in line. Worth 10 stars. Card 1 of 1'
     timeout: 5000
 - assertNotVisible: 'Finish me first'
 

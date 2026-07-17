@@ -8,13 +8,15 @@ const { ThreeTasks, SingleTask } = composeStories(cardStackStories);
 const { TitleOnly, WithSizeAndContexts } = composeStories(taskCardStories);
 
 describe('TaskCard (portable stories)', () => {
-  it('shows title, size tag, and context badges', async () => {
+  it('shows title, size tag, context badges, and the star-value chip', async () => {
     await render(<WithSizeAndContexts />);
 
     expect(screen.getByText('Book dentist appointment')).toBeTruthy();
     expect(screen.getByText('Quick win')).toBeTruthy();
     expect(screen.getByText('Phone')).toBeTruthy();
     expect(screen.getByText('Internet')).toBeTruthy();
+    // Star preview (Story 3.3) — every card front shows its potential value.
+    expect(screen.getByText('10')).toBeTruthy();
   });
 
   it('renders without badges when size and contexts are unset', async () => {
@@ -29,7 +31,11 @@ describe('CardStack (portable stories)', () => {
   it('announces the top card and renders the 3-card window', async () => {
     await render(<ThreeTasks />);
 
-    expect(screen.getByLabelText('Task: Water the plants. Card 1 of 3')).toBeTruthy();
+    // Label announces the star preview (Story 3.3) — the top card is an
+    // accessible container, so TalkBack/Maestro only see this string.
+    expect(
+      screen.getByLabelText('Task: Water the plants. Worth 10 stars. Card 1 of 3'),
+    ).toBeTruthy();
     // Background cards render content too (decorative hints).
     expect(screen.getByText('Write trip packing list')).toBeTruthy();
     expect(screen.getByText('Renew passport')).toBeTruthy();
@@ -39,7 +45,7 @@ describe('CardStack (portable stories)', () => {
     await render(<SingleTask />);
 
     expect(screen.getAllByText('The only task')).toHaveLength(1);
-    expect(screen.getByLabelText('Task: The only task. Card 1 of 1')).toBeTruthy();
+    expect(screen.getByLabelText('Task: The only task. Worth 10 stars. Card 1 of 1')).toBeTruthy();
   });
 });
 

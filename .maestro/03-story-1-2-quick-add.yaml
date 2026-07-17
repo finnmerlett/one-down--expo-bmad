@@ -21,7 +21,7 @@ appId: com.onedown.mobile
 # the card is an accessible container, so match its full label.
 - tapOn: 'Close add task'
 - waitForAnimationToEnd
-- assertVisible: 'Task: Maestro smoke test task. Card 1 of 1'
+- assertVisible: 'Task: Maestro smoke test task. Worth 10 stars. Card 1 of 1'
 - assertNotVisible: 'Unhandled'
 - assertNotVisible: 'uncaught'
 - assertNotVisible: 'error occurred'

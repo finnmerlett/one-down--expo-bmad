@@ -6,6 +6,8 @@ import { makeTask } from './task-card.stories';
 const meta = {
   title: 'card-stack/CardStack',
   component: CardStack,
+  // Deterministic stand-in for the home layer's potentialStars closure.
+  args: { getStarValue: (task) => (task.size === 'big_time' ? 15 : 10) },
 } satisfies Meta<typeof CardStack>;
 
 export default meta;

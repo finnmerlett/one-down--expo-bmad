@@ -3,27 +3,20 @@
 # release shows the "Released" toast with the cut-loose star amount
 # (display-only until Epic 4); released tasks appear in NEITHER task-list
 # section, and releasing every task shows the empty-browse state.
+# Updated for Story 3.3: curation order is seed-jittered, so each surface's
+# subject is seeded and released one at a time (always the only card — no
+# dependence on multi-card ordering). Stack advancement after a release is
+# covered by flow 09.
 appId: com.onedown.mobile
 ---
 - runFlow: common/launch-app.yaml
 
-# Seed three tasks. Curation shows newest-created first, so the running-screen
-# subject is seeded LAST to sit on top of the stack.
-- runFlow:
-    file: common/add-task.yaml
-    env:
-      TITLE: 'Release from list'
-- runFlow:
-    file: common/add-task.yaml
-    env:
-      TITLE: 'Release from overlay'
+# --- Surface 1: task running screen ---
 - runFlow:
     file: common/add-task.yaml
     env:
       TITLE: 'Release from running'
-
-# --- Surface 1: task running screen ---
-- tapOn: 'Task: Release from running. Card 1 of 3'
+- tapOn: 'Task: Release from running. Worth 10 stars. Card 1 of 1'
 - waitForAnimationToEnd
 - tapOn: 'Start task'
 - waitForAnimationToEnd
@@ -32,24 +25,32 @@ appId: com.onedown.mobile
 - assertVisible: 'Released'
 - assertVisible: '+2 stars'
 - takeScreenshot: .claude/run-notes/screenshots/2-4-released-toast
-# Back on home, the released card is gone and the stack advanced (AC5)
+# Back on home, the released card is gone (AC5)
 - extendedWaitUntil:
-    visible: 'Task: Release from overlay. Card 1 of 2'
+    visible: 'Nothing to browse right now'
     timeout: 5000
 - assertNotVisible: 'Release from running'
 
 # --- Surface 2: home card-back overlay ---
-- tapOn: 'Task: Release from overlay. Card 1 of 2'
+- runFlow:
+    file: common/add-task.yaml
+    env:
+      TITLE: 'Release from overlay'
+- tapOn: 'Task: Release from overlay. Worth 10 stars. Card 1 of 1'
 - waitForAnimationToEnd
 - tapOn: 'Cut loose'
 - assertVisible: 'Released'
-# Overlay unmounted, stack advanced — no route push involved (AC6)
+# Overlay unmounted, card gone — no route push involved (AC6)
 - extendedWaitUntil:
-    visible: 'Task: Release from list. Card 1 of 1'
+    visible: 'Nothing to browse right now'
     timeout: 5000
 - assertNotVisible: 'Release from overlay'
 
 # --- Surface 3: task list detail ---
+- runFlow:
+    file: common/add-task.yaml
+    env:
+      TITLE: 'Release from list'
 - tapOn: 'Open task list'
 - waitForAnimationToEnd
 - tapOn: 'Open task: Release from list'

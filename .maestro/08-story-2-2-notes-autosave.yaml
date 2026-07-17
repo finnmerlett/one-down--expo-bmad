@@ -14,7 +14,7 @@ appId: com.onedown.mobile
       TITLE: 'Notes survive task'
 
 # Open the card back and start the task
-- tapOn: 'Task: Notes survive task. Card 1 of 1'
+- tapOn: 'Task: Notes survive task. Worth 10 stars. Card 1 of 1'
 - waitForAnimationToEnd
 - tapOn: 'Start task'
 - waitForAnimationToEnd
@@ -36,10 +36,10 @@ appId: com.onedown.mobile
 
 # Card front shows the Continue marker; reopen the back and continue
 - extendedWaitUntil:
-    visible: 'Task: Notes survive task. Card 1 of 1'
+    visible: 'Task: Notes survive task. Worth 10 stars. Card 1 of 1'
     timeout: 5000
 - assertVisible: 'Continue'
-- tapOn: 'Task: Notes survive task. Card 1 of 1'
+- tapOn: 'Task: Notes survive task. Worth 10 stars. Card 1 of 1'
 - waitForAnimationToEnd
 - tapOn: 'Continue task'
 - waitForAnimationToEnd

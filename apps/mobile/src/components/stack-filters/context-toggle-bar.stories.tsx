@@ -33,3 +33,13 @@ export const SomeDisabled: Story = {
 export const ActiveButEmpty: Story = {
   args: { activeContexts: ['laptop'], availableContexts: new Set(['home']) },
 };
+
+// Story 3.3: inactive contexts with urgent tasks show a subtle dot while a
+// context filter is active. The active button (home) never shows one.
+export const WithUrgentDot: Story = {
+  args: {
+    activeContexts: ['home'],
+    availableContexts: ALL_CONTEXTS,
+    urgentContexts: new Set(['phone', 'home']),
+  },
+};

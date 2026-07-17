@@ -2,6 +2,7 @@ import { Globe, House, Laptop, MapPin, Smartphone, type LucideIcon } from 'lucid
 import { TASK_CONTEXTS, type TaskContext } from '@one-down/shared';
 
 import { CONTEXT_LABELS } from '@/components/card-stack/task-card';
+import { Box } from '@/components/ui/box';
 import { HStack } from '@/components/ui/hstack';
 import { Icon } from '@/components/ui/icon';
 import { Pressable } from '@/components/ui/pressable';
@@ -14,17 +15,17 @@ const CONTEXT_ICONS: Record<TaskContext, LucideIcon> = {
   internet: Globe,
 };
 
-// Kept as its own sub-component: Story 3.3 slots an urgent-indicator dot in
-// here without touching the bar layout.
 function ContextButton({
   context,
   active,
   available,
+  urgent,
   onToggle,
 }: {
   context: TaskContext;
   active: boolean;
   available: boolean;
+  urgent: boolean;
   onToggle: (context: TaskContext) => void;
 }) {
   // UX rule (AC4): an empty context stays enabled while ON so the user can
@@ -41,7 +42,7 @@ function ContextButton({
       accessibilityRole="button"
       // "Filter context:" — deliberately distinct from the card back's
       // "Context:" toggles so Maestro full-string selectors never collide.
-      accessibilityLabel={`Filter context: ${CONTEXT_LABELS[context]}`}
+      accessibilityLabel={`Filter context: ${CONTEXT_LABELS[context]}${urgent ? ', has urgent tasks' : ''}`}
       accessibilityState={{ selected: active, disabled }}
       disabled={disabled}
       hitSlop={8}
@@ -51,9 +52,16 @@ function ContextButton({
       }`}
     >
       <Icon as={CONTEXT_ICONS[context]} size="xl" className={iconColor} />
+      {/* Urgent indicator (FR15): single subtle dot, warning tint (calm, not
+          red), no count — "the app does the worrying". */}
+      {urgent ? (
+        <Box className="absolute right-1 top-1 h-2 w-2 rounded-full bg-warning-400" />
+      ) : null}
     </Pressable>
   );
 }
+
+const NO_URGENT: ReadonlySet<TaskContext> = new Set();
 
 /**
  * Icon-only context filter bar (Story 3.1). Presentational — no store access,
@@ -63,23 +71,33 @@ function ContextButton({
 export function ContextToggleBar({
   activeContexts,
   availableContexts,
+  urgentContexts = NO_URGENT,
   onToggle,
 }: {
   activeContexts: TaskContext[];
   availableContexts: ReadonlySet<TaskContext>;
+  /** Story 3.3 — contexts with urgent (≤48h/overdue) tasks get an indicator
+   *  dot, but only while a context filter is active AND the button is not
+   *  itself active (the unfiltered stack already surfaces urgent tasks). */
+  urgentContexts?: ReadonlySet<TaskContext>;
   onToggle: (context: TaskContext) => void;
 }) {
+  const anyActive = activeContexts.length > 0;
   return (
     <HStack className="items-center justify-between px-4 py-1">
-      {TASK_CONTEXTS.map((context) => (
-        <ContextButton
-          key={context}
-          context={context}
-          active={activeContexts.includes(context)}
-          available={availableContexts.has(context)}
-          onToggle={onToggle}
-        />
-      ))}
+      {TASK_CONTEXTS.map((context) => {
+        const active = activeContexts.includes(context);
+        return (
+          <ContextButton
+            key={context}
+            context={context}
+            active={active}
+            available={availableContexts.has(context)}
+            urgent={anyActive && !active && urgentContexts.has(context)}
+            onToggle={onToggle}
+          />
+        );
+      })}
     </HStack>
   );
 }

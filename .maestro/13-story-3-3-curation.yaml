@@ -1,0 +1,51 @@
+# Story 3.3 — stack curation: the momentum rule puts the best quick win on
+# top despite the random session seed (AC1a), and every card front announces
+# its potential star value — quick win 10 (base), big time 15 (size bonus)
+# (AC2). The urgent-context indicator dot (AC3) is NOT E2E-drivable: no UI
+# sets deadlines until Epic 6 (the card back shows the deadline read-only) —
+# it is covered by unit tests and the WithUrgentDot story instead.
+appId: com.onedown.mobile
+---
+- runFlow: common/launch-app.yaml
+
+# Seed 'Tiny task' and size it Quick win while it is the only card
+- runFlow:
+    file: common/add-task.yaml
+    env:
+      TITLE: 'Tiny task'
+- tapOn: 'Task: Tiny task. Worth 10 stars. Card 1 of 1'
+- waitForAnimationToEnd
+- tapOn: 'Size: Quick win'
+- tapOn: 'Back to card front'
+- waitForAnimationToEnd
+
+# Seed 'Huge task'; momentum keeps the quick win on top, so one swipe
+# reaches the new card to size it Big time
+- runFlow:
+    file: common/add-task.yaml
+    env:
+      TITLE: 'Huge task'
+- swipe:
+    start: 80%, 45%
+    end: 5%, 45%
+- waitForAnimationToEnd
+- tapOn: 'Task: Huge task. Worth 10 stars. Card 2 of 2'
+- waitForAnimationToEnd
+- tapOn: 'Size: Big time'
+- tapOn: 'Back to card front'
+- waitForAnimationToEnd
+
+# AC2: the big task's star value rose to 15 (size bonus) — deterministic
+# despite the random session seed (no deadlines -> no urgency bonus)
+- assertVisible: 'Task: Huge task. Worth 15 stars. Card 2 of 2'
+- takeScreenshot: .claude/run-notes/screenshots/3-3-star-value-chip
+
+# AC1a momentum: wrap around — the quick win is card 1, top of the mix
+- swipe:
+    start: 80%, 45%
+    end: 5%, 45%
+- waitForAnimationToEnd
+- assertVisible: 'Task: Tiny task. Worth 10 stars. Card 1 of 2'
+
+- assertNotVisible: 'Unhandled'
+- assertNotVisible: 'error occurred'

@@ -26,6 +26,8 @@ export function makeTask(overrides: Partial<TaskData> = {}): TaskData {
 const meta = {
   title: 'card-stack/TaskCard',
   component: TaskCard,
+  // Baseline star preview: completionBase with no bonuses (Story 3.3).
+  args: { starValue: 10 },
   decorators: [
     (Story) => (
       <Box className="flex-1 p-6" style={{ maxHeight: 480 }}>
@@ -63,5 +65,26 @@ export const InProgress: Story = {
       status: 'in_progress',
       size: 'big_time',
     }),
+    starValue: 15,
+  },
+};
+
+// Story 3.3 star-preview states: bigger/more urgent tasks are worth more.
+export const BigTimeValue: Story = {
+  args: {
+    task: makeTask({ id: 'task-4', title: 'Redecorate the hallway', size: 'big_time' }),
+    starValue: 15,
+  },
+};
+
+export const NearDeadlineValue: Story = {
+  args: {
+    task: makeTask({
+      id: 'task-5',
+      title: 'File the tax return',
+      size: 'quick_win',
+      deadline: new Date('2026-06-02T09:00:00Z'),
+    }),
+    starValue: 15,
   },
 };

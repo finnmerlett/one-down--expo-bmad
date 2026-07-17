@@ -45,11 +45,13 @@ const FILL = { height: '100%', width: '100%' } as const;
  */
 function SwipeableTopCard({
   task,
+  starValue,
   accessibilityLabel,
   onDismiss,
   onPress,
 }: {
   task: TaskData;
+  starValue: number;
   accessibilityLabel: string;
   onDismiss: () => void;
   onPress: () => void;
@@ -125,7 +127,7 @@ function SwipeableTopCard({
             shows the card below through this one. */}
         <View className="h-full w-full rounded-3xl bg-background-0">
           <Animated.View style={[FILL, fadeStyle]}>
-            <TaskCard task={task} />
+            <TaskCard task={task} starValue={starValue} />
           </Animated.View>
         </View>
       </Animated.View>
@@ -142,7 +144,15 @@ function SwipeableTopCard({
  * resting depths it is opaque, so lower cards never show through the content
  * fade.
  */
-function StackedCard({ task, depth }: { task: TaskData; depth: number }) {
+function StackedCard({
+  task,
+  starValue,
+  depth,
+}: {
+  task: TaskData;
+  starValue: number;
+  depth: number;
+}) {
   const progress = useSharedValue(depth + 1);
 
   useEffect(() => {
@@ -179,7 +189,7 @@ function StackedCard({ task, depth }: { task: TaskData; depth: number }) {
       <Animated.View style={[FILL, baseStyle]}>
         <View className="h-full w-full rounded-3xl bg-background-0">
           <Animated.View style={[FILL, contentStyle]}>
-            <TaskCard task={task} />
+            <TaskCard task={task} starValue={starValue} />
           </Animated.View>
         </View>
       </Animated.View>
@@ -201,9 +211,13 @@ function StackedCard({ task, depth }: { task: TaskData; depth: number }) {
  */
 export function CardStack({
   tasks,
+  getStarValue,
   onCardPress,
 }: {
   tasks: TaskData[];
+  /** Star preview per task (Story 3.3) — home closes over the full browsable
+   *  list, so relative urgency ranks against ALL active tasks. */
+  getStarValue: (task: TaskData) => number;
   onCardPress?: (task: TaskData) => void;
 }) {
   const [topTaskId, setTopTaskId] = useState<string | null>(null);
@@ -258,12 +272,16 @@ export function CardStack({
               <SwipeableTopCard
                 key={`${task.id}:${cycle}`}
                 task={task}
-                accessibilityLabel={`Task: ${task.title}. Card ${topIndex + 1} of ${tasks.length}`}
+                starValue={getStarValue(task)}
+                // Star value in the label: the top card is an accessible
+                // container (inner text hidden from TalkBack/Maestro), so the
+                // preview must be announced here.
+                accessibilityLabel={`Task: ${task.title}. Worth ${getStarValue(task)} stars. Card ${topIndex + 1} of ${tasks.length}`}
                 onDismiss={advance}
                 onPress={() => onCardPress?.(task)}
               />
             ) : (
-              <StackedCard key={task.id} task={task} depth={depth} />
+              <StackedCard key={task.id} task={task} starValue={getStarValue(task)} depth={depth} />
             ),
           )}
       </Box>

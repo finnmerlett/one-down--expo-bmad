@@ -1,30 +1,37 @@
 # Story 3.1 — context toggle bar: tapping a context filter immediately
 # re-filters the stack (AC2), multi-select shows tasks matching ANY active
 # context (AC3), empty contexts grey out while OFF (AC4), and the selection
-# persists across an app restart (AC5). Tasks are tagged one at a time right
-# after creation (the newest task is always the top card), so the flow never
-# depends on multi-card ordering.
+# persists across an app restart (AC5).
+# Updated for Story 3.3: curation order is seed-jittered, so 'Water plants'
+# is sized Quick win while it is the only card — the momentum rule then pins
+# it as the top card and one swipe deterministically reaches the other task.
 appId: com.onedown.mobile
 ---
 - runFlow: common/launch-app.yaml
 
-# Seed 'Water plants' and tag it Home via the card back
+# Seed 'Water plants' alone: tag it Home + make it a quick win
 - runFlow:
     file: common/add-task.yaml
     env:
       TITLE: 'Water plants'
-- tapOn: 'Task: Water plants. Card 1 of 1'
+- tapOn: 'Task: Water plants. Worth 10 stars. Card 1 of 1'
 - waitForAnimationToEnd
 - tapOn: 'Context: Home'
+- tapOn: 'Size: Quick win'
 - tapOn: 'Back to card front'
 - waitForAnimationToEnd
 
-# Seed 'Email plumber' (newest -> top card) and tag it Phone
+# Seed 'Email plumber'; momentum keeps Water plants on top, so one swipe
+# reaches the new card to tag it Phone
 - runFlow:
     file: common/add-task.yaml
     env:
       TITLE: 'Email plumber'
-- tapOn: 'Task: Email plumber. Card 1 of 2'
+- swipe:
+    start: 80%, 45%
+    end: 5%, 45%
+- waitForAnimationToEnd
+- tapOn: 'Task: Email plumber. Worth 10 stars. Card 2 of 2'
 - waitForAnimationToEnd
 - tapOn: 'Context: Phone'
 - tapOn: 'Back to card front'
@@ -32,16 +39,16 @@ appId: com.onedown.mobile
 
 # AC2: filtering to Home leaves only the Home-tagged task, immediately
 - tapOn: 'Filter context: Home'
-- assertVisible: 'Task: Water plants. Card 1 of 1'
+- assertVisible: 'Task: Water plants. Worth 10 stars. Card 1 of 1'
 - takeScreenshot: .claude/run-notes/screenshots/3-1-context-filtered
 
-# AC3 multi-select: adding Phone brings both back (newest sorts first)
+# AC3 multi-select: adding Phone brings both back (quick win on top)
 - tapOn: 'Filter context: Phone'
-- assertVisible: 'Task: Email plumber. Card 1 of 2'
+- assertVisible: 'Task: Water plants. Worth 10 stars. Card 1 of 2'
 
 # Un-tap Home -> only the Phone-tagged task remains
 - tapOn: 'Filter context: Home'
-- assertVisible: 'Task: Email plumber. Card 1 of 1'
+- assertVisible: 'Task: Email plumber. Worth 10 stars. Card 1 of 1'
 
 # AC4: a context with no matching browsable tasks is disabled while OFF
 - assertVisible:
@@ -52,7 +59,7 @@ appId: com.onedown.mobile
 - stopApp
 - launchApp
 - extendedWaitUntil:
-    visible: 'Task: Email plumber. Card 1 of 1'
+    visible: 'Task: Email plumber. Worth 10 stars. Card 1 of 1'
     timeout: 5000
 
 - assertNotVisible: 'Unhandled'

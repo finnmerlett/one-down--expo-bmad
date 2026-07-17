@@ -20,7 +20,7 @@ appId: com.onedown.mobile
 - waitForAnimationToEnd
 
 # Open the card back -> Start is live (AC1)
-- tapOn: 'Task: Start me task. Card 1 of 1'
+- tapOn: 'Task: Start me task. Worth 10 stars. Card 1 of 1'
 - waitForAnimationToEnd
 - tapOn: 'Start task'
 - waitForAnimationToEnd
@@ -41,12 +41,12 @@ appId: com.onedown.mobile
 
 # Card front now shows the Continue marker (AC2)
 - extendedWaitUntil:
-    visible: 'Task: Start me task. Card 1 of 1'
+    visible: 'Task: Start me task. Worth 10 stars. Card 1 of 1'
     timeout: 3000
 - assertVisible: 'Continue'
 
 # Reopen the back -> primary action reads Continue; tap it (AC2/AC3)
-- tapOn: 'Task: Start me task. Card 1 of 1'
+- tapOn: 'Task: Start me task. Worth 10 stars. Card 1 of 1'
 - waitForAnimationToEnd
 - tapOn: 'Continue task'
 - waitForAnimationToEnd
@@ -57,7 +57,7 @@ appId: com.onedown.mobile
 # Hardware back also leaves cleanly — home stack intact, still continuable
 - back
 - waitForAnimationToEnd
-- assertVisible: 'Task: Start me task. Card 1 of 1'
+- assertVisible: 'Task: Start me task. Worth 10 stars. Card 1 of 1'
 - assertVisible: 'Continue'
 
 # Second surface: task list → detail. The detail screen stays mounted under

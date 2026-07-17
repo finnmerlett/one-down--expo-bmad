@@ -14,4 +14,14 @@ export const STAR_WEIGHTS = {
   subtaskCompletion: 1,
   /** Epic 6. */
   triageConfirmation: 1,
+  // --- Story 3.3 / Epic 4 completion-award components (FR11/FR44). Used by
+  // the card-front star preview now; Story 4.1 reuses the SAME keys for the
+  // real award pipeline (one formula, no preview/award drift) and reconciles
+  // the taskCompletion duplication when it rewires the reward toast.
+  /** Base stars for completing any task. */
+  completionBase: 10,
+  /** Full bonus for the soonest-deadline active task (FR44, rank-based). */
+  urgencyBonusMax: 5,
+  /** Extra stars by declared size (unsized earns no size bonus). */
+  sizeBonus: { quick_win: 0, big_time: 5 },
 } as const;

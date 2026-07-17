@@ -31,19 +31,22 @@ appId: com.onedown.mobile
 - inputText: 'Call the dentist tomorrow. Clean out the garage'
 - tapOn: 'Parse my tasks'
 
-# Parse + local creation + pop home; the dentist task carries the sooner
-# deadline so curation puts it on top (AC4)
+# Parse + local creation + pop home. Card labels are matched by PREFIX regex
+# (3.3 adds 'Worth N stars' and seed-jittered ordering — the top card is
+# whichever parsed task curation surfaced), so we only assert that a parsed
+# card is on top of a 2-card stack.
 - extendedWaitUntil:
-    visible: 'Task: Call the dentist tomorrow. Card 1 of 2'
+    visible: 'Task: (Call the dentist tomorrow|Clean out the garage)\..* Card . of 2'
     timeout: 15000
 - takeScreenshot: .maestro/screenshots/08-story-6-1-brain-dump-stack
 
-# The second parsed task is in the stack too
-- swipe:
-    start: 80%, 45%
-    end: 5%, 45%
+# Both parsed tasks exist — asserted order-independently via the task list
+- tapOn: 'Open task list'
 - waitForAnimationToEnd
-- assertVisible: 'Task: Clean out the garage. Card 2 of 2'
+- assertVisible: 'Open task: Call the dentist tomorrow'
+- assertVisible: 'Open task: Clean out the garage'
+- tapOn: 'Back to home'
+- waitForAnimationToEnd
 
 - assertNotVisible: 'Unhandled'
 - assertNotVisible: 'error occurred'

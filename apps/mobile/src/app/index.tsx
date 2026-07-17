@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
 
-import { STAR_WEIGHTS, type TaskContext, type TaskSize } from '@one-down/shared';
+import { STAR_WEIGHTS, type TaskContext, type TaskData, type TaskSize } from '@one-down/shared';
 
 import { AppShell } from '@/components/app-shell/app-shell';
 import { CardBackOverlay } from '@/components/card-stack/card-back-overlay';
@@ -17,7 +17,8 @@ import { VStack } from '@/components/ui/vstack';
 import { useTasks } from '@/hooks/use-tasks';
 import { track } from '@/lib/analytics/track';
 import { db } from '@/lib/local-db';
-import { availableContexts, curateTasks } from '@/services/curation';
+import { availableContexts, curateTasks, urgentContexts } from '@/services/curation';
+import { potentialStars } from '@/services/star-calculator';
 import { applyTaskPatch, cutLooseTask, startTask } from '@/services/task-edits';
 import { createTask, type CreateTaskInput } from '@/services/tasks-repository';
 import { useQuickAddStore } from '@/stores/quick-add-store';
@@ -45,11 +46,28 @@ export default function HomeScreen() {
   const mode = useStackFiltersStore((state) => state.mode);
   const toggleMode = useStackFiltersStore((state) => state.toggleMode);
 
+  // Session curation seed — stable across re-renders/live-query emits (the
+  // order can't shuffle under the user's fingers mid-browse), fresh per app
+  // session. `now` is taken at recompute time (urgency granularity is days).
+  const [seed] = useState(() => Date.now() % 2 ** 31);
+
   const curated = useMemo(
-    () => curateTasks(tasks, { contexts: activeContexts, size: mode }),
-    [tasks, activeContexts, mode],
+    () => curateTasks(tasks, { contexts: activeContexts, size: mode }, { now: new Date(), seed }),
+    [tasks, activeContexts, mode, seed],
   );
   const available = useMemo(() => availableContexts(tasks, mode), [tasks, mode]);
+  const urgent = useMemo(() => urgentContexts(tasks, new Date()), [tasks]);
+
+  // Star preview closes over the UNFILTERED browsable list — relative
+  // urgency ranks against ALL active tasks (matches 4.1's award input),
+  // not just the filtered stack.
+  const getStarValue = useMemo(() => {
+    const browsable = tasks.filter(
+      (task) => task.status === 'pending' || task.status === 'in_progress',
+    );
+    const now = new Date();
+    return (task: TaskData) => potentialStars(task, browsable, now);
+  }, [tasks]);
 
   const handleSubmit = async (input: CreateTaskInput) => {
     const task = await createTask(db, input);
@@ -86,6 +104,7 @@ export default function HomeScreen() {
         <ContextToggleBar
           activeContexts={activeContexts}
           availableContexts={available}
+          urgentContexts={urgent}
           onToggle={handleToggleContext}
         />
         <ModeToggle mode={mode} onToggle={handleToggleMode} />
@@ -105,7 +124,11 @@ export default function HomeScreen() {
           </Text>
         </Box>
       ) : (
-        <CardStack tasks={curated} onCardPress={(task) => setOpenTaskId(task.id)} />
+        <CardStack
+          tasks={curated}
+          getStarValue={getStarValue}
+          onCardPress={(task) => setOpenTaskId(task.id)}
+        />
       )}
       {openTask ? (
         <CardBackOverlay
