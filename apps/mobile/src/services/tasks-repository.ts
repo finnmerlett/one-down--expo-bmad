@@ -2,7 +2,16 @@ import { eq } from 'drizzle-orm';
 import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 import { randomUUID } from 'expo-crypto';
 
-import type { TaskContext, TaskData, TaskSize, TaskStatus } from '@one-down/shared';
+import {
+  hasReviewItems,
+  type ParsedTaskDraft,
+  type ReviewField,
+  type TaskContext,
+  type TaskData,
+  type TaskReviewFlags,
+  type TaskSize,
+  type TaskStatus,
+} from '@one-down/shared';
 import { tasks } from '@one-down/shared/schema-local';
 
 // Repository functions take the db as first argument so integration tests can
@@ -42,6 +51,56 @@ export async function createTask(db: TasksDb, input: CreateTaskInput): Promise<T
     throw new Error('Task insert returned no row');
   }
   return task;
+}
+
+/**
+ * Turn AI brain-dump drafts into local tasks (Story 6.1). Per draft: fields
+ * the AI inferred (non-null size, non-empty contexts, non-null deadline) are
+ * recorded in `reviewFlags.inferred`; a time-sensitive draft with no concrete
+ * date gets `missingDeadline`. `hasCheckNeeded` mirrors "any flags exist" —
+ * Story 6.2's review mode consumes both. Empty-title drafts are skipped.
+ */
+export async function createTasksFromBrainDump(
+  db: TasksDb,
+  drafts: ParsedTaskDraft[],
+): Promise<TaskData[]> {
+  const created: TaskData[] = [];
+  for (const draft of drafts) {
+    const title = draft.title.trim();
+    if (!title) continue;
+
+    // Tolerant ISO decode — a malformed deadline degrades to null (and then
+    // to a missingDeadline flag when the draft was time-sensitive).
+    const parsedDeadline = draft.deadline ? new Date(draft.deadline) : null;
+    const deadline =
+      parsedDeadline && !Number.isNaN(parsedDeadline.getTime()) ? parsedDeadline : null;
+
+    const inferred: ReviewField[] = [];
+    if (draft.size !== null) inferred.push('size');
+    if (draft.contexts.length > 0) inferred.push('contexts');
+    if (deadline !== null) inferred.push('deadline');
+    const flags: TaskReviewFlags = {};
+    if (inferred.length > 0) flags.inferred = inferred;
+    if (draft.timeSensitive && deadline === null) flags.missingDeadline = true;
+    const reviewFlags = hasReviewItems(flags) ? JSON.stringify(flags) : null;
+
+    const [task] = await db
+      .insert(tasks)
+      .values({
+        // expo-crypto, NOT global crypto.randomUUID() (unreliable under Hermes)
+        id: randomUUID(),
+        title,
+        details: normalizeText(draft.details),
+        size: draft.size,
+        contexts: draft.contexts.length > 0 ? JSON.stringify(draft.contexts) : null,
+        deadline,
+        reviewFlags,
+        hasCheckNeeded: reviewFlags !== null,
+      })
+      .returning();
+    if (task) created.push(task);
+  }
+  return created;
 }
 
 /**

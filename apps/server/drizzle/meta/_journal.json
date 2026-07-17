@@ -8,6 +8,13 @@
       "when": 1784279386339,
       "tag": "0000_sleepy_pyro",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1784281378337,
+      "tag": "0001_swift_santa_claus",
+      "breakpoints": true
     }
   ]
 }

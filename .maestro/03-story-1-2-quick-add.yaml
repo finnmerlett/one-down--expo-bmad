@@ -3,7 +3,11 @@
 appId: com.onedown.mobile
 ---
 - runFlow: common/launch-app.yaml
+# Post-6.1 entry: the FAB opens the brain dump screen; the sheet under test
+# is reached via 'Add one task instead'.
 - tapOn: 'Add task'
+- waitForAnimationToEnd
+- tapOn: 'Add one task instead'
 - waitForAnimationToEnd
 - assertVisible: 'Task title'
 # Empty title is rejected with inline feedback

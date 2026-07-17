@@ -2,9 +2,17 @@ import { eq } from 'drizzle-orm';
 
 import { tasks } from '@one-down/shared/schema-local';
 
+import type { ParsedTaskDraft } from '@one-down/shared';
+
 import { createTestDb, type TestDb } from '../test-utils/db';
 import { loadLocalMigrationsSql } from '../test-utils/migrations';
-import { createTask, EmptyTitleError, setTaskStatus, updateTask } from './tasks-repository';
+import {
+  createTask,
+  createTasksFromBrainDump,
+  EmptyTitleError,
+  setTaskStatus,
+  updateTask,
+} from './tasks-repository';
 
 // expo-crypto is a native module; under Node the equivalent is node:crypto.
 jest.mock('expo-crypto', () => ({
@@ -55,6 +63,70 @@ describe('tasks-repository (integration, real migration SQL)', () => {
 
     const rows = await testDb.db.select().from(tasks);
     expect(rows).toHaveLength(0);
+  });
+
+  describe('createTasksFromBrainDump (Story 6.1)', () => {
+    const draft = (overrides: Partial<ParsedTaskDraft> = {}): ParsedTaskDraft => ({
+      title: 'Call the dentist',
+      details: null,
+      size: null,
+      contexts: [],
+      deadline: null,
+      timeSensitive: false,
+      ...overrides,
+    });
+
+    it('writes inferred fields, records them in reviewFlags, and sets hasCheckNeeded', async () => {
+      const deadlineIso = '2026-07-20T18:00:00.000Z';
+      const [created] = await createTasksFromBrainDump(testDb.db, [
+        draft({ size: 'quick_win', contexts: ['phone'], deadline: deadlineIso }),
+      ]);
+
+      const [row] = await testDb.db.select().from(tasks);
+      expect(row).toEqual(created);
+      expect(row?.size).toBe('quick_win');
+      expect(row?.contexts).toBe('["phone"]');
+      expect(row?.deadline?.toISOString()).toBe(deadlineIso);
+      expect(row?.hasCheckNeeded).toBe(true);
+      expect(JSON.parse(row?.reviewFlags ?? '{}')).toEqual({
+        inferred: ['size', 'contexts', 'deadline'],
+      });
+    });
+
+    it('a plain draft gets no flags and no check-needed mark', async () => {
+      await createTasksFromBrainDump(testDb.db, [draft()]);
+
+      const [row] = await testDb.db.select().from(tasks);
+      expect(row?.reviewFlags).toBeNull();
+      expect(row?.hasCheckNeeded).toBe(false);
+    });
+
+    it('time-sensitive without a date sets missingDeadline (and a bad ISO degrades to it)', async () => {
+      const created = await createTasksFromBrainDump(testDb.db, [
+        draft({ title: 'Urgent thing', timeSensitive: true }),
+        draft({ title: 'Bad date', timeSensitive: true, deadline: 'not-a-date' }),
+      ]);
+
+      expect(created).toHaveLength(2);
+      for (const task of created) {
+        expect(task.deadline).toBeNull();
+        expect(JSON.parse(task.reviewFlags ?? '{}')).toEqual({ missingDeadline: true });
+        expect(task.hasCheckNeeded).toBe(true);
+      }
+    });
+
+    it('skips empty-title drafts and trims the rest', async () => {
+      const created = await createTasksFromBrainDump(testDb.db, [
+        draft({ title: '   ' }),
+        draft({ title: '  Water plants  ', details: '  the ferns  ' }),
+      ]);
+
+      expect(created).toHaveLength(1);
+      expect(created[0]?.title).toBe('Water plants');
+      expect(created[0]?.details).toBe('the ferns');
+      const rows = await testDb.db.select().from(tasks);
+      expect(rows).toHaveLength(1);
+    });
   });
 
   describe('updateTask (Story 1.4 inline edits)', () => {

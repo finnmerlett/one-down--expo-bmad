@@ -21,6 +21,8 @@ export const tasks = pgTable(
     contexts: text('contexts'),
     deadline: timestamp('deadline', { withTimezone: true, mode: 'date' }),
     hasCheckNeeded: boolean('has_check_needed').notNull().default(false),
+    // JSON-encoded TaskReviewFlags (Story 6.1) — mirrors schema-local.
+    reviewFlags: text('review_flags'),
     // Schema-managed timestamps (Story 5.3 pre-work) — mirrors schema-local.
     // Explicit values in .values()/.set() win over $defaultFn/$onUpdate, so
     // sync writes always carry the client's content-change clock unchanged.

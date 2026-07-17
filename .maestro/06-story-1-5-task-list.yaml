@@ -15,8 +15,10 @@ appId: com.onedown.mobile
 - tapOn: 'Back to home'
 - waitForAnimationToEnd
 
-# Seed two tasks via quick add
+# Seed two tasks via quick add (post-6.1: reached through the brain dump screen)
 - tapOn: 'Add task'
+- waitForAnimationToEnd
+- tapOn: 'Add one task instead'
 - waitForAnimationToEnd
 - tapOn: 'Task title'
 - inputText: 'First listed task'

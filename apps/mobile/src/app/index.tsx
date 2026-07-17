@@ -98,7 +98,9 @@ export default function HomeScreen() {
 
   return (
     <AppShell
-      onAddPress={openTask ? undefined : open}
+      // FAB → brain dump (Story 6.1, UX-DR15); quick add stays reachable via
+      // the sheet on this screen ("Add one task instead" on the dump screen).
+      onAddPress={openTask ? undefined : () => router.push('/brain-dump')}
       // Inert while the overlay is open (same as the FAB) — pushing a route
       // would leave the overlay's BackHandler swallowing hardware back.
       onListPress={openTask ? undefined : () => router.push('/task-list')}

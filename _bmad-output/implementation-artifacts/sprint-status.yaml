@@ -92,8 +92,8 @@ development_status:
   epic-5-retrospective: optional
 
   # Epic 6: AI Intelligence
-  epic-6: backlog
-  6-1-ai-service-and-brain-dump-parsing: backlog
+  epic-6: in-progress
+  6-1-ai-service-and-brain-dump-parsing: done
   6-2-review-mode-for-ai-confirmations: backlog
   6-3-ai-task-breakdown: backlog
   6-4-ai-breakdown-feedback-and-retry: backlog

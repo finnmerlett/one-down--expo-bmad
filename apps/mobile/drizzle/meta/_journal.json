@@ -36,6 +36,13 @@
       "when": 1784279356633,
       "tag": "0004_icy_silver_surfer",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1784281373824,
+      "tag": "0005_chief_gambit",
+      "breakpoints": true
     }
   ]
 }

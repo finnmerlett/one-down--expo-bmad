@@ -14,6 +14,8 @@ export const tasks = sqliteTable('tasks', {
   contexts: text('contexts'),
   deadline: integer('deadline', { mode: 'timestamp_ms' }),
   hasCheckNeeded: integer('has_check_needed', { mode: 'boolean' }).notNull().default(false),
+  // JSON-encoded TaskReviewFlags (Story 6.1) — which fields the AI inferred.
+  reviewFlags: text('review_flags'),
   // Timestamps are schema-managed (Story 5.3 pre-work) so updatedAt can never
   // be forgotten. CRITICAL drizzle semantics the sync-apply path relies on:
   // an explicit value in .values()/.set() WINS over $defaultFn/$onUpdate —

@@ -1,5 +1,7 @@
 # Shared seeding subflow — creates one task through the quick-add UI and
-# closes the sheet. Parameterized: pass the task title via runFlow env:
+# closes the sheet. Post-6.1 navigation: the FAB ('Add task') opens the brain
+# dump screen; the quick-add sheet is reached via 'Add one task instead'.
+# Parameterized: pass the task title via runFlow env:
 #
 #   - runFlow:
 #       file: common/add-task.yaml
@@ -8,6 +10,8 @@
 appId: com.onedown.mobile
 ---
 - tapOn: 'Add task'
+- waitForAnimationToEnd
+- tapOn: 'Add one task instead'
 - waitForAnimationToEnd
 - tapOn: 'Task title'
 - inputText: ${TITLE}

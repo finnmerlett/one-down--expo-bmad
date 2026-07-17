@@ -21,8 +21,12 @@ appId: com.onedown.mobile
     timeout: 10000
 - tapOn: 'Back to home'
 
-# Add a task and let the debounced sync drain.
+# Add a task and let the debounced sync drain (post-6.1: quick add sits
+# behind the brain dump screen).
 - tapOn: 'Add task'
+- waitForAnimationToEnd
+- tapOn: 'Add one task instead'
+- waitForAnimationToEnd
 - tapOn: 'Task title'
 - inputText: 'Sync me task'
 - tapOn: 'Save task'

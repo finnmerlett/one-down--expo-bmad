@@ -150,6 +150,7 @@ describe('runSync (integration, real migration SQL)', () => {
       contexts: null,
       deadline: null,
       hasCheckNeeded: false,
+      reviewFlags: null,
       createdAt: new Date('2026-07-01T09:00:00.000Z'),
       updatedAt: new Date('2026-07-02T09:00:00.000Z'),
     };

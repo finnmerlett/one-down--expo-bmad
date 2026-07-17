@@ -85,6 +85,17 @@ export type AnalyticsEventMap = EnforceFlatProps<{
     reason: 'network' | 'server' | 'unknown';
     trigger: 'local_change' | 'reconnect' | 'foreground' | 'sign_in';
   };
+  /** Story 6.1 — a brain dump was sent for parsing (length only, never the text — NFR-S3). */
+  brain_dump_submitted: { char_count: number };
+  /** Story 6.1 — parse succeeded and local tasks were created. */
+  brain_dump_parsed: {
+    task_count: number;
+    flagged_count: number;
+    duration_ms: number;
+    provider: 'gemini' | 'fake';
+  };
+  /** Story 6.1 — parse failed; the inline error offers retry / quick add. */
+  brain_dump_failed: { reason: 'network' | 'server_error' };
 }>;
 
 export type AnalyticsEventName = keyof AnalyticsEventMap;

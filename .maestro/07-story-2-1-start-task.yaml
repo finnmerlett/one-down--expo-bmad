@@ -7,8 +7,10 @@ appId: com.onedown.mobile
 ---
 - runFlow: common/launch-app.yaml
 
-# Seed one task via quick add
+# Seed one task via quick add (post-6.1: reached through the brain dump screen)
 - tapOn: 'Add task'
+- waitForAnimationToEnd
+- tapOn: 'Add one task instead'
 - waitForAnimationToEnd
 - tapOn: 'Task title'
 - inputText: 'Start me task'

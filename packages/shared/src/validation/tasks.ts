@@ -18,6 +18,7 @@ export const taskUpsertSchema = z.object({
   contexts: z.string().nullable(),
   deadline: z.date().nullable(),
   hasCheckNeeded: z.boolean(),
+  reviewFlags: z.string().nullable(),
   createdAt: z.date(),
   updatedAt: z.date(),
 }) satisfies z.ZodType<TaskData>;

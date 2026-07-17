@@ -42,6 +42,52 @@ export interface TaskData {
   contexts: string | null;
   deadline: Date | null;
   hasCheckNeeded: boolean;
+  /** JSON-encoded TaskReviewFlags (Story 6.1) — null when nothing needs review. */
+  reviewFlags: string | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+/** Task fields the AI can infer from a brain dump (each inference needs review — Story 6.2). */
+export const REVIEW_FIELDS = ['size', 'contexts', 'deadline'] as const;
+export type ReviewField = (typeof REVIEW_FIELDS)[number];
+
+/**
+ * Decoded shape of the `reviewFlags` column (Story 6.1): which fields the AI
+ * inferred, plus whether a time-sensitive task is missing a concrete deadline.
+ * Story 6.2's review mode consumes and clears these.
+ */
+export interface TaskReviewFlags {
+  inferred?: ReviewField[];
+  missingDeadline?: boolean;
+}
+
+/**
+ * Decode the JSON-encoded `reviewFlags` column. Tolerant like
+ * parseTaskContexts: malformed values, unknown keys/fields, and empty flag
+ * sets all normalize to null (= nothing to review).
+ */
+export function parseReviewFlags(value: string | null): TaskReviewFlags | null {
+  if (!value) return null;
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null;
+    const record = parsed as Record<string, unknown>;
+    const inferred = Array.isArray(record.inferred)
+      ? record.inferred.filter((item): item is ReviewField =>
+          (REVIEW_FIELDS as readonly unknown[]).includes(item),
+        )
+      : [];
+    const flags: TaskReviewFlags = {};
+    if (inferred.length > 0) flags.inferred = inferred;
+    if (record.missingDeadline === true) flags.missingDeadline = true;
+    return hasReviewItems(flags) ? flags : null;
+  } catch {
+    return null;
+  }
+}
+
+/** True when at least one review item remains (drives `hasCheckNeeded`). */
+export function hasReviewItems(flags: TaskReviewFlags | null): boolean {
+  return flags !== null && ((flags.inferred?.length ?? 0) > 0 || flags.missingDeadline === true);
 }
