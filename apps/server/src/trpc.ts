@@ -1,5 +1,6 @@
 import { initTRPC, TRPCError } from '@trpc/server';
 import type { CreateFastifyContextOptions } from '@trpc/server/adapters/fastify';
+import superjson from 'superjson';
 
 import type { DbClient } from './db/client';
 import { captureProcedureOutcome } from './lib/analytics-middleware';
@@ -29,13 +30,14 @@ export function createContextFactory(seed: ContextSeed) {
   };
 }
 
-// No transformer yet — superjson is deferred until the first Date-carrying
-// procedure (Story 5.3) and must be wired client + server simultaneously.
+// superjson (Story 5.3): Dates cross the wire as real Dates from here on.
+// tRPC v11 enforces transformer symmetry — the mobile httpBatchLink carries
+// the matching `transformer: superjson`, wired in the same story.
 // `isDev` is passed explicitly: tRPC's default reads process.env.NODE_ENV
 // directly (bypassing the env seam) and treats "unset" as dev, which would
 // leak server stack traces in client error payloads on any deploy that
 // forgets to set NODE_ENV=production.
-const t = initTRPC.context<Context>().create({ isDev: isDevEnv() });
+const t = initTRPC.context<Context>().create({ isDev: isDevEnv(), transformer: superjson });
 
 // Per-procedure analytics (Story 8.3 AC4): times next() and captures the
 // structural outcome — path, type, duration, ok/error code. It never reads

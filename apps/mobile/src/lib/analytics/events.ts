@@ -73,6 +73,18 @@ export type AnalyticsEventMap = EnforceFlatProps<{
   auth_signed_in: { method: 'email' };
   /** Story 5.2 — signed out (success only). */
   auth_signed_out: Record<string, never>;
+  /** Story 5.3 — one sync round finished (counts and timings only, NFR-S3). */
+  sync_completed: {
+    pushed: number;
+    pulled: number;
+    duration_ms: number;
+    trigger: 'local_change' | 'reconnect' | 'foreground' | 'sign_in';
+  };
+  /** Story 5.3 — a sync round failed; the next trigger retries. */
+  sync_failed: {
+    reason: 'network' | 'server' | 'unknown';
+    trigger: 'local_change' | 'reconnect' | 'foreground' | 'sign_in';
+  };
 }>;
 
 export type AnalyticsEventName = keyof AnalyticsEventMap;

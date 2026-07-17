@@ -32,15 +32,15 @@ describe('tRPC health query (end-to-end)', () => {
     const response = await app.inject({ method: 'GET', url: '/trpc/health' });
 
     expect(response.statusCode).toBe(200);
-    // No transformer configured yet (superjson lands in 5.3), so the envelope
-    // is the plain tRPC HTTP shape: { result: { data: ... } }.
+    // superjson transformer (Story 5.3): the tRPC envelope nests the payload
+    // as { result: { data: { json: ... } } }.
     const body = response.json();
-    expect(body.result.data).toMatchObject({
+    expect(body.result.data.json).toMatchObject({
       status: 'ok',
       service: 'one-down-api',
       sharedPackage: '@one-down/shared',
     });
-    expect(Number.isNaN(Date.parse(body.result.data.timestamp))).toBe(false);
+    expect(Number.isNaN(Date.parse(body.result.data.json.timestamp))).toBe(false);
   });
 
   it('returns NOT_FOUND for an unknown procedure', async () => {
@@ -48,9 +48,9 @@ describe('tRPC health query (end-to-end)', () => {
 
     expect(response.statusCode).toBe(404);
     const body = response.json();
-    expect(body.error.data.code).toBe('NOT_FOUND');
+    expect(body.error.json.data.code).toBe('NOT_FOUND');
     // isDev is passed explicitly to initTRPC — outside development, error
     // payloads must never carry server stack traces (info leak).
-    expect(body.error.data.stack).toBeUndefined();
+    expect(body.error.json.data.stack).toBeUndefined();
   });
 });

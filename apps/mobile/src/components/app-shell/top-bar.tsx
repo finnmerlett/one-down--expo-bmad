@@ -3,6 +3,7 @@ import { Icon, MenuIcon, SettingsIcon } from '@/components/ui/icon';
 import { Pressable } from '@/components/ui/pressable';
 
 import { StarCounter } from './star-counter';
+import { SyncIndicator } from './sync-indicator';
 
 export function TopBar({
   onListPress,
@@ -32,15 +33,19 @@ export function TopBar({
         </Pressable>
         <StarCounter total={starTotals.total} today={starTotals.today} onPress={onStarPress} />
       </HStack>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Open settings"
-        hitSlop={8}
-        onPress={onSettingsPress}
-        className="h-11 w-11 items-center justify-center rounded-full active:bg-background-100"
-      >
-        <Icon as={SettingsIcon} size="xl" className="text-typography-900" />
-      </Pressable>
+      <HStack className="items-center gap-1">
+        {/* Only visible while sync is pending/retrying (Story 5.3). */}
+        <SyncIndicator />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Open settings"
+          hitSlop={8}
+          onPress={onSettingsPress}
+          className="h-11 w-11 items-center justify-center rounded-full active:bg-background-100"
+        >
+          <Icon as={SettingsIcon} size="xl" className="text-typography-900" />
+        </Pressable>
+      </HStack>
     </HStack>
   );
 }

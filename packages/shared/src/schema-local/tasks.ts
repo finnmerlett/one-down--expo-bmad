@@ -14,8 +14,17 @@ export const tasks = sqliteTable('tasks', {
   contexts: text('contexts'),
   deadline: integer('deadline', { mode: 'timestamp_ms' }),
   hasCheckNeeded: integer('has_check_needed', { mode: 'boolean' }).notNull().default(false),
-  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
-  updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  // Timestamps are schema-managed (Story 5.3 pre-work) so updatedAt can never
+  // be forgotten. CRITICAL drizzle semantics the sync-apply path relies on:
+  // an explicit value in .values()/.set() WINS over $defaultFn/$onUpdate —
+  // pulled rows keep their exact server timestamps, never re-stamped.
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+    .notNull()
+    .$defaultFn(() => new Date())
+    .$onUpdate(() => new Date()),
 });
 
 export type TaskRow = typeof tasks.$inferSelect;

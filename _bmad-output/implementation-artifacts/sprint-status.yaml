@@ -84,11 +84,11 @@ development_status:
   epic-4-retrospective: optional
 
   # Epic 5: Account & Cloud Sync
-  epic-5: backlog
+  epic-5: done
   5-0-backend-api-scaffold: done
   5-1-mobile-to-server-connection: done
   5-2-user-registration-and-authentication: done
-  5-3-cloud-sync-layer: backlog
+  5-3-cloud-sync-layer: done
   epic-5-retrospective: optional
 
   # Epic 6: AI Intelligence

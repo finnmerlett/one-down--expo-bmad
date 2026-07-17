@@ -31,14 +31,14 @@ describe('protectedProcedure auth middleware (whoAmI)', () => {
     const response = await whoAmI({ authorization: `Bearer ${user.accessToken}` });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json().result.data).toEqual({ userId: user.userId });
+    expect(response.json().result.data.json).toEqual({ userId: user.userId });
   });
 
   it('rejects a missing Authorization header with UNAUTHORIZED', async () => {
     const response = await whoAmI();
 
     expect(response.statusCode).toBe(401);
-    expect(response.json().error.data.code).toBe('UNAUTHORIZED');
+    expect(response.json().error.json.data.code).toBe('UNAUTHORIZED');
   });
 
   it('rejects a tampered token (signature actually checked)', async () => {
@@ -50,7 +50,7 @@ describe('protectedProcedure auth middleware (whoAmI)', () => {
     const response = await whoAmI({ authorization: `Bearer ${tampered}` });
 
     expect(response.statusCode).toBe(401);
-    expect(response.json().error.data.code).toBe('UNAUTHORIZED');
+    expect(response.json().error.json.data.code).toBe('UNAUTHORIZED');
   });
 
   it('rejects a self-signed ES256 token with correct claims (JWKS, not decode)', async () => {
@@ -69,13 +69,13 @@ describe('protectedProcedure auth middleware (whoAmI)', () => {
     const response = await whoAmI({ authorization: `Bearer ${forged}` });
 
     expect(response.statusCode).toBe(401);
-    expect(response.json().error.data.code).toBe('UNAUTHORIZED');
+    expect(response.json().error.json.data.code).toBe('UNAUTHORIZED');
   });
 
   it('leaves the public health procedure open', async () => {
     const response = await app.inject({ method: 'GET', url: '/trpc/health' });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json().result.data.status).toBe('ok');
+    expect(response.json().result.data.json.status).toBe('ok');
   });
 });

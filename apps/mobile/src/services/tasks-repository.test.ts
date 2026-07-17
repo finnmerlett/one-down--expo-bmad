@@ -1,8 +1,10 @@
+import { eq } from 'drizzle-orm';
+
 import { tasks } from '@one-down/shared/schema-local';
 
 import { createTestDb, type TestDb } from '../test-utils/db';
 import { loadLocalMigrationsSql } from '../test-utils/migrations';
-import { createTask, EmptyTitleError, updateTask } from './tasks-repository';
+import { createTask, EmptyTitleError, setTaskStatus, updateTask } from './tasks-repository';
 
 // expo-crypto is a native module; under Node the equivalent is node:crypto.
 jest.mock('expo-crypto', () => ({
@@ -116,6 +118,36 @@ describe('tasks-repository (integration, real migration SQL)', () => {
       const [row] = await testDb.db.select().from(tasks);
       expect(row?.title).toBe('Keep me');
       expect(row?.updatedAt).toEqual(created.updatedAt);
+    });
+  });
+
+  describe('schema-managed timestamps (Story 5.3 pre-work)', () => {
+    it('setTaskStatus bumps updatedAt via $onUpdate', async () => {
+      const created = await createTask(testDb.db, { title: 'a' });
+      const backdated = new Date('2026-01-01T00:00:00Z');
+      await testDb.db.update(tasks).set({ updatedAt: backdated }).where(eq(tasks.id, created.id));
+
+      await setTaskStatus(testDb.db, created.id, 'in_progress');
+
+      const [row] = await testDb.db.select().from(tasks);
+      expect(row?.status).toBe('in_progress');
+      expect(row?.updatedAt.getTime()).toBeGreaterThan(backdated.getTime());
+    });
+
+    it('an explicit updatedAt in .set() wins over $onUpdate (sync-apply pin)', async () => {
+      // The sync pull path writes server rows with their exact timestamps —
+      // this pins the drizzle semantics that make that safe.
+      const created = await createTask(testDb.db, { title: 'a' });
+      const exact = new Date('2026-03-05T12:34:56.789Z');
+
+      await testDb.db
+        .update(tasks)
+        .set({ title: 'server copy', updatedAt: exact })
+        .where(eq(tasks.id, created.id));
+
+      const [row] = await testDb.db.select().from(tasks);
+      expect(row?.title).toBe('server copy');
+      expect(row?.updatedAt.getTime()).toBe(exact.getTime());
     });
   });
 });

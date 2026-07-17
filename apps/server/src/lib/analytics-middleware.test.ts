@@ -59,7 +59,7 @@ describe('tRPC analytics middleware', () => {
       method: 'POST',
       url: '/trpc/ai.parseBrainDump',
       headers: { 'content-type': 'application/json' },
-      payload: JSON.stringify({ text: '' }),
+      payload: JSON.stringify({ json: { text: '' } }),
     });
 
     expect(response.statusCode).toBeGreaterThanOrEqual(400);
@@ -78,7 +78,7 @@ describe('tRPC analytics middleware', () => {
       method: 'POST',
       url: '/trpc/ai.parseBrainDump',
       headers: { 'content-type': 'application/json' },
-      payload: JSON.stringify({ text: sentinel }),
+      payload: JSON.stringify({ json: { text: sentinel } }),
     });
 
     expect(response.statusCode).toBe(200);

@@ -27,22 +27,20 @@ export async function createTask(db: TasksDb, input: CreateTaskInput): Promise<T
     throw new EmptyTitleError();
   }
   const details = input.details?.trim();
-  const now = new Date();
-  const task: TaskData = {
-    // expo-crypto, NOT global crypto.randomUUID() (unreliable under Hermes)
-    id: randomUUID(),
-    title,
-    details: details ? details : null,
-    notes: null,
-    status: 'pending',
-    size: null,
-    contexts: null,
-    deadline: null,
-    hasCheckNeeded: false,
-    createdAt: now,
-    updatedAt: now,
-  };
-  await db.insert(tasks).values(task);
+  // Timestamps come from the schema's $defaultFn (Story 5.3 pre-work); the
+  // returned row is the DB-authoritative shape, not a hand-built object.
+  const [task] = await db
+    .insert(tasks)
+    .values({
+      // expo-crypto, NOT global crypto.randomUUID() (unreliable under Hermes)
+      id: randomUUID(),
+      title,
+      details: details ? details : null,
+    })
+    .returning();
+  if (!task) {
+    throw new Error('Task insert returned no row');
+  }
   return task;
 }
 
@@ -71,11 +69,13 @@ function normalizeText(value: string | null): string | null {
  * generic patch path can never change a task's lifecycle state.
  */
 export async function setTaskStatus(db: TasksDb, id: string, status: TaskStatus): Promise<void> {
-  await db.update(tasks).set({ status, updatedAt: new Date() }).where(eq(tasks.id, id));
+  // updatedAt is stamped by the schema's $onUpdate (Story 5.3 pre-work).
+  await db.update(tasks).set({ status }).where(eq(tasks.id, id));
 }
 
 export async function updateTask(db: TasksDb, id: string, patch: UpdateTaskPatch): Promise<void> {
-  const values: Partial<TaskData> = { updatedAt: new Date() };
+  // updatedAt is stamped by the schema's $onUpdate (Story 5.3 pre-work).
+  const values: Partial<TaskData> = {};
   if (patch.title !== undefined) {
     const title = patch.title.trim();
     if (!title) {
@@ -94,6 +94,11 @@ export async function updateTask(db: TasksDb, id: string, patch: UpdateTaskPatch
   }
   if (patch.contexts !== undefined) {
     values.contexts = patch.contexts.length > 0 ? JSON.stringify(patch.contexts) : null;
+  }
+  // Nothing to write → true no-op: don't bump updatedAt (it would mark the
+  // row as content-changed and trigger a pointless sync round).
+  if (Object.keys(values).length === 0) {
+    return;
   }
   await db.update(tasks).set(values).where(eq(tasks.id, id));
 }

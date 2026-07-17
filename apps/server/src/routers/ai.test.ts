@@ -30,7 +30,8 @@ function parseBrainDump(text: string) {
     method: 'POST',
     url: '/trpc/ai.parseBrainDump',
     headers: { 'content-type': 'application/json' },
-    payload: JSON.stringify({ text }),
+    // superjson transformer (Story 5.3): inputs travel as { json, meta? }.
+    payload: JSON.stringify({ json: { text } }),
   });
 }
 
@@ -39,7 +40,7 @@ function breakdownTask(payload: unknown) {
     method: 'POST',
     url: '/trpc/ai.breakdownTask',
     headers: { 'content-type': 'application/json' },
-    payload: JSON.stringify(payload),
+    payload: JSON.stringify({ json: payload }),
   });
 }
 
@@ -48,7 +49,7 @@ function refineBreakdown(payload: unknown) {
     method: 'POST',
     url: '/trpc/ai.refineBreakdown',
     headers: { 'content-type': 'application/json' },
-    payload: JSON.stringify(payload),
+    payload: JSON.stringify({ json: payload }),
   });
 }
 
@@ -57,7 +58,7 @@ function suggestMicroTask(payload: unknown) {
     method: 'POST',
     url: '/trpc/ai.suggestMicroTask',
     headers: { 'content-type': 'application/json' },
-    payload: JSON.stringify(payload),
+    payload: JSON.stringify({ json: payload }),
   });
 }
 
@@ -76,8 +77,8 @@ describe('ai.parseBrainDump (fake mode)', () => {
 
     expect(response.statusCode).toBe(200);
     const { result } = response.json();
-    expect(result.data.provider).toBe('fake');
-    expect(result.data.tasks).toEqual([
+    expect(result.data.json.provider).toBe('fake');
+    expect(result.data.json.tasks).toEqual([
       {
         title: 'Call the dentist tomorrow',
         details: null,
@@ -101,28 +102,28 @@ describe('ai.parseBrainDump (fake mode)', () => {
     const response = await parseBrainDump('');
 
     expect(response.statusCode).toBe(400);
-    expect(response.json().error.data.code).toBe('BAD_REQUEST');
+    expect(response.json().error.json.data.code).toBe('BAD_REQUEST');
   });
 
   it('rejects whitespace-only text with BAD_REQUEST (trim runs before min)', async () => {
     const response = await parseBrainDump('   \n  ');
 
     expect(response.statusCode).toBe(400);
-    expect(response.json().error.data.code).toBe('BAD_REQUEST');
+    expect(response.json().error.json.data.code).toBe('BAD_REQUEST');
   });
 
   it(`rejects dumps longer than ${MAX_BRAIN_DUMP_CHARS} chars with BAD_REQUEST`, async () => {
     const response = await parseBrainDump('a'.repeat(MAX_BRAIN_DUMP_CHARS + 1));
 
     expect(response.statusCode).toBe(400);
-    expect(response.json().error.data.code).toBe('BAD_REQUEST');
+    expect(response.json().error.json.data.code).toBe('BAD_REQUEST');
   });
 
   it(`accepts a dump of exactly ${MAX_BRAIN_DUMP_CHARS} chars`, async () => {
     const response = await parseBrainDump('a'.repeat(MAX_BRAIN_DUMP_CHARS));
 
     expect(response.statusCode).toBe(200);
-    expect(response.json().result.data.tasks).toHaveLength(1);
+    expect(response.json().result.data.json.tasks).toHaveLength(1);
   });
 });
 
@@ -136,7 +137,7 @@ describe('ai.breakdownTask (fake mode)', () => {
 
     expect(response.statusCode).toBe(200);
     const { result } = response.json();
-    expect(result.data).toEqual({
+    expect(result.data.json).toEqual({
       steps: [
         'Get everything you need for "Sort the paperwork mountain" in one place',
         'Do just the first two minutes',
@@ -157,30 +158,30 @@ describe('ai.breakdownTask (fake mode)', () => {
 
     expect(response.statusCode).toBe(200);
     const { result } = response.json();
-    expect(result.data.steps).toHaveLength(6);
-    expect(result.data.mode).toBe('full');
-    expect(result.data.provider).toBe('fake');
+    expect(result.data.json.steps).toHaveLength(6);
+    expect(result.data.json.mode).toBe('full');
+    expect(result.data.json.provider).toBe('fake');
   });
 
   it('rejects an empty title with BAD_REQUEST', async () => {
     const response = await breakdownTask({ title: '', mode: 'first_steps' });
 
     expect(response.statusCode).toBe(400);
-    expect(response.json().error.data.code).toBe('BAD_REQUEST');
+    expect(response.json().error.json.data.code).toBe('BAD_REQUEST');
   });
 
   it('rejects a whitespace-only title with BAD_REQUEST (trim runs before min)', async () => {
     const response = await breakdownTask({ title: '   \n ', mode: 'first_steps' });
 
     expect(response.statusCode).toBe(400);
-    expect(response.json().error.data.code).toBe('BAD_REQUEST');
+    expect(response.json().error.json.data.code).toBe('BAD_REQUEST');
   });
 
   it('rejects an unknown mode with BAD_REQUEST', async () => {
     const response = await breakdownTask({ title: 'Sort the paperwork', mode: 'everything' });
 
     expect(response.statusCode).toBe(400);
-    expect(response.json().error.data.code).toBe('BAD_REQUEST');
+    expect(response.json().error.json.data.code).toBe('BAD_REQUEST');
   });
 
   it(`truncates an over-length title to ${MAX_BREAKDOWN_TITLE_CHARS} chars instead of rejecting`, async () => {
@@ -196,12 +197,12 @@ describe('ai.breakdownTask (fake mode)', () => {
     // The fake provider interpolates the title — proves the title transform
     // ran — and the router clamps each step to MAX_BREAKDOWN_STEP_CHARS at
     // the seam (the interpolated step would otherwise be ~243 chars).
-    expect(result.data.steps[0]).toBe(
+    expect(result.data.json.steps[0]).toBe(
       `Get everything you need for "${'T'.repeat(MAX_BREAKDOWN_TITLE_CHARS)}" in one place`
         .slice(0, MAX_BREAKDOWN_STEP_CHARS)
         .trimEnd(),
     );
-    for (const step of result.data.steps) {
+    for (const step of result.data.json.steps) {
       expect(step.length).toBeLessThanOrEqual(MAX_BREAKDOWN_STEP_CHARS);
     }
   });
@@ -217,7 +218,7 @@ describe('ai.breakdownTask (fake mode)', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json().result.data.steps).toHaveLength(6);
+    expect(response.json().result.data.json.steps).toHaveLength(6);
   });
 });
 
@@ -242,7 +243,7 @@ describe('ai.refineBreakdown (fake mode)', () => {
 
     expect(response.statusCode).toBe(200);
     const { result } = response.json();
-    expect(result.data).toEqual({
+    expect(result.data.json).toEqual({
       steps: [
         'Refined: Get everything you need for "Sort the paperwork mountain" in one place',
         'Refined: Do just the first two minutes',
@@ -263,21 +264,21 @@ describe('ai.refineBreakdown (fake mode)', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json().result.data.provider).toBe('fake');
+    expect(response.json().result.data.json.provider).toBe('fake');
   });
 
   it('rejects empty feedback with BAD_REQUEST', async () => {
     const response = await refineBreakdown({ ...e2eInput, feedback: '' });
 
     expect(response.statusCode).toBe(400);
-    expect(response.json().error.data.code).toBe('BAD_REQUEST');
+    expect(response.json().error.json.data.code).toBe('BAD_REQUEST');
   });
 
   it('rejects whitespace-only feedback with BAD_REQUEST (trim runs before min)', async () => {
     const response = await refineBreakdown({ ...e2eInput, feedback: '  \n ' });
 
     expect(response.statusCode).toBe(400);
-    expect(response.json().error.data.code).toBe('BAD_REQUEST');
+    expect(response.json().error.json.data.code).toBe('BAD_REQUEST');
   });
 
   it(`rejects feedback longer than ${MAX_REFINE_FEEDBACK_CHARS} chars with BAD_REQUEST`, async () => {
@@ -289,7 +290,7 @@ describe('ai.refineBreakdown (fake mode)', () => {
     });
 
     expect(response.statusCode).toBe(400);
-    expect(response.json().error.data.code).toBe('BAD_REQUEST');
+    expect(response.json().error.json.data.code).toBe('BAD_REQUEST');
   });
 
   it(`rejects more than ${MAX_REFINE_SUBTASKS} subtasks with BAD_REQUEST`, async () => {
@@ -302,7 +303,7 @@ describe('ai.refineBreakdown (fake mode)', () => {
     });
 
     expect(response.statusCode).toBe(400);
-    expect(response.json().error.data.code).toBe('BAD_REQUEST');
+    expect(response.json().error.json.data.code).toBe('BAD_REQUEST');
   });
 
   it('rejects a missing subtasks array with BAD_REQUEST', async () => {
@@ -312,7 +313,7 @@ describe('ai.refineBreakdown (fake mode)', () => {
     });
 
     expect(response.statusCode).toBe(400);
-    expect(response.json().error.data.code).toBe('BAD_REQUEST');
+    expect(response.json().error.json.data.code).toBe('BAD_REQUEST');
   });
 });
 
@@ -323,7 +324,7 @@ describe('ai.suggestMicroTask (fake mode)', () => {
 
     expect(response.statusCode).toBe(200);
     const { result } = response.json();
-    expect(result.data).toEqual({
+    expect(result.data.json).toEqual({
       step: 'Do just the very first minute of "Ring the council office"',
       provider: 'fake',
     });
@@ -333,7 +334,7 @@ describe('ai.suggestMicroTask (fake mode)', () => {
     const response = await suggestMicroTask({ title: '   ' });
 
     expect(response.statusCode).toBe(400);
-    expect(response.json().error.data.code).toBe('BAD_REQUEST');
+    expect(response.json().error.json.data.code).toBe('BAD_REQUEST');
   });
 
   it(`truncates an over-length title to ${MAX_BREAKDOWN_TITLE_CHARS} chars instead of rejecting`, async () => {
@@ -343,7 +344,7 @@ describe('ai.suggestMicroTask (fake mode)', () => {
 
     expect(response.statusCode).toBe(200);
     // The fake provider interpolates the title — proves the transform ran.
-    expect(response.json().result.data.step).toBe(
+    expect(response.json().result.data.json.step).toBe(
       `Do just the very first minute of "${'T'.repeat(MAX_BREAKDOWN_TITLE_CHARS)}"`,
     );
   });

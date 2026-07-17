@@ -7,6 +7,7 @@ import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 
 import { AuthProvider } from '@/components/auth/auth-provider';
 import { FakeBillingSheet } from '@/components/premium/fake-billing-sheet';
+import { SyncManager } from '@/components/sync/sync-manager';
 import { Box } from '@/components/ui/box';
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
 import { Text } from '@/components/ui/text';
@@ -70,6 +71,8 @@ export default function RootLayout() {
             <TrpcProvider>
               <MigrationGate>
                 <NotificationResync />
+                {/* Sync triggers (5.3) — needs SQLite, auth, and tRPC above. */}
+                <SyncManager />
                 <Stack screenOptions={{ headerShown: false }} />
               </MigrationGate>
               {/* Fake billing sheet (8.2b local mode) — no DB, outside the gate. */}

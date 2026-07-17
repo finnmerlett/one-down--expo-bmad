@@ -1,0 +1,62 @@
+# Story 5.3 — cloud sync round trip: local task → Postgres → fresh-install
+# restore into an empty local DB.
+# PREREQ: local supabase stack running AND `bun run server:dev` (migrations
+# applied via `bun run --cwd apps/server db:migrate`).
+appId: com.onedown.mobile
+---
+- runFlow: common/launch-app.yaml
+
+# Create an account (unique per run — GoTrue keeps users across runs).
+- evalScript: ${output.email = 'e2e-' + Date.now() + '@test.local'}
+- tapOn: 'Open settings'
+- tapOn: 'Create account'
+- tapOn: 'Email'
+- inputText: ${output.email}
+- tapOn: 'Password'
+- inputText: 'test-password-123'
+- hideKeyboard
+- tapOn: 'Create account'
+- extendedWaitUntil:
+    visible: 'Signed in as ${output.email}'
+    timeout: 10000
+- tapOn: 'Back to home'
+
+# Add a task and let the debounced sync drain.
+- tapOn: 'Add task'
+- tapOn: 'Task title'
+- inputText: 'Sync me task'
+- tapOn: 'Save task'
+- tapOn: 'Close add task'
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    notVisible: 'Sync pending'
+    timeout: 15000
+- extendedWaitUntil:
+    notVisible: 'Sync retrying'
+    timeout: 15000
+
+# Fresh install: clearState wipes SQLite + secure store. Home must be empty.
+- launchApp:
+    clearState: true
+- assertVisible: 'No tasks yet'
+
+# Sign back in — the pull restores the account's tasks into the empty DB.
+- tapOn: 'Open settings'
+- tapOn: 'Sign in'
+- tapOn: 'Email'
+- inputText: ${output.email}
+- tapOn: 'Password'
+- inputText: 'test-password-123'
+- hideKeyboard
+- tapOn: 'Sign in'
+- extendedWaitUntil:
+    visible: 'Signed in as ${output.email}'
+    timeout: 10000
+- tapOn: 'Back to home'
+- extendedWaitUntil:
+    visible: 'Task: Sync me task. Worth 10 stars. Card 1 of 1'
+    timeout: 15000
+- takeScreenshot: .maestro/screenshots/5-3-task-restored-from-cloud
+
+- assertNotVisible: 'Unhandled'
+- assertNotVisible: 'error occurred'
