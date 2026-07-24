@@ -156,6 +156,13 @@ export type AnalyticsEventMap = EnforceFlatProps<{
   tasks_deleted_permanently: { count: number };
   /** Story 7.1 — a task returned to the active list. */
   task_restored: { from: 'recycle_bin' };
+  /** Story 7.2 — a flagged task's card back opened (once per open, ref-guarded). */
+  task_health_prompt_shown: { flag: 'stale' | 'avoided' };
+  /** Story 7.2 — a prompt option was chosen (flag + action enums only). */
+  task_health_prompt_actioned: {
+    flag: 'stale' | 'avoided';
+    action: 'keep' | 'cut_loose' | 'break_down';
+  };
 }>;
 
 export type AnalyticsEventName = keyof AnalyticsEventMap;

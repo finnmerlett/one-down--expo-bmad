@@ -57,6 +57,13 @@
       "when": 1784283712976,
       "tag": "0007_rich_mongoose",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1784897216450,
+      "tag": "0008_productive_zodiak",
+      "breakpoints": true
     }
   ]
 }

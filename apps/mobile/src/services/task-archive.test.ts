@@ -29,6 +29,8 @@ function makeTask(overrides: Partial<TaskData> = {}): TaskData {
     hasCheckNeeded: false,
     reviewFlags: null,
     skipCount: 0,
+    skipWindowStartedAt: null,
+    lastEngagedAt: new Date('2026-06-01T10:00:00Z'),
     createdAt: new Date('2026-06-01T10:00:00Z'),
     updatedAt: new Date('2026-06-01T10:00:00Z'),
     ...overrides,

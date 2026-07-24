@@ -5,7 +5,7 @@ import { db } from '@/lib/local-db';
 import { awardReviewConfirmStars } from '@/services/star-awards';
 import {
   confirmReviewItem as repoConfirmReviewItem,
-  resetSkipCount,
+  markTaskEngaged,
   setTaskStatus,
   updateTask,
   type UpdateTaskPatch,
@@ -105,16 +105,27 @@ export function startTask(task: TaskData, via: 'card_back_overlay' | 'list_detai
   if (task.status !== 'pending') return;
   void setTaskStatus(db, task.id, 'in_progress')
     .then(async () => {
-      // Starting answers the avoidance signal (Story 6.4): the skip counter
-      // resets on the same pending → in_progress transition that idempotency
-      // gates, so Continue taps never re-reset either.
-      if (task.skipCount > 0) {
-        await resetSkipCount(db, task.id);
-      }
+      // Starting is THE meaningful action (Stories 6.4/7.2): the same
+      // pending → in_progress transition that idempotency gates also resets
+      // the skip window and refreshes the staleness clock, so Continue taps
+      // never re-mark engagement either.
+      await markTaskEngaged(db, task.id);
       track('task_started', { via });
     })
     // oxlint-disable-next-line no-console
     .catch((error: unknown) => console.warn('Task start failed', error));
+}
+
+/**
+ * "Keep it" on the task-health prompt (Story 7.2, AC5/AC7): registering
+ * engagement clears the stale/avoided flag immediately — the indicator and
+ * prompt disappear via the live query. Fire-and-forget like startTask; the
+ * prompt-level analytics live with the prompt (CardBack), not here.
+ */
+export function keepTask(task: TaskData): void {
+  void markTaskEngaged(db, task.id)
+    // oxlint-disable-next-line no-console
+    .catch((error: unknown) => console.warn('Task keep failed', error));
 }
 
 /**

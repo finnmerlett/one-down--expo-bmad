@@ -34,6 +34,13 @@ export const tasks = pgTable(
     reviewFlags: text('review_flags'),
     // Behavioral metadata (Story 6.4) — mirrors schema-local.
     skipCount: integer('skip_count').notNull().default(0),
+    // Rolling skip window start (Story 7.2) — mirrors schema-local.
+    skipWindowStartedAt: timestamp('skip_window_started_at', { withTimezone: true, mode: 'date' }),
+    // Last meaningful action (Story 7.2) — mirrors schema-local; migration
+    // 0003 backfills existing rows from updated_at.
+    lastEngagedAt: timestamp('last_engaged_at', { withTimezone: true, mode: 'date' })
+      .notNull()
+      .$defaultFn(() => new Date()),
     // Schema-managed timestamps (Story 5.3 pre-work) — mirrors schema-local.
     // Explicit values in .values()/.set() win over $defaultFn/$onUpdate, so
     // sync writes always carry the client's content-change clock unchanged.

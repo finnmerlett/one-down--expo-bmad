@@ -3,8 +3,15 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import * as cardBackStories from './card-back.stories';
 
-const { FullDetails, Minimal, InProgress, FullyWired, WithReviewFlags, MissingDeadlineOnly } =
-  composeStories(cardBackStories);
+const {
+  FullDetails,
+  Minimal,
+  InProgress,
+  FullyWired,
+  WithReviewFlags,
+  MissingDeadlineOnly,
+  WithHealthPrompt,
+} = composeStories(cardBackStories);
 
 describe('CardBack (portable stories)', () => {
   it('renders all sections with the stored values', async () => {
@@ -34,6 +41,33 @@ describe('CardBack (portable stories)', () => {
     await render(<Minimal />);
 
     expect(screen.getByText('No deadline')).toBeTruthy();
+  });
+
+  it('renders the health prompt for a flagged task and wires the three decisions (Story 7.2)', async () => {
+    const onKeep = jest.fn();
+    const onStart = jest.fn();
+    const onCutLoose = jest.fn();
+    await render(<WithHealthPrompt onKeep={onKeep} onStart={onStart} onCutLoose={onCutLoose} />);
+
+    expect(
+      screen.getByText('You keep skipping this one. No judgement — what would help?'),
+    ).toBeTruthy();
+
+    await fireEvent.press(screen.getByLabelText('Keep it'));
+    expect(onKeep).toHaveBeenCalledTimes(1);
+    // Break it down rides the Start path (flush → start → running screen).
+    await fireEvent.press(screen.getByLabelText('Break it down'));
+    expect(onStart).toHaveBeenCalledTimes(1);
+    // Cut loose from the prompt behaves exactly like the Cut Loose button.
+    await fireEvent.press(screen.getByLabelText('Cut loose from prompt'));
+    expect(onCutLoose).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows no health prompt on a healthy task (Story 7.2)', async () => {
+    await render(<Minimal />);
+
+    expect(screen.queryByLabelText('Keep it')).toBeNull();
+    expect(screen.queryByLabelText('Cut loose from prompt')).toBeNull();
   });
 
   it('saves a changed title on blur, but not an unchanged one', async () => {

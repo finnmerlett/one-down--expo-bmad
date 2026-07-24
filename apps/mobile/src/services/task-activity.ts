@@ -1,15 +1,15 @@
 import type { TaskData } from '@one-down/shared';
 
 import { db } from '@/lib/local-db';
-import { incrementSkipCount, resetSkipCount } from '@/services/tasks-repository';
+import { recordTaskSkip, resetSkipCount } from '@/services/tasks-repository';
 
 // Behavioral activity signals (Story 6.4, FR39) — fire-and-forget like
 // task-edits.ts. Deliberately NO analytics here: a skip is a browse gesture,
 // not a domain mutation (the nudge events carry skip_count when it matters).
 
-/** A committed swipe past this card — bump its persistent skip counter. */
+/** A committed swipe past this card — bump its skip counter (windowed, Story 7.2). */
 export function recordTaskSkipped(task: TaskData): void {
-  void incrementSkipCount(db, task.id)
+  void recordTaskSkip(db, task.id, new Date())
     // oxlint-disable-next-line no-console
     .catch((error: unknown) => console.warn('Skip count bump failed', error));
 }

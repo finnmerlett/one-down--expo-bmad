@@ -19,6 +19,10 @@ export function makeTask(overrides: Partial<TaskData> = {}): TaskData {
     hasCheckNeeded: false,
     reviewFlags: null,
     skipCount: 0,
+    skipWindowStartedAt: null,
+    // "Now" so fixture tasks never trip the 7.2 stale detector (which reads
+    // the real clock at render time); flagged stories override explicitly.
+    lastEngagedAt: new Date(),
     createdAt: new Date('2026-06-01T10:00:00Z'),
     updatedAt: new Date('2026-06-01T10:00:00Z'),
     ...overrides,
@@ -100,6 +104,30 @@ export const NeedsReview: Story = {
       contexts: '["phone"]',
       hasCheckNeeded: true,
       reviewFlags: JSON.stringify({ inferred: ['contexts'], missingDeadline: true }),
+    }),
+  },
+};
+
+/** Story 7.2 — stale indicator: muted "Been a while" chip, never alarming. */
+export const StaleTask: Story = {
+  args: {
+    task: makeTask({
+      id: 'task-stale',
+      title: 'Sort the filing cabinet',
+      // 10 days without engagement, relative to the render clock.
+      lastEngagedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+    }),
+  },
+};
+
+/** Story 7.2 — avoided indicator: threshold skips inside a live window. */
+export const AvoidedTask: Story = {
+  args: {
+    task: makeTask({
+      id: 'task-avoided',
+      title: 'Reply to that email',
+      skipCount: 6,
+      skipWindowStartedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
     }),
   },
 };

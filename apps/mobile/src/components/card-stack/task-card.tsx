@@ -12,9 +12,18 @@ import { Icon, InfoIcon, StarIcon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 
+import { evaluateTaskHealth, type TaskHealthFlag } from '@/services/task-health';
+
 export const SIZE_LABELS: Record<TaskSize, string> = {
   quick_win: 'Quick win',
   big_time: 'Big time',
+};
+
+// Health indicator copy (Story 7.2, AC6) — small and non-alarming, shared by
+// the card front chip, the stack's a11y label, and 7.3's triage reason chips.
+export const HEALTH_LABELS: Record<TaskHealthFlag, string> = {
+  stale: 'Been a while',
+  avoided: 'Skipped a lot',
 };
 
 // Record<TaskContext, …> so adding a context to the shared union forces a
@@ -33,6 +42,9 @@ export const CONTEXT_LABELS: Record<TaskContext, string> = {
 export function TaskCard({ task, starValue }: { task: TaskData; starValue: number }) {
   const contexts = parseTaskContexts(task.contexts);
   const inProgress = task.status === 'in_progress';
+  // Health chip (Story 7.2, AC6): computed at render time — cheap, and the
+  // live query re-renders the card whenever the underlying fields change.
+  const healthFlag = evaluateTaskHealth(task, new Date());
 
   return (
     <Box className="h-full w-full rounded-3xl border border-outline-200 bg-background-0 p-6 shadow-hard-2">
@@ -58,6 +70,13 @@ export function TaskCard({ task, starValue }: { task: TaskData; starValue: numbe
           {inProgress ? (
             <Badge action="success" variant="solid">
               <BadgeText>Continue</BadgeText>
+            </Badge>
+          ) : null}
+          {/* Health indicator (Story 7.2, AC6): muted, never red/alarming —
+              a heads-up so the card-back prompt isn't a surprise. */}
+          {healthFlag ? (
+            <Badge action="muted" variant="solid">
+              <BadgeText>{HEALTH_LABELS[healthFlag]}</BadgeText>
             </Badge>
           ) : null}
           {task.size ? (

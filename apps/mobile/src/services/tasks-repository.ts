@@ -3,6 +3,7 @@ import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 import { randomUUID } from 'expo-crypto';
 
 import {
+  AVOIDED_WINDOW_DAYS,
   hasReviewItems,
   parseReviewFlags,
   removeReviewFlag,
@@ -20,6 +21,8 @@ import { subtasks, tasks } from '@one-down/shared/schema-local';
 // Repository functions take the db as first argument so integration tests can
 // pass the better-sqlite3-backed test db (same schema, real SQL).
 export type TasksDb = BaseSQLiteDatabase<'sync' | 'async', unknown, Record<string, unknown>>;
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 export interface CreateTaskInput {
   title: string;
@@ -185,6 +188,12 @@ export async function updateTask(
     return NO_CONFIRMATIONS;
   }
 
+  // Every real patch is a meaningful edit (Story 7.2, AC4) — refresh the
+  // staleness clock and zero the skip window in the same UPDATE.
+  values.lastEngagedAt = new Date();
+  values.skipCount = 0;
+  values.skipWindowStartedAt = null;
+
   // Edit-confirm (Story 6.2, AC5): writing a flagged field's value clears its
   // review flag — deadline additionally answers the missing-deadline prompt.
   // Read-modify-write is fine: single-writer local SQLite (matching patterns
@@ -235,9 +244,14 @@ export async function archiveTasks(db: TasksDb, ids: string[]): Promise<void> {
  * Restore from the recycle bin (Story 7.1, AC6): back to `pending`, whether
  * the task was archived or cut loose. Stars are deliberately NOT restored
  * (no reverse tracking). Single-task restore is enough for MVP.
+ * Restoring counts as engagement (Story 7.2): a task that sat in the bin
+ * past STALE_AFTER_DAYS must not re-enter the deck already flagged stale.
  */
 export async function restoreTask(db: TasksDb, id: string): Promise<void> {
-  await db.update(tasks).set({ status: 'pending' }).where(eq(tasks.id, id));
+  await db
+    .update(tasks)
+    .set({ status: 'pending', lastEngagedAt: new Date(), skipCount: 0, skipWindowStartedAt: null })
+    .where(eq(tasks.id, id));
 }
 
 /**
@@ -254,26 +268,51 @@ export async function deleteTasksPermanently(db: TasksDb, ids: string[]): Promis
 }
 
 /**
- * Skip counting (Story 6.4, FR39). Behavioral metadata, NOT content: the
- * explicit `updatedAt = updatedAt` self-assignment defeats the schema's
- * $onUpdate stamp (explicit values win — the 5.3 pre-work pin), so a skip
- * can never mark the row content-changed and win a sync conflict.
+ * Skip counting (Story 6.4, FR39; windowed since Story 7.2, AC2). Behavioral
+ * metadata, NOT content: the explicit `updatedAt = updatedAt` self-assignment
+ * defeats the schema's $onUpdate stamp (explicit values win — the 5.3
+ * pre-work pin), so a skip can never mark the row content-changed and win a
+ * sync conflict. Window rule: no window or an expired one restarts at count
+ * 1 with a fresh window start; otherwise the count increments in place.
+ * Read-modify-write is fine — single-writer local SQLite (updateTask pattern).
  */
-export async function incrementSkipCount(db: TasksDb, id: string): Promise<void> {
+export async function recordTaskSkip(db: TasksDb, id: string, now = new Date()): Promise<void> {
+  const [row] = await db
+    .select({ skipCount: tasks.skipCount, skipWindowStartedAt: tasks.skipWindowStartedAt })
+    .from(tasks)
+    .where(eq(tasks.id, id));
+  if (!row) return;
+  const windowExpired =
+    row.skipWindowStartedAt === null ||
+    now.getTime() - row.skipWindowStartedAt.getTime() > AVOIDED_WINDOW_DAYS * MS_PER_DAY;
   await db
     .update(tasks)
     .set({
-      skipCount: sql`${tasks.skipCount} + 1`,
+      skipCount: windowExpired ? 1 : row.skipCount + 1,
+      skipWindowStartedAt: windowExpired ? now : row.skipWindowStartedAt,
       updatedAt: sql`${tasks.updatedAt}`,
     })
     .where(eq(tasks.id, id));
 }
 
-/** Same no-updatedAt-bump contract as incrementSkipCount. */
+/** Same no-updatedAt-bump contract as recordTaskSkip (6.4 nudge quieting). */
 export async function resetSkipCount(db: TasksDb, id: string): Promise<void> {
   await db
     .update(tasks)
-    .set({ skipCount: 0, updatedAt: sql`${tasks.updatedAt}` })
+    .set({ skipCount: 0, skipWindowStartedAt: null, updatedAt: sql`${tasks.updatedAt}` })
+    .where(eq(tasks.id, id));
+}
+
+/**
+ * Meaningful engagement (Story 7.2, AC4): start, edit, or note change —
+ * refreshes the staleness clock and zeroes the skip window. Also the "Keep
+ * it" action on the health prompt. A REAL content signal, so updatedAt bumps
+ * via $onUpdate (other devices must learn the task was kept).
+ */
+export async function markTaskEngaged(db: TasksDb, id: string, now = new Date()): Promise<void> {
+  await db
+    .update(tasks)
+    .set({ lastEngagedAt: now, skipCount: 0, skipWindowStartedAt: null })
     .where(eq(tasks.id, id));
 }
 

@@ -1,0 +1,68 @@
+# Story 7.2 — avoided-task detection: 5 swipe-pasts within the window flag a
+# task "avoided" (front indicator chip + a11y label suffix), the card back
+# shows the gentle three-option prompt, and "Keep it" clears the flag by
+# registering engagement (skip counter restarts). The stale path (7 days)
+# cannot elapse in E2E — covered by unit/integration tests.
+# With a 2-card cycling stack each card accrues a skip on alternating swipes:
+# 10 swipes = 5 skips each, with the seeded quick win back on top.
+appId: com.onedown.mobile
+---
+- runFlow: common/launch-app.yaml
+
+# Seed the subject and pin it to the top (quick-win momentum, flow 09 pattern)
+- runFlow:
+    file: common/add-task.yaml
+    env:
+      TITLE: 'Skip target'
+- tapOn: 'Task: Skip target. Worth 10 stars. Card 1 of 1'
+- waitForAnimationToEnd
+- tapOn: 'Size: Quick win'
+- tapOn: 'Back to card front'
+- waitForAnimationToEnd
+- runFlow:
+    file: common/add-task.yaml
+    env:
+      TITLE: 'Other card'
+- assertVisible: 'Task: Skip target. Worth 10 stars. Card 1 of 2'
+
+# --- 10 swipes = 5 skips per card (AC2 threshold) ---
+- repeat:
+    times: 10
+    commands:
+      - swipe:
+          start: 80%, 45%
+          end: 5%, 45%
+      - waitForAnimationToEnd
+
+# Front indicator + a11y label suffix on the flagged top card (AC6)
+- assertVisible: 'Task: Skip target. Worth 10 stars. Card 1 of 2. Skipped a lot'
+
+# --- Card back shows the gentle prompt (AC5) ---
+- tapOn: 'Task: Skip target. Worth 10 stars. Card 1 of 2. Skipped a lot'
+- waitForAnimationToEnd
+- assertVisible: 'You keep skipping this one. No judgement — what would help?'
+- takeScreenshot: .claude/run-notes/screenshots/7-2-health-prompt
+
+# --- "Keep it" clears the flag immediately (AC7) ---
+- tapOn: 'Keep it'
+- extendedWaitUntil:
+    notVisible: 'You keep skipping this one. No judgement — what would help?'
+    timeout: 5000
+- tapOn: 'Back to card front'
+- waitForAnimationToEnd
+# Exact-match label WITHOUT the flag suffix proves the indicator cleared.
+- assertVisible: 'Task: Skip target. Worth 10 stars. Card 1 of 2'
+
+# --- Regression leg: the skip count restarted, one new skip must not re-flag ---
+- swipe:
+    start: 80%, 45%
+    end: 5%, 45%
+- waitForAnimationToEnd
+- swipe:
+    start: 80%, 45%
+    end: 5%, 45%
+- waitForAnimationToEnd
+- assertVisible: 'Task: Skip target. Worth 10 stars. Card 1 of 2'
+
+- assertNotVisible: 'Unhandled'
+- assertNotVisible: 'error occurred'

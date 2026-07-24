@@ -33,7 +33,13 @@ import { availableContexts, curateTasks, urgentContexts } from '@/services/curat
 import { awardCutLooseStars } from '@/services/star-awards';
 import { potentialStars } from '@/services/star-calculator';
 import { recordTaskSkipped } from '@/services/task-activity';
-import { applyTaskPatch, confirmReviewItem, cutLooseTask, startTask } from '@/services/task-edits';
+import {
+  applyTaskPatch,
+  confirmReviewItem,
+  cutLooseTask,
+  keepTask,
+  startTask,
+} from '@/services/task-edits';
 import { createTask, type CreateTaskInput } from '@/services/tasks-repository';
 import { useQuickAddStore } from '@/stores/quick-add-store';
 import { useReviewModeStore } from '@/stores/review-mode-store';
@@ -250,6 +256,7 @@ export default function HomeScreen() {
           task={openTask}
           onPatch={(patch) => applyTaskPatch(openTask, patch)}
           onConfirm={(item) => confirmReviewItem(openTask, item)}
+          onKeep={() => keepTask(openTask)}
           onDismiss={() => setOpenTaskId(null)}
           onStart={() => {
             startTask(openTask, 'card_back_overlay');

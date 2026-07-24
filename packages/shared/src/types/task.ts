@@ -58,9 +58,23 @@ export interface TaskData {
    * Swipes past this card since it was last started/nudged (Story 6.4, FR39).
    * Behavioral metadata: increments deliberately do NOT bump `updatedAt`, so
    * skip counting can never win a 5.3 last-content-changed sync conflict.
-   * Epic 7 avoidance detection reuses this + MICRO_TASK_SKIP_THRESHOLD.
+   * From Story 7.2 the count lives inside a rolling window
+   * (`skipWindowStartedAt`) — avoidance detection reads both.
    */
   skipCount: number;
+  /**
+   * When the current skip window opened (Story 7.2); null = no active window.
+   * Skips older than AVOIDED_WINDOW_DAYS stop counting: recording a skip
+   * after expiry restarts the window at count 1.
+   */
+  skipWindowStartedAt: Date | null;
+  /**
+   * Last MEANINGFUL action — start, edit, note change (Story 7.2, AC4).
+   * Initialized to creation time. Deliberately NOT `updatedAt`: mechanical
+   * writes (skip counting, status bookkeeping) bump updatedAt, and staleness
+   * measured off it would let *avoiding* a task keep it "fresh".
+   */
+  lastEngagedAt: Date;
   createdAt: Date;
   updatedAt: Date;
 }

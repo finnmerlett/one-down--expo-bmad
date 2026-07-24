@@ -18,6 +18,14 @@ export const tasks = sqliteTable('tasks', {
   reviewFlags: text('review_flags'),
   // Behavioral metadata (Story 6.4): increments must NOT bump updatedAt.
   skipCount: integer('skip_count').notNull().default(0),
+  // Rolling skip window start (Story 7.2) — null = no active window.
+  skipWindowStartedAt: integer('skip_window_started_at', { mode: 'timestamp_ms' }),
+  // Last meaningful action (Story 7.2): start/edit/note — NOT mechanical
+  // writes. Migration 0008 backfills existing rows from updated_at (best
+  // available proxy); the $defaultFn covers fresh inserts.
+  lastEngagedAt: integer('last_engaged_at', { mode: 'timestamp_ms' })
+    .notNull()
+    .$defaultFn(() => new Date()),
   // Timestamps are schema-managed (Story 5.3 pre-work) so updatedAt can never
   // be forgotten. CRITICAL drizzle semantics the sync-apply path relies on:
   // an explicit value in .values()/.set() WINS over $defaultFn/$onUpdate —

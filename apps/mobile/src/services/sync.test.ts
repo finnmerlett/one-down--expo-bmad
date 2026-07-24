@@ -152,6 +152,8 @@ describe('runSync (integration, real migration SQL)', () => {
       hasCheckNeeded: false,
       reviewFlags: null,
       skipCount: 0,
+      skipWindowStartedAt: null,
+      lastEngagedAt: new Date('2026-07-01T09:00:00.000Z'),
       createdAt: new Date('2026-07-01T09:00:00.000Z'),
       updatedAt: new Date('2026-07-02T09:00:00.000Z'),
     };

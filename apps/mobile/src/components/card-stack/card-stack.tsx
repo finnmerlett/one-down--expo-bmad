@@ -14,7 +14,8 @@ import type { TaskData } from '@one-down/shared';
 
 import { Box } from '@/components/ui/box';
 import { Pressable } from '@/components/ui/pressable';
-import { TaskCard } from './task-card';
+import { evaluateTaskHealth } from '@/services/task-health';
+import { HEALTH_LABELS, TaskCard } from './task-card';
 
 const VISIBLE_CARDS = 3;
 /** Drag past this fraction of the screen width to dismiss (story-tuned value — deliberately under half). */
@@ -283,6 +284,14 @@ export function CardStack({
 
   const topTask = stackWindow[0]?.task;
 
+  // Health flag in the top card's a11y label (Story 7.2, AC6): the card is an
+  // accessible container, so the visual chip must be announced here too.
+  // Appended as a suffix — unflagged labels stay byte-identical to pre-7.2.
+  const healthSuffix = (task: TaskData) => {
+    const flag = evaluateTaskHealth(task, new Date());
+    return flag ? `. ${HEALTH_LABELS[flag]}` : '';
+  };
+
   return (
     <Box className="flex-1 px-6 py-6">
       <Box className="relative flex-1">
@@ -299,7 +308,7 @@ export function CardStack({
                 // Star value in the label: the top card is an accessible
                 // container (inner text hidden from TalkBack/Maestro), so the
                 // preview must be announced here.
-                accessibilityLabel={`Task: ${task.title}. Worth ${getStarValue(task)} stars. Card ${topIndex + 1} of ${tasks.length}`}
+                accessibilityLabel={`Task: ${task.title}. Worth ${getStarValue(task)} stars. Card ${topIndex + 1} of ${tasks.length}${healthSuffix(task)}`}
                 onDismiss={advance}
                 onPress={() => onCardPress?.(task)}
               />

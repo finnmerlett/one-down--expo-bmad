@@ -20,6 +20,8 @@ export const taskUpsertSchema = z.object({
   hasCheckNeeded: z.boolean(),
   reviewFlags: z.string().nullable(),
   skipCount: z.number().int().min(0),
+  skipWindowStartedAt: z.date().nullable(),
+  lastEngagedAt: z.date(),
   createdAt: z.date(),
   updatedAt: z.date(),
 }) satisfies z.ZodType<TaskData>;

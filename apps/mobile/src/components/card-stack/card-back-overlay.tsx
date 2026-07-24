@@ -34,6 +34,7 @@ export function CardBackOverlay({
   onCutLoose,
   onConfirm,
   onHelp,
+  onKeep,
 }: {
   task: TaskData;
   onPatch: (patch: UpdateTaskPatch) => void;
@@ -46,6 +47,8 @@ export function CardBackOverlay({
   onConfirm?: (item: ReviewItem) => void;
   /** Breakdown entry (Story 6.3) — passed straight through to CardBack. */
   onHelp?: () => void;
+  /** Health-prompt "Keep it" (Story 7.2) — passed straight through to CardBack. */
+  onKeep?: () => void;
 }) {
   const cardBackRef = useRef<CardBackHandle>(null);
   const progress = useSharedValue(0);
@@ -109,6 +112,7 @@ export function CardBackOverlay({
           onCutLoose={onCutLoose}
           onConfirm={onConfirm}
           onHelp={onHelp}
+          onKeep={onKeep}
         />
       </Animated.View>
     </>

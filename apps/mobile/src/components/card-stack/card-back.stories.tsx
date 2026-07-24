@@ -95,3 +95,18 @@ export const MissingDeadlineOnly: Story = {
     onConfirm: () => {},
   },
 };
+
+/** Story 7.2 — the health prompt in situ (avoided task, all actions wired). */
+export const WithHealthPrompt: Story = {
+  args: {
+    task: makeTask({
+      id: 'task-health',
+      title: 'Book the boiler service',
+      skipCount: 6,
+      skipWindowStartedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+    }),
+    onStart: () => {},
+    onCutLoose: () => {},
+    onKeep: () => {},
+  },
+};

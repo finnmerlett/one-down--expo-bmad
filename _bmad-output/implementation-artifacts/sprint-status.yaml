@@ -102,7 +102,7 @@ development_status:
   # Epic 7: Task Health & Return
   epic-7: backlog
   7-1-bulk-archive-and-delete: done
-  7-2-stale-and-avoided-task-detection: backlog
+  7-2-stale-and-avoided-task-detection: done
   7-3-welcome-back-summary: backlog
   epic-7-retrospective: optional
 

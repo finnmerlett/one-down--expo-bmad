@@ -13,7 +13,8 @@ import {
   createTasksFromBrainDump,
   deleteTasksPermanently,
   EmptyTitleError,
-  incrementSkipCount,
+  markTaskEngaged,
+  recordTaskSkip,
   resetSkipCount,
   restoreTask,
   setTaskStatus,
@@ -291,32 +292,133 @@ describe('tasks-repository (integration, real migration SQL)', () => {
     });
   });
 
-  describe('skip counting (Story 6.4)', () => {
-    it('increments without bumping updatedAt (behavioral metadata must not win sync conflicts)', async () => {
+  describe('skip counting (Story 6.4; windowed since Story 7.2)', () => {
+    it('increments within the window without bumping updatedAt (never wins sync conflicts)', async () => {
       const created = await createTask(testDb.db, { title: 'Keep skipping me' });
       const backdated = new Date('2026-01-01T00:00:00Z');
       await testDb.db.update(tasks).set({ updatedAt: backdated }).where(eq(tasks.id, created.id));
 
-      await incrementSkipCount(testDb.db, created.id);
-      await incrementSkipCount(testDb.db, created.id);
+      const first = new Date('2026-06-10T12:00:00Z');
+      const second = new Date('2026-06-11T12:00:00Z');
+      await recordTaskSkip(testDb.db, created.id, first);
+      await recordTaskSkip(testDb.db, created.id, second);
 
       const [row] = await testDb.db.select().from(tasks);
       expect(row?.skipCount).toBe(2);
+      // The window opened at the FIRST skip and stays put while it is live.
+      expect(row?.skipWindowStartedAt?.getTime()).toBe(first.getTime());
       // The $onUpdate stamp was defeated by the explicit self-assignment.
       expect(row?.updatedAt.getTime()).toBe(backdated.getTime());
     });
 
-    it('resets to zero, also without bumping updatedAt', async () => {
+    it('a skip after window expiry restarts at count 1 with a fresh window (7.2 AC2)', async () => {
+      const created = await createTask(testDb.db, { title: 'Old skips age out' });
+      const windowStart = new Date('2026-06-01T12:00:00Z');
+      await recordTaskSkip(testDb.db, created.id, windowStart);
+      await recordTaskSkip(testDb.db, created.id, new Date('2026-06-02T12:00:00Z'));
+
+      // 7 days + 1 ms past the window start — expired.
+      const afterExpiry = new Date('2026-06-08T12:00:00.001Z');
+      await recordTaskSkip(testDb.db, created.id, afterExpiry);
+
+      const [row] = await testDb.db.select().from(tasks);
+      expect(row?.skipCount).toBe(1);
+      expect(row?.skipWindowStartedAt?.getTime()).toBe(afterExpiry.getTime());
+    });
+
+    it('resets count AND window to zero/null, also without bumping updatedAt', async () => {
       const created = await createTask(testDb.db, { title: 'Answer the nudge' });
       const backdated = new Date('2026-01-01T00:00:00Z');
       await testDb.db.update(tasks).set({ updatedAt: backdated }).where(eq(tasks.id, created.id));
-      await incrementSkipCount(testDb.db, created.id);
+      await recordTaskSkip(testDb.db, created.id);
 
       await resetSkipCount(testDb.db, created.id);
 
       const [row] = await testDb.db.select().from(tasks);
       expect(row?.skipCount).toBe(0);
+      expect(row?.skipWindowStartedAt).toBeNull();
       expect(row?.updatedAt.getTime()).toBe(backdated.getTime());
+    });
+  });
+
+  describe('engagement (Story 7.2, AC4)', () => {
+    it('markTaskEngaged stamps lastEngagedAt and zeroes the skip window', async () => {
+      const created = await createTask(testDb.db, { title: 'Kept task' });
+      await recordTaskSkip(testDb.db, created.id);
+      const now = new Date('2026-06-20T12:00:00Z');
+
+      await markTaskEngaged(testDb.db, created.id, now);
+
+      const [row] = await testDb.db.select().from(tasks);
+      expect(row?.lastEngagedAt.getTime()).toBe(now.getTime());
+      expect(row?.skipCount).toBe(0);
+      expect(row?.skipWindowStartedAt).toBeNull();
+    });
+
+    it('updateTask refreshes engagement on every real patch', async () => {
+      const created = await createTask(testDb.db, { title: 'Edited task' });
+      await recordTaskSkip(testDb.db, created.id);
+      const engagedBefore = created.lastEngagedAt.getTime();
+
+      await updateTask(testDb.db, created.id, { notes: 'a note change counts' });
+
+      const [row] = await testDb.db.select().from(tasks);
+      expect(row?.skipCount).toBe(0);
+      expect(row?.skipWindowStartedAt).toBeNull();
+      expect(row?.lastEngagedAt.getTime()).toBeGreaterThanOrEqual(engagedBefore);
+      expect(row?.lastEngagedAt.getTime()).toBeGreaterThan(0);
+    });
+
+    it('a no-op patch does not refresh engagement', async () => {
+      const created = await createTask(testDb.db, { title: 'Untouched' });
+      await recordTaskSkip(testDb.db, created.id);
+
+      await updateTask(testDb.db, created.id, {});
+
+      const [row] = await testDb.db.select().from(tasks);
+      expect(row?.skipCount).toBe(1);
+    });
+
+    it('restoreTask (7.1) counts as engagement — no instant stale flag on re-entry', async () => {
+      const created = await createTask(testDb.db, { title: 'Binned then back' });
+      await archiveTasks(testDb.db, [created.id]);
+      const staleEngagement = new Date('2026-01-01T00:00:00Z');
+      await testDb.db
+        .update(tasks)
+        .set({ lastEngagedAt: staleEngagement, updatedAt: staleEngagement })
+        .where(eq(tasks.id, created.id));
+
+      await restoreTask(testDb.db, created.id);
+
+      const [row] = await testDb.db.select().from(tasks);
+      expect(row?.status).toBe('pending');
+      expect(row?.lastEngagedAt.getTime()).toBeGreaterThan(staleEngagement.getTime());
+    });
+
+    it('createTask initializes lastEngagedAt alongside createdAt (7.2 AC1 clock start)', async () => {
+      const created = await createTask(testDb.db, { title: 'Fresh' });
+      expect(created.lastEngagedAt).toBeInstanceOf(Date);
+      expect(created.skipWindowStartedAt).toBeNull();
+    });
+  });
+
+  describe('migration 0008 backfill (Story 7.2)', () => {
+    it('pre-existing rows get last_engaged_at = updated_at', async () => {
+      // Apply everything BEFORE 0008, insert a legacy row, then run 0008.
+      const allMigrations = loadLocalMigrationsSql();
+      const legacyDb = createTestDb(allMigrations.slice(0, -1));
+      legacyDb.sqlite.exec(
+        "INSERT INTO tasks (id, title, created_at, updated_at) VALUES ('legacy-1', 'Old row', 1000, 2000)",
+      );
+
+      const lastMigration = allMigrations[allMigrations.length - 1];
+      expect(lastMigration).toContain('last_engaged_at');
+      legacyDb.sqlite.exec(lastMigration ?? '');
+
+      const [row] = await legacyDb.db.select().from(tasks).where(eq(tasks.id, 'legacy-1'));
+      expect(row?.lastEngagedAt.getTime()).toBe(2000);
+      expect(row?.skipWindowStartedAt).toBeNull();
+      legacyDb.close();
     });
   });
 

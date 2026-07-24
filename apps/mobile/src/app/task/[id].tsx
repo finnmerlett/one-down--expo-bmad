@@ -10,7 +10,13 @@ import { useToast } from '@/components/ui/toast';
 import { useTasks } from '@/hooks/use-tasks';
 import { db } from '@/lib/local-db';
 import { awardCutLooseStars } from '@/services/star-awards';
-import { applyTaskPatch, confirmReviewItem, cutLooseTask, startTask } from '@/services/task-edits';
+import {
+  applyTaskPatch,
+  confirmReviewItem,
+  cutLooseTask,
+  keepTask,
+  startTask,
+} from '@/services/task-edits';
 
 // Third-party component — NativeWind only auto-interops react-native core.
 cssInterop(SafeAreaView, { className: 'style' });
@@ -92,6 +98,7 @@ export default function TaskDetailScreen() {
           task={task}
           onPatch={(patch) => applyTaskPatch(task, patch)}
           onConfirm={(item) => confirmReviewItem(task, item)}
+          onKeep={() => keepTask(task)}
           onClose={close}
           onStart={() => {
             if (startingRef.current) return;

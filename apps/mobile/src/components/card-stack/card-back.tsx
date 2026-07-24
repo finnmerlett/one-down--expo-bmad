@@ -1,5 +1,5 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useEffect, useImperativeHandle, useState, type ReactNode, type Ref } from 'react';
+import { useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
 import { KeyboardAvoidingView, ScrollView } from 'react-native';
 
 import {
@@ -23,8 +23,11 @@ import { Text } from '@/components/ui/text';
 import { Textarea, TextareaInput } from '@/components/ui/textarea';
 import { VStack } from '@/components/ui/vstack';
 
+import { track } from '@/lib/analytics/track';
+import { evaluateTaskHealth } from '@/services/task-health';
 import type { UpdateTaskPatch } from '@/services/tasks-repository';
 import { CONTEXT_LABELS, SIZE_LABELS } from './task-card';
+import { TaskHealthPrompt } from './task-health-prompt';
 
 export interface CardBackHandle {
   /** Persist any in-flight text edits (called before the card contracts). */
@@ -142,6 +145,7 @@ export function CardBack({
   onCutLoose,
   onConfirm,
   onHelp,
+  onKeep,
   backLabel = 'Back to card front',
   ref,
 }: {
@@ -156,6 +160,8 @@ export function CardBack({
   onConfirm?: (item: ReviewItem) => void;
   /** "Help me with this" → start + running screen with an auto-fired breakdown (Story 6.3). */
   onHelp?: () => void;
+  /** "Keep it" on the health prompt (Story 7.2) — registers engagement, clearing the flag. */
+  onKeep?: () => void;
   /** A11y label for the back button — contextual per surface (overlay vs list detail). */
   backLabel?: string;
   ref?: Ref<CardBackHandle>;
@@ -278,6 +284,19 @@ export function CardBack({
   const reviewFlags = parseReviewFlags(task.reviewFlags);
   const inferred = reviewFlags?.inferred ?? [];
   const missingDeadline = reviewFlags?.missingDeadline === true;
+
+  // Task-health prompt (Story 7.2, AC5): recomputed per render — "Keep it"
+  // writes engagement, the live query re-renders, the flag (and prompt)
+  // clears reactively (AC7). Shown-event fires once per card-back open: the
+  // component mounts fresh each time a back is opened, so a ref suffices.
+  const healthFlag = evaluateTaskHealth(task, new Date());
+  const promptShownRef = useRef(false);
+  useEffect(() => {
+    if (healthFlag && !promptShownRef.current) {
+      promptShownRef.current = true;
+      track('task_health_prompt_shown', { flag: healthFlag });
+    }
+  }, [healthFlag]);
 
   // Deadline is editable for ALL tasks from 6.2 (chips + native picker).
   const [showPicker, setShowPicker] = useState(false);
@@ -443,6 +462,44 @@ export function CardBack({
                 ))}
               </HStack>
             </ReviewSection>
+            {/* Task-health prompt (Story 7.2): inline and ignorable, above
+                the action row. Cut loose / Break it down reuse the exact
+                flush-then-act handlers of the buttons below. */}
+            {healthFlag ? (
+              <TaskHealthPrompt
+                flag={healthFlag}
+                onKeep={
+                  onKeep
+                    ? () => {
+                        track('task_health_prompt_actioned', { flag: healthFlag, action: 'keep' });
+                        onKeep();
+                      }
+                    : undefined
+                }
+                onCutLoose={
+                  onCutLoose
+                    ? () => {
+                        track('task_health_prompt_actioned', {
+                          flag: healthFlag,
+                          action: 'cut_loose',
+                        });
+                        handleCutLoose();
+                      }
+                    : undefined
+                }
+                onBreakDown={
+                  onStart
+                    ? () => {
+                        track('task_health_prompt_actioned', {
+                          flag: healthFlag,
+                          action: 'break_down',
+                        });
+                        handleStart();
+                      }
+                    : undefined
+                }
+              />
+            ) : null}
             {/* Cut loose is deliberately frictionless — no confirm, no warning
                 color (zero-guilt release; the recycle bin restore is Epic 7). */}
             <HStack className="gap-3 pt-2">
