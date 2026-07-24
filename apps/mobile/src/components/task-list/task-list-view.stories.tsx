@@ -80,3 +80,60 @@ export const WithDoneTasks: Story = {
     ],
   },
 };
+
+/**
+ * Story 7.1 — multi-select mode: check circles on every row (todo AND done),
+ * selection state announced in the row labels.
+ */
+export const MultiSelect: Story = {
+  args: {
+    tasks: [
+      makeTask({ id: 'task-1', title: 'Water the plants' }),
+      makeTask({ id: 'task-2', title: 'Email the plumber' }),
+      makeTask({
+        id: 'task-3',
+        title: 'Book dentist appointment',
+        status: 'completed',
+        updatedAt: new Date('2026-06-03T10:00:00Z'),
+      }),
+    ],
+    selectedIds: new Set(['task-1']),
+    onToggleSelect: () => {},
+    onLongPressTask: () => {},
+  },
+};
+
+/**
+ * Story 7.1 — recycle bin tab: archived and cut-loose rows with their origin
+ * label and a per-row Restore button; active tasks never appear here.
+ */
+export const RecycleBin: Story = {
+  args: {
+    mode: 'bin',
+    tasks: [
+      makeTask({
+        id: 'task-1',
+        title: 'Old project notes',
+        status: 'archived',
+        updatedAt: new Date('2026-06-05T10:00:00Z'),
+      }),
+      makeTask({
+        id: 'task-2',
+        title: 'Cancel gym membership',
+        status: 'cut_loose',
+        updatedAt: new Date('2026-06-04T10:00:00Z'),
+      }),
+      makeTask({ id: 'task-3', title: 'Water the plants' }),
+    ],
+    onRestore: () => {},
+    onLongPressTask: () => {},
+  },
+};
+
+/** Story 7.1 — empty recycle bin ("Nothing here — everything's active."). */
+export const EmptyBin: Story = {
+  args: {
+    mode: 'bin',
+    tasks: [makeTask({ id: 'task-1', title: 'Water the plants' })],
+  },
+};

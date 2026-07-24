@@ -1,18 +1,21 @@
 import { eq } from 'drizzle-orm';
 
-import { tasks } from '@one-down/shared/schema-local';
+import { subtasks, tasks } from '@one-down/shared/schema-local';
 
 import type { ParsedTaskDraft } from '@one-down/shared';
 
 import { createTestDb, type TestDb } from '../test-utils/db';
 import { loadLocalMigrationsSql } from '../test-utils/migrations';
 import {
+  archiveTasks,
   confirmReviewItem,
   createTask,
   createTasksFromBrainDump,
+  deleteTasksPermanently,
   EmptyTitleError,
   incrementSkipCount,
   resetSkipCount,
+  restoreTask,
   setTaskStatus,
   updateTask,
 } from './tasks-repository';
@@ -314,6 +317,52 @@ describe('tasks-repository (integration, real migration SQL)', () => {
       const [row] = await testDb.db.select().from(tasks);
       expect(row?.skipCount).toBe(0);
       expect(row?.updatedAt.getTime()).toBe(backdated.getTime());
+    });
+  });
+
+  describe('archive / restore / permanent delete (Story 7.1)', () => {
+    it('archiveTasks flips the whole selection and bumps updatedAt (content change)', async () => {
+      const a = await createTask(testDb.db, { title: 'A' });
+      const b = await createTask(testDb.db, { title: 'B' });
+      const keep = await createTask(testDb.db, { title: 'Keep' });
+
+      await archiveTasks(testDb.db, [a.id, b.id]);
+
+      const rows = await testDb.db.select().from(tasks);
+      const byId = new Map(rows.map((row) => [row.id, row]));
+      expect(byId.get(a.id)?.status).toBe('archived');
+      expect(byId.get(b.id)?.status).toBe('archived');
+      expect(byId.get(keep.id)?.status).toBe('pending');
+      expect(byId.get(a.id)?.updatedAt.getTime()).toBeGreaterThanOrEqual(a.updatedAt.getTime());
+    });
+
+    it('restoreTask returns archived AND cut-loose tasks to pending (AC6)', async () => {
+      const archived = await createTask(testDb.db, { title: 'Archived' });
+      const released = await createTask(testDb.db, { title: 'Released' });
+      await archiveTasks(testDb.db, [archived.id]);
+      await setTaskStatus(testDb.db, released.id, 'cut_loose');
+
+      await restoreTask(testDb.db, archived.id);
+      await restoreTask(testDb.db, released.id);
+
+      const rows = await testDb.db.select().from(tasks);
+      expect(rows.every((row) => row.status === 'pending')).toBe(true);
+    });
+
+    it('deleteTasksPermanently removes the tasks and their subtasks only', async () => {
+      const doomed = await createTask(testDb.db, { title: 'Doomed' });
+      const survivor = await createTask(testDb.db, { title: 'Survivor' });
+      await testDb.db.insert(subtasks).values([
+        { id: 'sub-1', taskId: doomed.id, title: 'Doomed step', orderIndex: 0, source: 'ai' },
+        { id: 'sub-2', taskId: survivor.id, title: 'Kept step', orderIndex: 0, source: 'ai' },
+      ]);
+
+      await deleteTasksPermanently(testDb.db, [doomed.id]);
+
+      const taskRows = await testDb.db.select().from(tasks);
+      expect(taskRows.map((row) => row.id)).toEqual([survivor.id]);
+      const subtaskRows = await testDb.db.select().from(subtasks);
+      expect(subtaskRows.map((row) => row.id)).toEqual(['sub-2']);
     });
   });
 

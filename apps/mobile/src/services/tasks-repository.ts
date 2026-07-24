@@ -1,4 +1,4 @@
-import { eq, sql } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 import { randomUUID } from 'expo-crypto';
 
@@ -15,7 +15,7 @@ import {
   type TaskSize,
   type TaskStatus,
 } from '@one-down/shared';
-import { tasks } from '@one-down/shared/schema-local';
+import { subtasks, tasks } from '@one-down/shared/schema-local';
 
 // Repository functions take the db as first argument so integration tests can
 // pass the better-sqlite3-backed test db (same schema, real SQL).
@@ -219,6 +219,38 @@ export async function updateTask(
     confirmedItems,
     reviewCleared: confirmedItems.length > 0 && values.hasCheckNeeded === false,
   };
+}
+
+/**
+ * Bulk archive (Story 7.1). Status write only — star retraction and analytics
+ * are orchestrated by services/task-archive.ts. updatedAt bumps via $onUpdate
+ * (a deliberate content change: archived tasks must sync).
+ */
+export async function archiveTasks(db: TasksDb, ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  await db.update(tasks).set({ status: 'archived' }).where(inArray(tasks.id, ids));
+}
+
+/**
+ * Restore from the recycle bin (Story 7.1, AC6): back to `pending`, whether
+ * the task was archived or cut loose. Stars are deliberately NOT restored
+ * (no reverse tracking). Single-task restore is enough for MVP.
+ */
+export async function restoreTask(db: TasksDb, id: string): Promise<void> {
+  await db.update(tasks).set({ status: 'pending' }).where(eq(tasks.id, id));
+}
+
+/**
+ * Permanent delete from the recycle bin (Story 7.1, AC5). Cascades to the
+ * task's subtasks (no FK in the schema — Epic 7 owns the cascade decision,
+ * resolved: orphan rows are useless once the parent is gone). The star
+ * ledger is deliberately KEPT — it is the historical record; `taskId` is
+ * nullable there precisely so the log survives task deletion.
+ */
+export async function deleteTasksPermanently(db: TasksDb, ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  await db.delete(subtasks).where(inArray(subtasks.taskId, ids));
+  await db.delete(tasks).where(inArray(tasks.id, ids));
 }
 
 /**

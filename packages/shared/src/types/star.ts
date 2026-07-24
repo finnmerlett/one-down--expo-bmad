@@ -9,6 +9,8 @@ export const STAR_ACTIONS = [
   'subtask_completed',
   'subtask_deleted',
   'triage_confirmed',
+  // Story 7.1 — negative row retracting a task's net stars at archive time.
+  'archive_retraction',
 ] as const;
 export type StarAction = (typeof STAR_ACTIONS)[number];
 

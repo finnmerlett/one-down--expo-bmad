@@ -5,9 +5,10 @@ import type { TaskData } from '@one-down/shared';
 
 import { makeTask } from '@/components/card-stack/task-card.stories';
 import * as taskListStories from './task-list-view.stories';
-import { splitTasksForList } from './task-list-view';
+import { binTasksForList, splitTasksForList } from './task-list-view';
 
-const { NoDoneTasks, Empty, WithDoneTasks } = composeStories(taskListStories);
+const { NoDoneTasks, Empty, WithDoneTasks, MultiSelect, RecycleBin, EmptyBin } =
+  composeStories(taskListStories);
 
 describe('splitTasksForList (Story 4.4)', () => {
   const completed = (id: string, updatedAt: string): TaskData =>
@@ -29,9 +30,10 @@ describe('splitTasksForList (Story 4.4)', () => {
     expect(todo.map((task) => task.id)).toEqual(['pending-a', 'in-progress']);
   });
 
-  it('excludes cut-loose tasks from both sections', () => {
+  it('excludes cut-loose and archived tasks from both sections (Story 7.1)', () => {
     const { done, todo } = splitTasksForList([
       makeTask({ id: 'gone', status: 'cut_loose' }),
+      makeTask({ id: 'binned', status: 'archived' }),
       makeTask({ id: 'kept' }),
     ]);
 
@@ -41,6 +43,27 @@ describe('splitTasksForList (Story 4.4)', () => {
 
   it('returns empty partitions for empty input', () => {
     expect(splitTasksForList([])).toEqual({ done: [], todo: [] });
+  });
+});
+
+describe('binTasksForList (Story 7.1)', () => {
+  it('keeps only archived and cut-loose tasks, most recently binned first', () => {
+    const bin = binTasksForList([
+      makeTask({ id: 'active' }),
+      makeTask({ id: 'done', status: 'completed' }),
+      makeTask({
+        id: 'archived-early',
+        status: 'archived',
+        updatedAt: new Date('2026-06-03T10:00:00Z'),
+      }),
+      makeTask({
+        id: 'released-late',
+        status: 'cut_loose',
+        updatedAt: new Date('2026-06-05T10:00:00Z'),
+      }),
+    ]);
+
+    expect(bin.map((task) => task.id)).toEqual(['released-late', 'archived-early']);
   });
 });
 
@@ -96,6 +119,56 @@ describe('TaskListView (portable stories)', () => {
 
     // Cut-loose task appears in NEITHER section (recycle bin is Epic 7).
     expect(screen.queryByText('Cancel gym membership')).toBeNull();
+  });
+
+  it('multi-select rows toggle instead of navigating and announce state (Story 7.1)', async () => {
+    const onToggleSelect = jest.fn();
+    const onTaskPress = jest.fn();
+    await render(<MultiSelect onToggleSelect={onToggleSelect} onTaskPress={onTaskPress} />);
+
+    // Selected row announces its state; unselected rows offer selection.
+    expect(screen.getByLabelText('Selected, task: Water the plants')).toBeTruthy();
+    expect(screen.queryByLabelText('Open task: Water the plants')).toBeNull();
+
+    await fireEvent.press(screen.getByLabelText('Select task: Email the plumber'));
+    expect(onToggleSelect.mock.calls[0]?.[0]?.id).toBe('task-2');
+    expect(onTaskPress).not.toHaveBeenCalled();
+
+    // Done rows are selectable too (archiving completed tasks is the warned path).
+    await fireEvent.press(screen.getByLabelText('Select task: Book dentist appointment'));
+    expect(onToggleSelect.mock.calls[1]?.[0]?.id).toBe('task-3');
+  });
+
+  it('long-press on a row reports it for selection entry (Story 7.1 AC1)', async () => {
+    const onLongPressTask = jest.fn();
+    await render(<NoDoneTasks onLongPressTask={onLongPressTask} />);
+
+    await fireEvent(screen.getByLabelText('Open task: Sort out the garage'), 'longPress');
+
+    expect(onLongPressTask.mock.calls[0]?.[0]?.id).toBe('task-2');
+  });
+
+  it('renders the recycle bin with origin labels and per-row restore (Story 7.1 AC4/AC6)', async () => {
+    const onRestore = jest.fn();
+    await render(<RecycleBin onRestore={onRestore} />);
+
+    expect(screen.getByLabelText('Bin task: Old project notes')).toBeTruthy();
+    expect(screen.getByLabelText('Bin task: Cancel gym membership')).toBeTruthy();
+    expect(screen.getByText('Archived')).toBeTruthy();
+    expect(screen.getByText('Cut loose')).toBeTruthy();
+    // Active tasks never appear in the bin.
+    expect(screen.queryByText('Water the plants')).toBeNull();
+
+    await fireEvent.press(screen.getByLabelText('Restore task: Old project notes'));
+    expect(onRestore.mock.calls[0]?.[0]?.id).toBe('task-1');
+  });
+
+  it('shows the calm empty-bin state (Story 7.1)', async () => {
+    await render(<EmptyBin />);
+
+    expect(screen.getByText('Nothing here')).toBeTruthy();
+    expect(screen.getByText("Everything's active.")).toBeTruthy();
+    expect(screen.queryByLabelText(/^Bin task:/)).toBeNull();
   });
 
   it('guides the user to add tasks when the list is empty (Story 3.4)', async () => {

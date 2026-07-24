@@ -1,4 +1,14 @@
-export const TASK_STATUSES = ['pending', 'in_progress', 'completed', 'cut_loose'] as const;
+// `archived` (Story 7.1) is distinct from `cut_loose`: cutting loose AWARDS
+// stars; bulk-archiving RETRACTS them. The recycle bin shows both; restore
+// treats both the same. Plain text column — widening the union needs no
+// migration on either side.
+export const TASK_STATUSES = [
+  'pending',
+  'in_progress',
+  'completed',
+  'cut_loose',
+  'archived',
+] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];
 
 export const TASK_SIZES = ['quick_win', 'big_time'] as const;

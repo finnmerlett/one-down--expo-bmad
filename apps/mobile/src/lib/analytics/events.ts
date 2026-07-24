@@ -44,7 +44,8 @@ export type AnalyticsEventMap = EnforceFlatProps<{
       | 'task_cut_loose'
       | 'triage_confirmed'
       | 'subtask_completed'
-      | 'subtask_deleted';
+      | 'subtask_deleted'
+      | 'archive_retraction';
     amount: number;
     base: number;
     urgency_bonus: number;
@@ -149,6 +150,12 @@ export type AnalyticsEventMap = EnforceFlatProps<{
   micro_task_added: { skip_count: number };
   /** Story 6.4 — "No thanks"; quiet for another threshold's worth of skips. */
   micro_task_dismissed: { skip_count: number };
+  /** Story 7.1 — a bulk archive landed (`warned` = the star warning dialog was confirmed). */
+  tasks_archived: { count: number; stars_removed: number; warned: boolean };
+  /** Story 7.1 — permanent delete from the recycle bin. */
+  tasks_deleted_permanently: { count: number };
+  /** Story 7.1 — a task returned to the active list. */
+  task_restored: { from: 'recycle_bin' };
 }>;
 
 export type AnalyticsEventName = keyof AnalyticsEventMap;

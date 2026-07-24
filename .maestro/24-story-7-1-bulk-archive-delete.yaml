@@ -1,0 +1,95 @@
+# Story 7.1 — bulk archive & delete: long-press enters multi-select on the
+# task list, archiving a selection containing a completed task warns about
+# star retraction (cancel preserves the selection), confirmed archive moves
+# both tasks to the Recycle bin tab with a toast, restore returns a task to
+# the active list, and bin multi-select + Delete permanently removes rows
+# after its own confirmation.
+appId: com.onedown.mobile
+---
+- runFlow: common/launch-app.yaml
+
+# --- Seed: task A (completed, has stars) + task B (never started) ---
+- runFlow:
+    file: common/add-task.yaml
+    env:
+      TITLE: 'Archive me A'
+# Make A a quick win while it is the only card so it deterministically stays
+# on top after B arrives (3.3 momentum rule — flow 09 pattern).
+- tapOn: 'Task: Archive me A. Worth 10 stars. Card 1 of 1'
+- waitForAnimationToEnd
+- tapOn: 'Size: Quick win'
+- tapOn: 'Back to card front'
+- waitForAnimationToEnd
+- runFlow:
+    file: common/add-task.yaml
+    env:
+      TITLE: 'Archive me B'
+# Start + complete A so it has earned stars (2.1/2.3 flows).
+- tapOn: 'Task: Archive me A. Worth 10 stars. Card 1 of 2'
+- waitForAnimationToEnd
+- tapOn: 'Start task'
+- waitForAnimationToEnd
+- tapOn: 'Done'
+- extendedWaitUntil:
+    visible: 'Task: Archive me B. Worth 10 stars. Card 1 of 1'
+    timeout: 5000
+
+# --- Multi-select on the active tab (AC1) ---
+- tapOn: 'Open task list'
+- waitForAnimationToEnd
+- longPressOn: 'Open task: Archive me B'
+- assertVisible: '1 selected'
+# A completed row is selectable too (the warned path, AC2).
+- tapOn: 'Select task: Archive me A'
+- assertVisible: '2 selected'
+
+# --- Archive → star warning dialog; cancel preserves the selection (AC7) ---
+- tapOn: 'Archive'
+- extendedWaitUntil:
+    visible: 'Remove stars?'
+    timeout: 5000
+- takeScreenshot: .claude/run-notes/screenshots/7-1-archive-warning
+- tapOn: 'Cancel archive'
+- assertNotVisible: 'Remove stars?'
+- assertVisible: '2 selected'
+- assertVisible: 'Selected, task: Archive me A'
+
+# --- Archive for real: confirm retracts stars and toasts (AC2) ---
+- tapOn: 'Archive'
+- extendedWaitUntil:
+    visible: 'Remove stars?'
+    timeout: 5000
+- tapOn: 'Archive anyway'
+# Toast auto-dismisses after ~2 s — assert fast.
+- assertVisible: 'Archived 2 tasks — ★10 removed'
+- extendedWaitUntil:
+    visible: 'No tasks yet'
+    timeout: 5000
+
+# --- Recycle bin tab shows both; restore B (AC4/AC6) ---
+- tapOn: 'Tab: Recycle bin'
+- assertVisible: 'Bin task: Archive me A'
+- assertVisible: 'Bin task: Archive me B'
+- tapOn: 'Restore task: Archive me B'
+- extendedWaitUntil:
+    notVisible: 'Bin task: Archive me B'
+    timeout: 5000
+- tapOn: 'Tab: Active'
+- assertVisible: 'Open task: Archive me B'
+
+# --- Permanent delete from the bin with confirmation (AC5) ---
+- tapOn: 'Tab: Recycle bin'
+- longPressOn: 'Bin task: Archive me A'
+- assertVisible: '1 selected'
+- tapOn: 'Delete'
+- extendedWaitUntil:
+    visible: 'Delete permanently?'
+    timeout: 5000
+- tapOn: 'Delete forever'
+- extendedWaitUntil:
+    notVisible: 'Bin task: Archive me A'
+    timeout: 5000
+- assertVisible: 'Nothing here'
+
+- assertNotVisible: 'Unhandled'
+- assertNotVisible: 'error occurred'

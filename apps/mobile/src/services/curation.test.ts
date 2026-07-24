@@ -22,12 +22,14 @@ function makeTask(overrides: Partial<TaskData> = {}): TaskData {
 }
 
 describe('curateTasks', () => {
-  it('keeps pending and in-progress tasks, drops completed and cut-loose', () => {
+  it('keeps pending and in-progress tasks, drops completed, cut-loose, and archived', () => {
     const tasks = [
       makeTask({ id: 'a', status: 'pending', createdAt: new Date('2026-06-02') }),
       makeTask({ id: 'b', status: 'completed' }),
       makeTask({ id: 'c', status: 'in_progress', createdAt: new Date('2026-06-01') }),
       makeTask({ id: 'd', status: 'cut_loose' }),
+      // Story 7.1: archived tasks leave the stack too.
+      makeTask({ id: 'e', status: 'archived' }),
     ];
 
     expect(

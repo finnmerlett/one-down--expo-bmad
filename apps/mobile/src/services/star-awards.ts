@@ -1,4 +1,4 @@
-import { inArray } from 'drizzle-orm';
+import { inArray, sql } from 'drizzle-orm';
 import { randomUUID } from 'expo-crypto';
 
 import { STAR_WEIGHTS, type StarAction, type SubtaskData, type TaskData } from '@one-down/shared';
@@ -137,6 +137,61 @@ export async function awardReviewConfirmStars(db: TasksDb, task: TaskData): Prom
     console.warn('Star award insert failed', error);
   }
   return amount;
+}
+
+/**
+ * Net star sum per task over the whole ledger (Story 7.1) — signed, so prior
+ * retractions/reversals count. Tasks with no rows are simply absent from the
+ * map (treat as 0).
+ */
+export async function netStarsByTask(db: TasksDb, taskIds: string[]): Promise<Map<string, number>> {
+  if (taskIds.length === 0) return new Map();
+  const rows = await db
+    .select({
+      taskId: starActivityLog.taskId,
+      net: sql<number>`sum(${starActivityLog.amount})`,
+    })
+    .from(starActivityLog)
+    .where(inArray(starActivityLog.taskId, taskIds))
+    .groupBy(starActivityLog.taskId);
+  const net = new Map<string, number>();
+  for (const row of rows) {
+    if (row.taskId !== null) net.set(row.taskId, row.net);
+  }
+  return net;
+}
+
+/**
+ * Retract a task's earned stars at archive time (Story 7.1, AC2): one
+ * negative `archive_retraction` transaction for the full net amount. The
+ * ledger stays append-only — a retraction is a new signed row, never an
+ * edit. Throws are swallowed like every other award write (persistence
+ * failures never block the task action, 4.1 AC7).
+ */
+export async function retractTaskStars(
+  db: TasksDb,
+  task: Pick<TaskData, 'id' | 'title'>,
+  amount: number,
+): Promise<void> {
+  if (amount <= 0) return;
+  const breakdown: StarBreakdown = {
+    base: -amount,
+    urgencyBonus: 0,
+    sizeBonus: 0,
+    earlyBonus: 0,
+    total: -amount,
+  };
+  try {
+    await insertAward(
+      db,
+      { taskId: task.id, taskTitle: task.title, action: 'archive_retraction' },
+      breakdown,
+      new Date(),
+    );
+  } catch (error) {
+    // oxlint-disable-next-line no-console
+    console.warn('Star retraction insert failed', error);
+  }
 }
 
 /**
