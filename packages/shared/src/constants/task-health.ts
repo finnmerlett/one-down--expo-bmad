@@ -13,3 +13,6 @@ export const AVOIDED_SKIP_THRESHOLD = 5;
 
 /** Rolling window for avoidance skips — older skips stop counting. */
 export const AVOIDED_WINDOW_DAYS = 7;
+
+/** Days away before the welcome-back screen greets a return (Story 7.3, FR50). */
+export const WELCOME_BACK_ABSENCE_DAYS = 4;

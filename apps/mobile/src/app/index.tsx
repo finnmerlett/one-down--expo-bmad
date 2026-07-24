@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useMemo, useRef, useState } from 'react';
 
 import {
@@ -24,6 +24,7 @@ import { HStack } from '@/components/ui/hstack';
 import { Text } from '@/components/ui/text';
 import { useToast } from '@/components/ui/toast';
 import { VStack } from '@/components/ui/vstack';
+import { useAbsenceCheck } from '@/hooks/use-absence-check';
 import { useMicroTask } from '@/hooks/use-micro-task';
 import { useStarTotals } from '@/hooks/use-star-totals';
 import { useTasks } from '@/hooks/use-tasks';
@@ -41,6 +42,8 @@ import {
   startTask,
 } from '@/services/task-edits';
 import { createTask, type CreateTaskInput } from '@/services/tasks-repository';
+import { promoteQuickWin } from '@/services/welcome-back';
+import { useAppStore } from '@/stores/app-store';
 import { useQuickAddStore } from '@/stores/quick-add-store';
 import { useReviewModeStore } from '@/stores/review-mode-store';
 import { useStackFiltersStore } from '@/stores/stack-filters-store';
@@ -74,9 +77,33 @@ export default function HomeScreen() {
   // session. `now` is taken at recompute time (urgency granularity is days).
   const [seed] = useState(() => Date.now() % 2 ** 31);
 
-  const curated = useMemo(
-    () => curateTasks(tasks, { contexts: activeContexts, size: mode }, { now: new Date(), seed }),
-    [tasks, activeContexts, mode, seed],
+  // Absence tracking (Story 7.3): long enough away → welcome-back screen +
+  // one-shot quick-win promotion of the deck below.
+  useAbsenceCheck();
+  const welcomeBackPending = useAppStore((state) => state.welcomeBackPending);
+  const setWelcomeBackPending = useAppStore((state) => state.setWelcomeBackPending);
+
+  const curated = useMemo(() => {
+    const base = curateTasks(
+      tasks,
+      { contexts: activeContexts, size: mode },
+      { now: new Date(), seed },
+    );
+    // AC4: after a welcome-back return the top card is an achievable quick
+    // win. Post-processing keeps 3.3's algorithm untouched.
+    return welcomeBackPending ? promoteQuickWin(base, new Date()) : base;
+  }, [tasks, activeContexts, mode, seed, welcomeBackPending]);
+
+  // The promotion is one-shot: clear the flag once the promoted stack has
+  // actually been SHOWN (focused render with cards) — not while this screen
+  // sits beneath the welcome-back/triage routes, where curated is already
+  // non-empty but invisible.
+  useFocusEffect(
+    useCallback(() => {
+      if (welcomeBackPending && curated.length > 0) {
+        setWelcomeBackPending(false);
+      }
+    }, [welcomeBackPending, curated.length, setWelcomeBackPending]),
   );
 
   // Review mode (Story 6.2): UNFILTERED flagged cards — the review pass must

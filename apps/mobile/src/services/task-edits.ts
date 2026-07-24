@@ -153,7 +153,7 @@ export function completeTask(task: TaskData): void {
  */
 export function cutLooseTask(
   task: TaskData,
-  via: 'card_back_overlay' | 'list_detail' | 'task_running',
+  via: 'card_back_overlay' | 'list_detail' | 'task_running' | 'triage',
 ): void {
   if (task.status === 'completed' || task.status === 'cut_loose') return;
   void setTaskStatus(db, task.id, 'cut_loose')

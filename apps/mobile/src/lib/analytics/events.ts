@@ -26,9 +26,9 @@ export type AnalyticsEventMap = EnforceFlatProps<{
   task_started: { via: 'card_back_overlay' | 'list_detail' };
   /** Story 2.3 — task marked completed (star earning is Epic 4's `stars_awarded`). */
   task_completed: { size: 'quick_win' | 'big_time' | null; had_notes: boolean };
-  /** Story 2.4 — task archived guilt-free (recycle bin restore is Epic 7). */
+  /** Story 2.4 — task archived guilt-free (7.3 adds the triage surface). */
   task_cut_loose: {
-    via: 'card_back_overlay' | 'list_detail' | 'task_running';
+    via: 'card_back_overlay' | 'list_detail' | 'task_running' | 'triage';
     was_started: boolean;
   };
   /** Story 3.1 — a context filter button toggled on the home screen (enum names only). */
@@ -162,6 +162,20 @@ export type AnalyticsEventMap = EnforceFlatProps<{
   task_health_prompt_actioned: {
     flag: 'stale' | 'avoided';
     action: 'keep' | 'cut_loose' | 'break_down';
+  };
+  /** Story 7.3 — the welcome-back screen appeared (counts only, never task text). */
+  welcome_back_shown: {
+    days_away: number;
+    tasks_waiting: number;
+    deadlines_passed: number;
+    stale_suggestions: number;
+  };
+  /** Story 7.3 — which door the user took off the welcome-back screen. */
+  welcome_back_cta_tapped: { cta: 'triage' | 'main_deck' };
+  /** Story 7.3 — a fast decision on a triage row ("later" is session-local only). */
+  triage_task_actioned: {
+    reason: 'deadline_passed' | 'stale' | 'avoided';
+    action: 'keep' | 'cut_loose' | 'later';
   };
 }>;
 

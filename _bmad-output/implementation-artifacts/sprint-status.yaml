@@ -100,10 +100,10 @@ development_status:
   epic-6-retrospective: optional
 
   # Epic 7: Task Health & Return
-  epic-7: backlog
+  epic-7: done
   7-1-bulk-archive-and-delete: done
   7-2-stale-and-avoided-task-detection: done
-  7-3-welcome-back-summary: backlog
+  7-3-welcome-back-summary: done
   epic-7-retrospective: optional
 
   # Epic 8: Engagement & Monetization

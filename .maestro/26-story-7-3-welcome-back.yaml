@@ -1,0 +1,61 @@
+# Story 7.3 — welcome-back summary: a real 4-day absence can't elapse in E2E,
+# so the flow enters via the onedown://welcome-back deep link (the route arms
+# the same quick-win promotion the absence check does). Pins the factual
+# summary counts, both CTAs (triage empty state + main deck), and the
+# quick-win-on-top promise after returning to the deck.
+appId: com.onedown.mobile
+---
+- runFlow: common/launch-app.yaml
+
+# --- Seed: a quick win and a (newer) big-time task ---
+- runFlow:
+    file: common/add-task.yaml
+    env:
+      TITLE: 'Quick one'
+- tapOn: 'Task: Quick one. Worth 10 stars. Card 1 of 1'
+- waitForAnimationToEnd
+- tapOn: 'Size: Quick win'
+- tapOn: 'Back to card front'
+- waitForAnimationToEnd
+- runFlow:
+    file: common/add-task.yaml
+    env:
+      TITLE: 'Big one'
+# Size the second task from the list detail (it is not the top card).
+- tapOn: 'Open task list'
+- waitForAnimationToEnd
+- tapOn: 'Open task: Big one'
+- waitForAnimationToEnd
+- tapOn: 'Size: Big time'
+- tapOn: 'Back to task list'
+- waitForAnimationToEnd
+- tapOn: 'Back to home'
+- waitForAnimationToEnd
+
+# --- Deep-link into the welcome-back screen: factual, guilt-free summary ---
+- openLink: onedown://welcome-back
+- extendedWaitUntil:
+    visible: 'Welcome back!'
+    timeout: 5000
+- assertVisible: '2 tasks are waiting for you.'
+- takeScreenshot: .claude/run-notes/screenshots/7-3-welcome-back
+
+# --- Primary CTA: triage — nothing needs attention → All caught up (AC3) ---
+- tapOn: "Let's see what's up"
+- waitForAnimationToEnd
+- assertVisible: 'All caught up'
+- tapOn: 'Go to your deck'
+- waitForAnimationToEnd
+
+# --- Second entry: main-deck CTA + quick-win promotion (AC2/AC4) ---
+- openLink: onedown://welcome-back
+- extendedWaitUntil:
+    visible: 'Welcome back!'
+    timeout: 5000
+- tapOn: 'Go to main deck'
+- waitForAnimationToEnd
+# "Big one" is newest but the top card is the quick win.
+- assertVisible: 'Task: Quick one. Worth 10 stars. Card 1 of 2'
+
+- assertNotVisible: 'Unhandled'
+- assertNotVisible: 'error occurred'
