@@ -47,14 +47,14 @@ export function StarCounter({
       accessibilityLiveRegion="polite"
       hitSlop={8}
       onPress={onPress}
-      className={`h-11 justify-center rounded-lg border border-outline-200 px-3 active:bg-background-100 ${
-        highlighted ? 'bg-warning-100' : 'bg-background-50'
+      className={`h-11 justify-center rounded-full border px-4 active:bg-tertiary-50 ${
+        highlighted ? 'border-tertiary-200 bg-tertiary-50' : 'border-outline-200 bg-background-0'
       }`}
     >
       <HStack className="items-center gap-1.5">
-        <Icon as={StarIcon} size="sm" className="text-warning-400" />
-        <Text className="text-sm font-medium text-typography-700">{total}</Text>
-        <Text className="text-xs text-typography-500">{`+${today} today`}</Text>
+        <Icon as={StarIcon} size="sm" className="fill-tertiary-500 text-tertiary-500" />
+        <Text className="font-body-bold text-base text-typography-900">{total}</Text>
+        <Text className="font-body-medium text-xs text-typography-500">{`+${today} today`}</Text>
       </HStack>
     </Pressable>
   );

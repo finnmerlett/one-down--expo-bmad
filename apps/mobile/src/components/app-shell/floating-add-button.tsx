@@ -8,7 +8,7 @@ export function FloatingAddButton({ onPress }: { onPress?: () => void }) {
       accessibilityLabel="Add task"
       hitSlop={8}
       onPress={onPress}
-      className="absolute bottom-6 right-6 h-14 w-14 items-center justify-center rounded-full bg-primary-500 shadow-hard-2 active:bg-primary-600"
+      className="absolute bottom-6 right-6 h-16 w-16 items-center justify-center rounded-full bg-primary-500 shadow-fab active:bg-primary-600"
     >
       <Icon as={AddIcon} size="xl" className="text-typography-0" />
     </Pressable>

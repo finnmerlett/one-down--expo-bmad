@@ -11,17 +11,27 @@ import { VStack } from '@/components/ui/vstack';
 export function EmptyState({
   title,
   body,
+  glyph = '✨',
   actionLabel,
   onAction,
 }: {
   title: string;
   body: string;
+  /** Big friendly emoji above the copy — decorative, hidden from a11y. */
+  glyph?: string;
   actionLabel?: string;
   onAction?: () => void;
 }) {
   return (
     <VStack className="flex-1 items-center justify-center gap-2 px-8">
-      <Text className="text-center font-medium text-typography-900">{title}</Text>
+      <Text
+        accessibilityElementsHidden
+        importantForAccessibility="no"
+        className="mb-2 text-center text-6xl leading-[72px]"
+      >
+        {glyph}
+      </Text>
+      <Text className="text-center font-body-bold text-xl text-typography-900">{title}</Text>
       <Text className="text-center text-typography-500">{body}</Text>
       {actionLabel && onAction ? (
         // gluestack creator components take aria-label, not accessibilityLabel.

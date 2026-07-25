@@ -188,6 +188,11 @@ module.exports = {
         '2xs': '10px',
       },
       boxShadow: {
+        // Warm-tinted shadows (ink #33302B / coral #F2634F based, never gray-black)
+        'soft-card': '0px 10px 30px 0px rgba(58, 52, 44, 0.10)',
+        fab: '0px 8px 20px 0px rgba(242, 99, 79, 0.35)',
+        segment: '0px 1px 3px 0px rgba(58, 52, 44, 0.15)',
+        toast: '0px 8px 24px 0px rgba(58, 52, 44, 0.28)',
         'hard-1': '-2px 2px 8px 0px rgba(38, 38, 38, 0.20)',
         'hard-2': '0px 3px 10px 0px rgba(38, 38, 38, 0.20)',
         'hard-3': '2px 2px 8px 0px rgba(38, 38, 38, 0.20)',

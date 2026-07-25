@@ -32,10 +32,10 @@ function ContextButton({
   // see/leave the empty result, but cannot be re-selected once switched OFF.
   const disabled = !available && !active;
   const iconColor = active
-    ? 'text-primary-700'
+    ? 'text-typography-900'
     : disabled
       ? 'text-typography-300'
-      : 'text-typography-500';
+      : 'text-typography-400';
 
   return (
     <Pressable
@@ -47,15 +47,21 @@ function ContextButton({
       disabled={disabled}
       hitSlop={8}
       onPress={() => onToggle(context)}
-      className={`h-11 w-11 items-center justify-center rounded-full active:bg-background-100 ${
-        active ? 'bg-primary-100' : ''
+      // Even, tappable chip row: selected = filled warm pill with ink icon,
+      // unselected = faint white pill, unavailable = ghosted.
+      className={`h-11 flex-1 items-center justify-center rounded-full active:bg-primary-50 ${
+        active
+          ? 'bg-primary-100'
+          : disabled
+            ? 'bg-background-0/40'
+            : 'border border-outline-100 bg-background-0'
       }`}
     >
-      <Icon as={CONTEXT_ICONS[context]} size="xl" className={iconColor} />
+      <Icon as={CONTEXT_ICONS[context]} size="lg" className={iconColor} />
       {/* Urgent indicator (FR15): single subtle dot, warning tint (calm, not
           red), no count — "the app does the worrying". */}
       {urgent ? (
-        <Box className="absolute right-1 top-1 h-2 w-2 rounded-full bg-warning-400" />
+        <Box className="absolute right-2.5 top-2 h-2 w-2 rounded-full bg-warning-400" />
       ) : null}
     </Pressable>
   );
@@ -84,7 +90,7 @@ export function ContextToggleBar({
 }) {
   const anyActive = activeContexts.length > 0;
   return (
-    <HStack className="items-center justify-between px-4 py-1">
+    <HStack className="items-center gap-2 px-4 py-1">
       {TASK_CONTEXTS.map((context) => {
         const active = activeContexts.includes(context);
         return (

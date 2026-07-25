@@ -25,8 +25,10 @@ export function ModeToggle({
   mode: TaskSize | null;
   onToggle: (size: TaskSize) => void;
 }) {
+  // Real segmented control: deep-cream track, active segment white-raised
+  // with coral bold text (most legible of the brief's two options).
   return (
-    <HStack className="self-center rounded-full border border-outline-200 bg-background-0">
+    <HStack className="self-center rounded-full bg-background-200 p-1">
       {MODE_OPTIONS.map(({ size, label }) => {
         const selected = mode === size;
         return (
@@ -37,11 +39,17 @@ export function ModeToggle({
             accessibilityLabel={`Mode: ${label}`}
             accessibilityState={{ selected }}
             onPress={() => onToggle(size)}
-            className={`h-11 items-center justify-center rounded-full px-5 active:bg-background-100 ${
-              selected ? 'bg-primary-100' : ''
+            className={`h-10 items-center justify-center rounded-full px-6 ${
+              selected ? 'bg-background-0 shadow-segment' : 'active:bg-background-300/50'
             }`}
           >
-            <Text className={selected ? 'font-medium text-primary-700' : 'text-typography-600'}>
+            <Text
+              className={
+                selected
+                  ? 'font-body-bold text-primary-600'
+                  : 'font-body-medium text-typography-500'
+              }
+            >
               {label}
             </Text>
           </Pressable>
