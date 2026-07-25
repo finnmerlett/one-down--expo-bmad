@@ -33,19 +33,21 @@ export function PremiumFeaturesView({
   return (
     <ScrollView contentContainerClassName="flex-grow">
       <VStack className="flex-1 gap-6 px-6 pb-8 pt-2">
-        <Text className="text-3xl font-semibold text-typography-900">One Down Premium</Text>
+        <Text className="font-heading text-3xl text-typography-900">One Down Premium</Text>
 
-        <VStack className="gap-4">
+        <VStack className="gap-4 rounded-3xl border border-outline-100 bg-background-0 p-5">
           {PREMIUM_FEATURES.map((feature, index) => (
             <VStack key={feature.id} className="gap-4">
               {index > 0 ? <Box className="h-px bg-outline-100" /> : null}
               <HStack className="items-start gap-3">
-                <Icon as={SparklesIcon} size="md" className="mt-1 text-primary-600" />
+                <Icon as={SparklesIcon} size="md" className="mt-1 text-primary-500" />
                 <VStack className="flex-1 gap-1">
-                  <Text className="text-base font-semibold text-typography-900">
+                  <Text className="font-body-bold text-base text-typography-900">
                     {feature.title}
                   </Text>
-                  <Text className="text-sm text-typography-600">{feature.description}</Text>
+                  <Text className="font-body text-sm text-typography-600">
+                    {feature.description}
+                  </Text>
                 </VStack>
               </HStack>
             </VStack>
@@ -53,19 +55,21 @@ export function PremiumFeaturesView({
         </VStack>
 
         {/* Factual reassurance, no FOMO pressure (FR59). */}
-        <Text className="text-sm text-typography-500">Everything you already use stays free.</Text>
+        <Text className="text-center font-body text-sm text-typography-500">
+          Everything you already use stays free.
+        </Text>
 
         <Box className="flex-1" />
 
         {purchaseStatus === 'premium' ? (
           // Calm confirmation, not confetti (quiet satisfaction) — AC2.
-          <Text className="text-center text-lg font-semibold text-typography-900">
+          <Text className="text-center font-heading text-lg text-typography-900">
             You’re premium — enjoy!
           </Text>
         ) : (
           <VStack className="gap-3">
             {purchaseStatus === 'error' ? (
-              <Text className="text-center text-sm text-error-600">
+              <Text className="text-center font-body-medium text-sm text-error-600">
                 Something went wrong with the purchase — nothing was charged.
               </Text>
             ) : null}

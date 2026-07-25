@@ -90,12 +90,14 @@ export default function PremiumScreen() {
                 onPress={handleRestore}
                 className="min-h-11 items-center justify-center"
               >
-                <Text className="text-sm font-medium text-primary-600">
+                <Text className="font-body-bold text-sm text-primary-600">
                   {restoring ? 'Restoring…' : 'Restore purchases'}
                 </Text>
               </Pressable>
               {restoreNote ? (
-                <Text className="text-sm text-typography-500">No previous purchase found.</Text>
+                <Text className="font-body text-sm text-typography-500">
+                  No previous purchase found.
+                </Text>
               ) : null}
             </VStack>
           )

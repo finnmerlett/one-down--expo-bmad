@@ -41,7 +41,7 @@ export default function LoginScreen() {
         >
           <Icon as={ArrowLeftIcon} size="xl" className="text-typography-900" />
         </Pressable>
-        <Text className="text-xl font-semibold text-typography-900">Sign in</Text>
+        <Text className="font-heading text-2xl text-typography-900">Sign in</Text>
       </HStack>
       <AuthForm
         mode="login"
@@ -56,7 +56,7 @@ export default function LoginScreen() {
         onPress={() => router.replace('/(auth)/signup')}
         className="min-h-11 items-center justify-center px-6"
       >
-        <Text className="font-medium text-primary-600">No account? Create one</Text>
+        <Text className="font-body-bold text-primary-600">No account? Create one</Text>
       </Pressable>
     </SafeAreaView>
   );

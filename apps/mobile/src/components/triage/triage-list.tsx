@@ -33,12 +33,13 @@ function TriageRow({
   onLater: () => void;
 }) {
   return (
-    <VStack className="gap-3 rounded-2xl border border-outline-200 bg-background-0 px-4 py-3">
+    <VStack className="gap-3 rounded-2xl border border-outline-100 bg-background-0 px-4 py-3.5">
       <HStack className="items-center gap-2">
-        <Text numberOfLines={1} className="flex-1 text-base font-medium text-typography-900">
+        <Text numberOfLines={1} className="flex-1 font-body-semibold text-base text-typography-900">
           {row.task.title}
         </Text>
-        <Badge action="muted" variant="outline">
+        {/* Kind honey/terracotta tints — same vocabulary as the card front. */}
+        <Badge action={row.reason === 'avoided' ? 'error' : 'warning'} variant="solid">
           <BadgeText>{REASON_LABELS[row.reason]}</BadgeText>
         </Badge>
       </HStack>

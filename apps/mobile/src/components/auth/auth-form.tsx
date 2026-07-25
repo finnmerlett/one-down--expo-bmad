@@ -82,7 +82,7 @@ export function AuthForm({
         </Input>
         {shownError ? (
           // Inline, near the fields, matter-of-fact — never a modal (AC-7/8).
-          <Text className="text-sm text-error-600">{shownError}</Text>
+          <Text className="font-body-medium text-sm text-error-600">{shownError}</Text>
         ) : null}
         <Button size="lg" onPress={handleSubmit} isDisabled={isSubmitting} aria-label={submitLabel}>
           {isSubmitting ? <ButtonSpinner /> : null}

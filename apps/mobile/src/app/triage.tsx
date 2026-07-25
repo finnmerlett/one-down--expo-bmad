@@ -72,7 +72,7 @@ export default function TriageScreen() {
         >
           <Icon as={ArrowLeftIcon} size="xl" className="text-typography-900" />
         </Pressable>
-        <Text className="text-xl font-semibold text-typography-900">What's up</Text>
+        <Text className="font-heading text-2xl text-typography-900">What's up</Text>
       </HStack>
       <TriageList
         rows={rows}

@@ -37,12 +37,12 @@ export function FakeBillingSheet() {
       >
         {/* Inner pressable swallows taps so card content doesn't dismiss. */}
         <Pressable onPress={() => {}} className="w-full max-w-96">
-          <Box className="gap-4 rounded-2xl bg-background-0 p-6 shadow-hard-2">
+          <Box className="gap-4 rounded-[28px] bg-background-0 p-6 shadow-soft-card">
             <VStack className="gap-1">
-              <Text className="text-lg font-semibold text-typography-900">
+              <Text className="font-heading text-xl text-typography-900">
                 Test billing · One Down Premium
               </Text>
-              <Text className="text-base text-typography-600">£1.50 / month</Text>
+              <Text className="font-body text-base text-typography-600">£1.50 / month</Text>
             </VStack>
             <VStack className="gap-3">
               <Button size="lg" onPress={() => settle('buy')} aria-label="Buy">
@@ -64,7 +64,9 @@ export function FakeBillingSheet() {
                   onPress={() => settle('fail')}
                   className="min-h-11 items-center justify-center"
                 >
-                  <Text className="text-sm text-typography-500">Simulate failure</Text>
+                  <Text className="font-body-medium text-sm text-typography-500">
+                    Simulate failure
+                  </Text>
                 </Pressable>
               ) : null}
             </VStack>

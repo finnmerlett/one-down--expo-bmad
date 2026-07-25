@@ -42,7 +42,7 @@ export default function SignupScreen() {
         >
           <Icon as={ArrowLeftIcon} size="xl" className="text-typography-900" />
         </Pressable>
-        <Text className="text-xl font-semibold text-typography-900">Create account</Text>
+        <Text className="font-heading text-2xl text-typography-900">Create account</Text>
       </HStack>
       <AuthForm
         mode="signup"
@@ -57,7 +57,7 @@ export default function SignupScreen() {
         onPress={() => router.replace('/(auth)/login')}
         className="min-h-11 items-center justify-center px-6"
       >
-        <Text className="font-medium text-primary-600">Already have an account? Sign in</Text>
+        <Text className="font-body-bold text-primary-600">Already have an account? Sign in</Text>
       </Pressable>
     </SafeAreaView>
   );

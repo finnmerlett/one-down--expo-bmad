@@ -55,10 +55,14 @@ export function WelcomeBackSummary({
   return (
     <VStack className="flex-1 justify-center gap-6 px-8">
       <VStack className="gap-3">
-        <Text className="text-3xl font-semibold text-typography-900">Welcome back!</Text>
-        <VStack className="gap-1">
+        {/* Decorative glyph — the friendly greeting moment (design brief). */}
+        <Text accessibilityElementsHidden importantForAccessibility="no" className="text-5xl">
+          👋
+        </Text>
+        <Text className="font-heading text-4xl text-typography-900">Welcome back!</Text>
+        <VStack className="gap-1.5">
           {buildSummaryLines(summary).map((line) => (
-            <Text key={line} className="text-base text-typography-700">
+            <Text key={line} className="font-body text-base text-typography-600">
               {line}
             </Text>
           ))}
