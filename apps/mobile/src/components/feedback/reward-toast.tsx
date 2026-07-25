@@ -1,4 +1,7 @@
+import { HStack } from '@/components/ui/hstack';
+import { Icon, StarIcon } from '@/components/ui/icon';
 import { Toast, ToastDescription, ToastTitle, useToast } from '@/components/ui/toast';
+import { VStack } from '@/components/ui/vstack';
 
 /**
  * Reward acknowledgment toast body (Stories 2.3/2.4, UX-DR 21): positive
@@ -25,10 +28,17 @@ export function RewardToast({
       nativeID={nativeID}
       accessible
       accessibilityLiveRegion="polite"
-      className="mt-2 items-center px-6 py-3"
+      className="mt-2 items-center px-6 py-3.5"
     >
-      <ToastTitle size="lg">{title}</ToastTitle>
-      <ToastDescription>{`+${stars} ${stars === 1 ? 'star' : 'stars'}`}</ToastDescription>
+      {/* Gold star + copy: the celebration moment (design brief) — gold is
+          reserved for stars, warm brown keeps it kind rather than loud. */}
+      <HStack className="items-center gap-3">
+        <Icon as={StarIcon} size="xl" className="fill-tertiary-400 text-tertiary-400" />
+        <VStack>
+          <ToastTitle size="lg">{title}</ToastTitle>
+          <ToastDescription>{`+${stars} ${stars === 1 ? 'star' : 'stars'}`}</ToastDescription>
+        </VStack>
+      </HStack>
     </Toast>
   );
 }

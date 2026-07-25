@@ -19,18 +19,18 @@ const useToast = createToastHook(Motion.View, AnimatePresence);
 const SCOPE = 'TOAST';
 
 const toastStyle = tva({
-  base: 'm-1 gap-1 rounded-md p-4 web:pointer-events-auto',
+  base: 'm-1 gap-1 rounded-2xl p-4 web:pointer-events-auto',
   variants: {
     action: {
       error: 'bg-error-800',
       warning: 'bg-warning-700',
       success: 'bg-success-700',
       info: 'bg-info-700',
-      muted: 'bg-background-800',
+      muted: 'bg-background-900',
     },
     variant: {
-      solid: 'shadow-hard-5',
-      outline: 'border border-outline-100 bg-background-0 shadow-hard-5',
+      solid: 'shadow-toast',
+      outline: 'border border-outline-100 bg-background-0 shadow-toast',
     },
   },
 });

@@ -40,10 +40,10 @@ export function ConfirmDialog({
       >
         {/* Inner pressable swallows taps so dialog content doesn't dismiss. */}
         <Pressable onPress={() => {}} className="w-full max-w-96">
-          <Box className="gap-4 rounded-2xl bg-background-0 p-6 shadow-hard-2">
+          <Box className="gap-4 rounded-[28px] bg-background-0 p-6 shadow-soft-card">
             <VStack className="gap-1">
-              <Text className="text-lg font-semibold text-typography-900">{title}</Text>
-              <Text className="text-base text-typography-600">{body}</Text>
+              <Text className="font-heading text-xl text-typography-900">{title}</Text>
+              <Text className="font-body text-base text-typography-600">{body}</Text>
             </VStack>
             <VStack className="gap-3">
               <Button size="lg" onPress={onConfirm} aria-label={confirmLabel}>

@@ -30,8 +30,8 @@ export function BulkActionBar({
   onCancel: () => void;
 }) {
   return (
-    <HStack className="items-center gap-2 border-t border-outline-200 bg-background-0 px-4 py-3">
-      <Text className="flex-1 text-base font-medium text-typography-900">
+    <HStack className="items-center gap-2 rounded-t-[28px] bg-background-0 px-5 py-4 shadow-soft-card">
+      <Text className="flex-1 font-body-bold text-base text-typography-900">
         {`${count} selected`}
       </Text>
       {mode === 'active' ? (

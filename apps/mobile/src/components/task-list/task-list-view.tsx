@@ -97,16 +97,16 @@ function TaskRow({
       accessibilityState={selecting ? { selected } : undefined}
       onPress={onPress}
       onLongPress={onLongPress}
-      className="rounded-2xl border border-outline-200 bg-background-0 px-4 py-3 active:bg-background-50"
+      className="rounded-2xl border border-outline-100 bg-background-0 px-4 py-3.5 active:bg-background-50"
     >
       <HStack className="items-center gap-3">
         {selecting ? <SelectionIndicator selected={selected} /> : null}
         <VStack className="flex-1 gap-0.5">
-          <Text numberOfLines={1} className="text-base font-medium text-typography-900">
+          <Text numberOfLines={1} className="font-body-semibold text-base text-typography-900">
             {task.title}
           </Text>
           {meta.length > 0 ? (
-            <Text numberOfLines={1} className="text-sm text-typography-500">
+            <Text numberOfLines={1} className="font-body text-sm text-typography-500">
               {meta.join(' · ')}
             </Text>
           ) : null}
@@ -147,19 +147,21 @@ function DoneRow({
       accessibilityState={selecting ? { selected } : undefined}
       onPress={selecting ? onPress : undefined}
       onLongPress={onLongPress}
-      className="rounded-2xl border border-outline-100 bg-background-50 px-4 py-3"
+      className="rounded-2xl bg-background-50 px-4 py-3"
     >
       <HStack className="items-center gap-3">
         {selecting ? (
           <SelectionIndicator selected={selected} />
         ) : (
-          <Icon as={CheckIcon} size="md" className="text-success-500" />
+          <Box className="h-6 w-6 items-center justify-center rounded-full bg-success-50">
+            <Icon as={CheckIcon} size="sm" className="text-success-600" />
+          </Box>
         )}
         <VStack className="flex-1 gap-0.5">
-          <Text numberOfLines={1} className="text-base text-typography-500">
+          <Text numberOfLines={1} className="font-body text-base text-typography-500">
             {task.title}
           </Text>
-          <Text className="text-sm text-typography-500">
+          <Text className="font-body text-sm text-typography-400">
             {task.updatedAt.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
           </Text>
         </VStack>
@@ -195,15 +197,15 @@ function BinRow({
         accessibilityState={selecting ? { selected } : undefined}
         onPress={selecting ? onToggleSelect : undefined}
         onLongPress={onLongPress}
-        className="flex-1 rounded-2xl border border-outline-200 bg-background-0 px-4 py-3 active:bg-background-50"
+        className="flex-1 rounded-2xl border border-outline-100 bg-background-0 px-4 py-3.5 active:bg-background-50"
       >
         <HStack className="items-center gap-3">
           {selecting ? <SelectionIndicator selected={selected} /> : null}
           <VStack className="flex-1 gap-0.5">
-            <Text numberOfLines={1} className="text-base text-typography-700">
+            <Text numberOfLines={1} className="font-body-medium text-base text-typography-700">
               {task.title}
             </Text>
-            <Text className="text-sm text-typography-500">
+            <Text className="font-body text-sm text-typography-500">
               {task.status === 'archived' ? 'Archived' : 'Cut loose'}
             </Text>
           </VStack>
@@ -215,9 +217,9 @@ function BinRow({
           aria-label={`Restore task: ${task.title}`}
           hitSlop={8}
           onPress={onRestore}
-          className="h-11 items-center justify-center rounded-full border border-outline-300 px-4 active:bg-background-100"
+          className="h-11 items-center justify-center rounded-full bg-background-0 px-4 shadow-segment active:bg-background-100"
         >
-          <Text className="text-sm font-medium text-typography-700">Restore</Text>
+          <Text className="font-body-bold text-sm text-primary-600">Restore</Text>
         </Pressable>
       )}
     </HStack>
@@ -340,7 +342,7 @@ export function TaskListView({
       }
       renderSectionHeader={({ section }) =>
         section.title ? (
-          <Text className="pb-1 pt-2 text-lg font-semibold text-typography-900">
+          <Text className="pb-1.5 pt-3 font-heading text-lg text-typography-900">
             {section.title}
           </Text>
         ) : null

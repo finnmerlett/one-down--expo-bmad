@@ -170,10 +170,10 @@ export default function TaskListScreen() {
         >
           <Icon as={ArrowLeftIcon} size="xl" className="text-typography-900" />
         </Pressable>
-        <Text className="text-xl font-semibold text-typography-900">Tasks</Text>
+        <Text className="font-heading text-2xl text-typography-900">Tasks</Text>
       </HStack>
       {/* Two-segment tab control (Story 7.1, AC4) — ModeToggle pattern. */}
-      <HStack className="mb-2 self-center rounded-full border border-outline-200 bg-background-0">
+      <HStack className="mb-3 self-center rounded-full bg-background-200 p-1">
         {TABS.map(({ key, label }) => {
           const selected = tab === key;
           return (
@@ -186,11 +186,17 @@ export default function TaskListScreen() {
                 setTab(key);
                 exitSelection();
               }}
-              className={`h-11 items-center justify-center rounded-full px-5 active:bg-background-100 ${
-                selected ? 'bg-primary-100' : ''
+              className={`h-10 items-center justify-center rounded-full px-6 ${
+                selected ? 'bg-background-0 shadow-segment' : 'active:bg-background-300/50'
               }`}
             >
-              <Text className={selected ? 'font-medium text-primary-700' : 'text-typography-600'}>
+              <Text
+                className={
+                  selected
+                    ? 'font-body-bold text-primary-600'
+                    : 'font-body-medium text-typography-500'
+                }
+              >
                 {label}
               </Text>
             </Pressable>
