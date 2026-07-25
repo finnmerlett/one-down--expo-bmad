@@ -59,8 +59,12 @@ export function QuickAddSheet({
           onPress={onClose}
           className="flex-1"
         />
-        <VStack className="gap-4 rounded-t-3xl border-t border-outline-100 bg-background-0 p-6 pb-10">
-          <Text className="text-lg font-semibold text-typography-900">Add a task</Text>
+        <VStack className="gap-4 rounded-t-[28px] bg-background-0 p-6 pb-10 shadow-soft-card">
+          {/* Grabber bar: sheets read as sheets (design brief). */}
+          <VStack className="items-center">
+            <VStack className="h-1.5 w-10 rounded-full bg-background-400" />
+          </VStack>
+          <Text className="font-heading text-xl text-typography-900">Add a task</Text>
           <Input size="lg">
             <InputField
               ref={titleRef}
@@ -83,7 +87,10 @@ export function QuickAddSheet({
             />
           </Textarea>
           {error ? (
-            <Text accessibilityLiveRegion="polite" className="text-sm text-error-600">
+            <Text
+              accessibilityLiveRegion="polite"
+              className="font-body-medium text-sm text-error-600"
+            >
               {error}
             </Text>
           ) : null}

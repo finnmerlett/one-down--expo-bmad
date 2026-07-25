@@ -110,7 +110,7 @@ export default function TaskRunningScreen() {
   }
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right', 'bottom']} className="flex-1 bg-background-0">
+    <SafeAreaView edges={['top', 'left', 'right', 'bottom']} className="flex-1 bg-background-100">
       <HStack className="items-center px-3 py-2">
         <Pressable
           accessibilityRole="button"

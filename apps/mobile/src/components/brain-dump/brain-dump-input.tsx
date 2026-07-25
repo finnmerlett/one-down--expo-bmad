@@ -41,8 +41,8 @@ export function BrainDumpInput({
     // keeps the submit row reachable while dumping (same as the card back).
     <KeyboardAvoidingView behavior="padding" className="flex-1">
       <VStack className="flex-1 gap-4 px-6 pb-6 pt-2">
-        <Text className="text-2xl font-semibold text-typography-900">Brain dump</Text>
-        <Text className="text-base text-typography-600">
+        <Text className="font-heading text-3xl text-typography-900">Brain dump</Text>
+        <Text className="font-body text-base text-typography-500">
           Get it all out — we&apos;ll sort it into tasks.
         </Text>
         {/* Stays visible while parsing, just disabled (UX-DR20). */}
@@ -70,9 +70,13 @@ export function BrainDumpInput({
               <HStack className="items-center justify-center gap-3 py-3">
                 <ActivityIndicator accessibilityLabel="Parsing" />
                 <VStack>
-                  <Text className="text-base text-typography-700">Parsing your tasks...</Text>
+                  <Text className="font-body-semibold text-base text-typography-700">
+                    Parsing your tasks...
+                  </Text>
                   {state === 'parsing_long' ? (
-                    <Text className="text-sm text-typography-500">Taking a bit longer...</Text>
+                    <Text className="font-body text-sm text-typography-500">
+                      Taking a bit longer...
+                    </Text>
                   ) : null}
                 </VStack>
               </HStack>
