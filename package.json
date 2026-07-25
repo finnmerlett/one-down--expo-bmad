@@ -35,8 +35,9 @@
     "test:e2e:fresh": "bun run mobile:build && bun run mobile:install && bun run test:e2e"
   },
   "devDependencies": {
-    "oxlint": "^1.49.0",
+    "@swmansion/argent": "^0.17.0",
     "oxfmt": "^0.54.0",
+    "oxlint": "^1.49.0",
     "typescript": "~6.0.3"
   }
 }
