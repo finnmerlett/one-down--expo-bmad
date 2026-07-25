@@ -2,19 +2,23 @@
 
 ## Development Setup
 
+See the [README](README.md) for prerequisites and first-time setup (Supabase stack, emulator, env files). Day to day:
+
 ```bash
-bun install           # Install dependencies
-bun run mobile        # Start Expo dev server
-bun run server:dev    # Start backend server
+bun install               # Install dependencies
+bun run supabase:start    # Local Supabase stack (Docker)
+bun run server:dev        # Backend server (hot reload)
+bun run emulator          # Headed Android emulator
+bun run mobile:android    # Debug build + Metro (bun run mobile thereafter)
 ```
 
 ## Quality Gates
 
 ```bash
+bun run verify        # All of the below, in order — run before committing
 bun run typecheck     # TypeScript strict across all workspaces
-bun run lint          # Oxlint
-bun run format:check  # Oxfmt check mode
-bun run test          # Unit tests (shared + server + mobile)
+bun run test          # Jest (shared + server + mobile)
+bun run lint:check    # Oxlint + Oxfmt check mode
 ```
 
 ## E2E Testing with Maestro
@@ -31,25 +35,29 @@ curl -Ls "https://get.maestro.mobile.dev" | bash
 
 ### Run
 
-1. Start the Android emulator (Pixel_8_API_35)
-2. Start the Expo dev server: `bun run mobile`
-3. Load the app in Expo Go on the emulator
-4. Run E2E tests:
+E2E tests run against the **release APK** — no Metro or dev server involved. Supabase and the backend server must be running (the cloud-sync and AI flows exercise them for real).
+
+1. Start the emulator (`bun run emulator`, or `emulator:headless` for CI-style runs)
+2. Start the stack: `bun run supabase:start` and `bun run server:dev`
+3. Run the tests:
 
 ```bash
-bun run test:e2e                              # All flows
-maestro test .maestro/01-app-launches.yaml    # Single flow
+bun run test:e2e:fresh                                   # Rebuild APK + install + all flows
+bun run test:e2e                                         # All flows against the installed APK
+bun run test:e2e .maestro/04-story-1-3-card-stack.yaml   # Single flow
 ```
+
+Always go through `bun run test:e2e` (which wraps `scripts/maestro-test.sh`) rather than calling `maestro` directly — the wrapper pins adb/Maestro to the emulator (so an attached phone is never touched) and dumps the app's console logs after each run.
 
 ### Adding E2E Flows
 
-Add new flows to `.maestro/` following the naming convention:
+Every user-facing change needs a Maestro flow. Add new flows to `.maestro/` following the naming convention:
 
 ```
 <sequence-number>-<story-key>-<short-flow-name>.yaml
 ```
 
-See `.maestro/README.md` for details on selectors and conventions.
+Reuse the shared subflows in `.maestro/common/` (app launch with clean state, task seeding), select by accessibility label, and end flows with the `assertNotVisible: 'Unhandled'` / `'error occurred'` guard pair — existing flows are the reference.
 
 ## Commit Conventions
 
