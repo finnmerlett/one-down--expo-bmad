@@ -34,31 +34,38 @@ appId: com.onedown.mobile
 - tapOn: 'Task title'
 - eraseText
 - inputText: 'Edited task title'
-# Do NOT use hideKeyboard here: when the emulator IME runs in floating /
-# hardware-key mode there is no soft keyboard to hide and Maestro's fallback
-# key event acts as BACK — the card-back BackHandler (deliberately, see the
-# end of this flow) treats that as "close the card", killing the whole edit
-# session. scrollUntilVisible keeps the tap safe when a real soft keyboard IS
-# up (the field scrolls above it) and is a no-op when everything already
-# fits. The blur-saves contract is unchanged — focusing notes blurs the title.
-- scrollUntilVisible:
-    element:
-      text: 'Task notes'
-    direction: DOWN
+# Dismiss the keyboard BEFORE tapping the notes field: with the soft keyboard
+# up the field sits underneath it (Maestro's hierarchy doesn't model IME
+# occlusion — the tap would land on the keys and type into the still-focused
+# title). BUT the emulator IME sometimes runs in floating/hardware-key mode
+# with no soft keyboard on screen; there Maestro's hideKeyboard falls back to
+# a BACK key event, which the card-back BackHandler (deliberately — see the
+# end of this flow) treats as "close the card", flushing drafts on unmount.
+# Handle both modes: hideKeyboard, then reopen the card if it closed. The
+# reopen tap's exact label doubles as proof the title edit was saved.
+- hideKeyboard
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      notVisible: 'Back to card front'
+    commands:
+      - tapOn: 'Task: Edited task title. Worth 10 stars. Card 1 of 1'
+      - waitForAnimationToEnd
 - tapOn: 'Task notes'
 - inputText: 'Working note'
+# Same dual-mode keyboard dismissal before the chip taps (they can sit under
+# a real soft keyboard too).
+- hideKeyboard
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      notVisible: 'Back to card front'
+    commands:
+      - tapOn: 'Task: Edited task title. Worth 10 stars. Card 1 of 1'
+      - waitForAnimationToEnd
 
-# Context toggle + size persist immediately (AC5, AC6). Tapping a chip with
-# the keyboard up both blurs (saves) and registers (persistTaps: handled).
-- scrollUntilVisible:
-    element:
-      text: 'Context: Home'
-    direction: DOWN
+# Context toggle + size persist immediately (AC5, AC6)
 - tapOn: 'Context: Home'
-- scrollUntilVisible:
-    element:
-      text: 'Size: Quick win'
-    direction: DOWN
 - tapOn: 'Size: Quick win'
 
 # Back button -> contracts to the front, which reflects every edit (AC7):
