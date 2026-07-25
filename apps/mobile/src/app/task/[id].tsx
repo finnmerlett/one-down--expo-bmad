@@ -91,7 +91,7 @@ export default function TaskDetailScreen() {
   }
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right', 'bottom']} className="flex-1 bg-background-50">
+    <SafeAreaView edges={['top', 'left', 'right', 'bottom']} className="flex-1 bg-background-100">
       <Box className="flex-1 p-3">
         <CardBack
           ref={cardBackRef}

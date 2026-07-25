@@ -56,7 +56,7 @@ export function SubtaskList({
 
   return (
     <VStack className="gap-1">
-      <Text className="text-sm font-medium text-typography-500">Steps</Text>
+      <Text className="font-body-bold text-[13px] text-typography-500">Steps</Text>
       {subtasks.map((subtask) => (
         <HStack key={subtask.id} className="items-center gap-1">
           <Pressable
@@ -67,10 +67,10 @@ export function SubtaskList({
             className="min-h-11 flex-1 flex-row items-center gap-3"
           >
             <Box
-              className={`h-6 w-6 items-center justify-center rounded-md border ${
+              className={`h-6 w-6 items-center justify-center rounded-lg border-2 ${
                 subtask.completed
-                  ? 'border-primary-700 bg-primary-600'
-                  : 'border-outline-400 bg-background-0'
+                  ? 'border-success-600 bg-success-600'
+                  : 'border-outline-300 bg-background-0'
               }`}
             >
               {subtask.completed ? (
@@ -80,8 +80,8 @@ export function SubtaskList({
             <Text
               className={
                 subtask.completed
-                  ? 'flex-1 text-base text-typography-400 line-through'
-                  : 'flex-1 text-base text-typography-900'
+                  ? 'flex-1 font-body text-base text-typography-400 line-through'
+                  : 'flex-1 font-body-medium text-base text-typography-900'
               }
             >
               {subtask.title}

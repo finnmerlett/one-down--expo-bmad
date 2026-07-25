@@ -42,7 +42,7 @@ export function BreakdownProposal({
     return (
       <HStack className="items-center gap-3 py-2">
         <ActivityIndicator accessibilityLabel="Loading breakdown" />
-        <Text className="text-base text-typography-700">{loadingLabel}</Text>
+        <Text className="font-body-medium text-base text-typography-700">{loadingLabel}</Text>
       </HStack>
     );
   }
@@ -50,7 +50,10 @@ export function BreakdownProposal({
   if (state === 'error') {
     return (
       <VStack className="gap-3 py-2">
-        <Text accessibilityLiveRegion="polite" className="text-sm text-typography-700">
+        <Text
+          accessibilityLiveRegion="polite"
+          className="font-body-medium text-sm text-typography-700"
+        >
           Couldn&apos;t reach the server — working offline
         </Text>
         <Button size="md" variant="outline" aria-label="Retry breakdown" onPress={onRetry}>
@@ -61,13 +64,13 @@ export function BreakdownProposal({
   }
 
   return (
-    <VStack className="gap-3 rounded-xl border border-outline-200 bg-background-50 p-4">
-      <Text className="text-sm font-medium text-typography-500">{heading}</Text>
+    <VStack className="gap-3 rounded-2xl border border-outline-100 bg-background-50 p-4">
+      <Text className="font-body-bold text-[13px] text-typography-500">{heading}</Text>
       <VStack className="gap-2">
         {steps.map((step) => (
           <HStack key={step} className="items-start gap-2">
-            <Text className="text-base text-typography-400">•</Text>
-            <Text className="flex-1 text-base text-typography-900">{step}</Text>
+            <Text className="font-body text-base text-primary-500">•</Text>
+            <Text className="flex-1 font-body-medium text-base text-typography-900">{step}</Text>
           </HStack>
         ))}
       </VStack>

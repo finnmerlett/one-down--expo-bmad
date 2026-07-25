@@ -154,9 +154,9 @@ export function TaskRunningView({
     <KeyboardAvoidingView behavior="padding" className="flex-1">
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerClassName="flex-grow">
         <VStack className="flex-1 gap-5 px-6 pb-6 pt-2">
-          <Text className="text-3xl font-semibold text-typography-900">{task.title}</Text>
+          <Text className="font-heading text-3xl leading-10 text-typography-900">{task.title}</Text>
           {task.details ? (
-            <Text className="text-base text-typography-600">{task.details}</Text>
+            <Text className="font-body text-base text-typography-600">{task.details}</Text>
           ) : null}
           {/* Subtask area (Story 6.3, UX-DR6/7): the saved list, and/or the
               in-flight proposal — loading occupies only this slot (UX-DR20). */}
@@ -198,7 +198,7 @@ export function TaskRunningView({
             />
           ) : null}
           <VStack className="gap-2">
-            <Text className="text-sm font-medium text-typography-500">Notes</Text>
+            <Text className="font-body-bold text-[13px] text-typography-500">Notes</Text>
             <Textarea size="md">
               <TextareaInput
                 aria-label="Task notes"
