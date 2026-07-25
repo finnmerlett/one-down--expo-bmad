@@ -6,10 +6,12 @@ appId: com.onedown.mobile
 ---
 - runFlow: common/launch-app.yaml
 
-# The health query resolves against the host server within the 5s fetch timeout.
+# The health query resolves against the host server within the 5s fetch
+# timeout — but a cold clearState launch (migrations + first render) plus
+# tanstack-query retry backoff can push past 10s, so allow 30s.
 - extendedWaitUntil:
     visible: 'Server connection: connected'
-    timeout: 10000
+    timeout: 30000
 - takeScreenshot: .maestro/screenshots/5-1-server-connected
 
 # Home stays intact around the indicator.

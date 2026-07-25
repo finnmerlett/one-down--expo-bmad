@@ -64,7 +64,12 @@ export function NotificationPreferencesSection({
       <HStack className="min-h-11 items-center justify-between">
         <Text className="text-base text-typography-900">Deadline reminders</Text>
         <Switch
-          aria-label="Deadline reminders"
+          // accessibilityLabel, not aria-label: gluestack's createSwitch
+          // drops aria-* before they reach RN's Switch, leaving the control
+          // unlabeled for TalkBack/Maestro. The label is deliberately
+          // DISTINCT from the row text so automation can address the control
+          // itself (and TalkBack announces the switch's purpose).
+          accessibilityLabel="Deadline reminders toggle"
           value={prefs.deadlineUrgency}
           onValueChange={onToggleDeadline}
         />
@@ -73,7 +78,7 @@ export function NotificationPreferencesSection({
       <HStack className="min-h-11 items-center justify-between">
         <Text className="text-base text-typography-900">Challenge invitations</Text>
         <Switch
-          aria-label="Challenge invitations"
+          accessibilityLabel="Challenge invitations toggle"
           value={challengesOn}
           // Toggling on lands on the calm default cadence (weekly, AC4).
           onValueChange={(next) => onChangeChallenges(next ? 'weekly' : 'off')}

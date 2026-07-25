@@ -20,7 +20,8 @@ appId: com.onedown.mobile
       TITLE: 'Telemetry smoke task'
 
 # Card back → start task (task-running/[id])
-- tapOn: 'Task: Telemetry smoke task. Card 1 of 1'
+# Prefix regex (flow 09 pattern): 3.3 extended the label with "Worth n stars".
+- tapOn: 'Task: Telemetry smoke task\..*'
 - waitForAnimationToEnd
 - tapOn: 'Start task'
 - waitForAnimationToEnd

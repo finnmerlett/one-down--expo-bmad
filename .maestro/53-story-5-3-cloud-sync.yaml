@@ -15,7 +15,11 @@ appId: com.onedown.mobile
 - tapOn: 'Password'
 - inputText: 'test-password-123'
 - hideKeyboard
-- tapOn: 'Create account'
+# 'Create account' matches BOTH the screen header and the submit button —
+# index 1 targets the button (the header renders first in the tree).
+- tapOn:
+    text: 'Create account'
+    index: 1
 - extendedWaitUntil:
     visible: 'Signed in as ${output.email}'
     timeout: 10000
@@ -52,7 +56,10 @@ appId: com.onedown.mobile
 - tapOn: 'Password'
 - inputText: 'test-password-123'
 - hideKeyboard
-- tapOn: 'Sign in'
+# Header/button ambiguity again ('Sign in' x2) — index 1 is the button.
+- tapOn:
+    text: 'Sign in'
+    index: 1
 - extendedWaitUntil:
     visible: 'Signed in as ${output.email}'
     timeout: 10000

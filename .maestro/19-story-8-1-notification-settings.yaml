@@ -20,7 +20,8 @@ appId: com.onedown.mobile
 # Enable challenge invitations (default OFF) → first enable may pop the
 # Android 13+ POST_NOTIFICATIONS dialog; clearState makes it deterministic on
 # fresh installs, but tolerate its absence (already granted / older API).
-- tapOn: 'Challenge invitations'
+# The switch carries its own distinct label — the row text is not tappable.
+- tapOn: 'Challenge invitations toggle'
 - tapOn:
     text: 'Allow'
     optional: true

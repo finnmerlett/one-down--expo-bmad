@@ -34,6 +34,11 @@ appId: com.onedown.mobile
 - tapOn: 'Task title'
 - eraseText
 - inputText: 'Edited task title'
+# Dismiss the keyboard BEFORE tapping the notes field: with the keyboard up
+# the field can sit underneath it, and the tap lands on the keys instead
+# (typing the note into the still-focused title). The blur-saves contract is
+# still exercised — focusing notes blurs the title either way.
+- hideKeyboard
 - tapOn: 'Task notes'
 - inputText: 'Working note'
 - hideKeyboard

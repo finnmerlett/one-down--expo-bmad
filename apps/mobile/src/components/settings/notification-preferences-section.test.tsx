@@ -9,8 +9,8 @@ describe('NotificationPreferencesSection (portable stories)', () => {
   it('renders defaults: deadline on, challenges off, no cadence row, no banner', async () => {
     await render(<Defaults />);
 
-    expect(screen.getByLabelText('Deadline reminders').props.value).toBe(true);
-    expect(screen.getByLabelText('Challenge invitations').props.value).toBe(false);
+    expect(screen.getByLabelText('Deadline reminders toggle').props.value).toBe(true);
+    expect(screen.getByLabelText('Challenge invitations toggle').props.value).toBe(false);
     expect(screen.queryByLabelText('Challenge frequency: Weekly')).toBeNull();
     expect(screen.queryByText(/Notifications are off/)).toBeNull();
   });
@@ -30,7 +30,7 @@ describe('NotificationPreferencesSection (portable stories)', () => {
     const onChangeChallenges = jest.fn();
     await render(<Defaults onChangeChallenges={onChangeChallenges} />);
 
-    fireEvent(screen.getByLabelText('Challenge invitations'), 'valueChange', true);
+    fireEvent(screen.getByLabelText('Challenge invitations toggle'), 'valueChange', true);
     expect(onChangeChallenges).toHaveBeenCalledWith('weekly');
   });
 
@@ -45,7 +45,7 @@ describe('NotificationPreferencesSection (portable stories)', () => {
     expect(onChangeChallenges).toHaveBeenCalledWith('every_3_days');
 
     // Switching challenges back off reports 'off'.
-    fireEvent(screen.getByLabelText('Challenge invitations'), 'valueChange', false);
+    fireEvent(screen.getByLabelText('Challenge invitations toggle'), 'valueChange', false);
     expect(onChangeChallenges).toHaveBeenCalledWith('off');
   });
 });

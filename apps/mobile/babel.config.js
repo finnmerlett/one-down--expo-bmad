@@ -12,7 +12,10 @@ module.exports = function (api) {
     plugins: [
       // Inlines drizzle's generated .sql files as strings (drizzle/migrations.js).
       ['inline-import', { extensions: ['.sql'] }],
-      ...(isProduction ? ['transform-remove-console'] : []),
+      // warn/error survive release builds: they are the error-path signal the
+      // E2E harness reads from logcat (scripts/maestro-test.sh dumps
+      // ReactNativeJS) — stripping ALL console made release failures silent.
+      ...(isProduction ? [['transform-remove-console', { exclude: ['error', 'warn'] }]] : []),
     ],
   };
 };

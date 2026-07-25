@@ -17,6 +17,10 @@ export function ConnectionStatusView({ status }: { status: ConnectionState }) {
   return (
     <HStack
       // RN has no 'status' role — the label + polite live region carry it.
+      // `accessible` is required: a plain View is not important-for-a11y on
+      // Android, so without it the label never enters the accessibility tree
+      // (invisible to TalkBack AND Maestro).
+      accessible
       accessibilityLabel={`Server connection: ${status}`}
       accessibilityLiveRegion="polite"
       className="items-center gap-1.5"

@@ -54,8 +54,10 @@ appId: com.onedown.mobile
 - inputText: 'Too vague, give me physical actions'
 - tapOn: 'Send feedback'
 
-# Loading lives in the subtask area only (AC2)
-- assertVisible: 'Rethinking the steps...'
+# The 'Rethinking the steps...' loading state is NOT asserted: even with its
+# 500ms minimum visible duration, Maestro's hierarchy polls on a release
+# build can miss the window entirely (same reasoning as 6.3's
+# 'Breaking this down...'). Assert only the settled refined proposal.
 
 # Refined proposal arrives, labeled as such (AC3)
 - extendedWaitUntil:

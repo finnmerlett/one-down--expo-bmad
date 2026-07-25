@@ -64,23 +64,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       isLoading,
       signInWithEmail: async (email, password) => {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) return { error: toUserMessage(error, 'Couldn’t sign in — try again') };
+        try {
+          const { error } = await supabase.auth.signInWithPassword({ email, password });
+          if (error) return { error: toUserMessage(error, 'Couldn’t sign in — try again') };
+        } catch (thrown) {
+          // supabase-js normally RETURNS errors; a throw here is exceptional
+          // (runtime/env issue) and must not strand the submitting screen.
+          // oxlint-disable-next-line no-console
+          console.warn('[auth] signIn threw', thrown);
+          return { error: NETWORK_MESSAGE };
+        }
         track('auth_signed_in', { method: 'email' });
         return { error: null };
       },
       signUpWithEmail: async (email, password) => {
-        // Local GoTrue has confirmations disabled — signup returns a live
-        // session immediately, so no verify-email limbo state exists here.
-        const { error } = await supabase.auth.signUp({ email, password });
-        if (error)
-          return { error: toUserMessage(error, 'Couldn’t create the account — try again') };
+        try {
+          // Local GoTrue has confirmations disabled — signup returns a live
+          // session immediately, so no verify-email limbo state exists here.
+          const { error } = await supabase.auth.signUp({ email, password });
+          if (error)
+            return { error: toUserMessage(error, 'Couldn’t create the account — try again') };
+        } catch (thrown) {
+          // oxlint-disable-next-line no-console
+          console.warn('[auth] signUp threw', thrown);
+          return { error: NETWORK_MESSAGE };
+        }
         track('auth_signed_up', { method: 'email' });
         return { error: null };
       },
       signOut: async () => {
-        const { error } = await supabase.auth.signOut();
-        if (error) return { error: toUserMessage(error, 'Couldn’t sign out — try again') };
+        try {
+          const { error } = await supabase.auth.signOut();
+          if (error) return { error: toUserMessage(error, 'Couldn’t sign out — try again') };
+        } catch (thrown) {
+          // oxlint-disable-next-line no-console
+          console.warn('[auth] signOut threw', thrown);
+          return { error: NETWORK_MESSAGE };
+        }
         track('auth_signed_out', {});
         return { error: null };
       },

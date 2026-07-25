@@ -14,7 +14,8 @@ appId: com.onedown.mobile
       TITLE: 'Sparkle me task'
 
 # Open the card back and start the task
-- tapOn: 'Task: Sparkle me task. Card 1 of 1'
+# Prefix regex (flow 09 pattern): 3.3 extended the label with "Worth n stars".
+- tapOn: 'Task: Sparkle me task\..*'
 - waitForAnimationToEnd
 - tapOn: 'Start task'
 - waitForAnimationToEnd

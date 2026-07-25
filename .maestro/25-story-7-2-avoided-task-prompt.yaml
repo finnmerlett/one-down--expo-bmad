@@ -44,6 +44,12 @@ appId: com.onedown.mobile
 - takeScreenshot: .claude/run-notes/screenshots/7-2-health-prompt
 
 # --- "Keep it" clears the flag immediately (AC7) ---
+# The prompt renders near the bottom of the scrollable card back — its
+# buttons can start below the fold, so scroll them into view first.
+- scrollUntilVisible:
+    element:
+      text: 'Keep it'
+    direction: DOWN
 - tapOn: 'Keep it'
 - extendedWaitUntil:
     notVisible: 'You keep skipping this one. No judgement — what would help?'

@@ -241,6 +241,18 @@ export function CardStack({
     return index === -1 ? 0 : index;
   }, [tasks, topTaskId]);
 
+  // The pin is only meaningful while the pinned card is still in the deck.
+  // Once curation/filters remove it, dissolve the pin — otherwise the stale
+  // id re-pins the old card when a later filter change brings it back,
+  // overriding 3.3's momentum rule (top card = best quick win) for the new
+  // deck. Live-query edits keep the task present, so browsing position still
+  // never reshuffles under the user's fingers.
+  useEffect(() => {
+    if (topTaskId !== null && !tasks.some((task) => task.id === topTaskId)) {
+      setTopTaskId(null);
+    }
+  }, [tasks, topTaskId]);
+
   // advance() fires from an animation callback up to 250ms after the gesture
   // ended — read the freshest list/index/handler via a ref so a task created
   // or removed mid-flight can't desync the cycle.

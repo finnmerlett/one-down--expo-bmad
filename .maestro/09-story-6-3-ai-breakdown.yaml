@@ -90,6 +90,12 @@ appId: com.onedown.mobile
 - tapOn: 'Task: Plan the garden overhaul\..*'
 - waitForAnimationToEnd
 # (Loading text not asserted — see the note on the first leg.)
+# The card back scrolls; the AI entry sits below the Start/Cut loose row and
+# can start below the fold — scroll it into view before tapping.
+- scrollUntilVisible:
+    element:
+      text: 'Help me with this'
+    direction: DOWN
 - tapOn: 'Help me with this'
 - extendedWaitUntil:
     visible: 'Do just the first two minutes'
