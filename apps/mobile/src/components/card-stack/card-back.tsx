@@ -35,7 +35,7 @@ export interface CardBackHandle {
 }
 
 function SectionLabel({ children }: { children: string }) {
-  return <Text className="text-sm font-medium text-typography-500">{children}</Text>;
+  return <Text className="font-body-bold text-[13px] text-typography-500">{children}</Text>;
 }
 
 /** Deadline chip presets (Story 6.2, AC6): N days ahead at 18:00 local. */
@@ -70,12 +70,16 @@ function ReviewSection({
 }) {
   return (
     <VStack
-      className={flagged ? 'gap-2 rounded-xl border border-warning-400 bg-warning-50 p-3' : 'gap-2'}
+      className={
+        flagged ? 'gap-2 rounded-2xl border border-warning-300 bg-warning-50 p-4' : 'gap-2'
+      }
     >
       <HStack className="items-center justify-between">
         <VStack className="gap-0.5">
           <SectionLabel>{label}</SectionLabel>
-          {flagged ? <Text className="text-xs text-warning-700">{hint}</Text> : null}
+          {flagged ? (
+            <Text className="font-body-medium text-xs text-warning-700">{hint}</Text>
+          ) : null}
         </VStack>
         {flagged && onConfirm ? (
           <Pressable
@@ -115,12 +119,14 @@ function Chip({
       aria-label={accessibilityLabel}
       onPress={onPress}
       className={`rounded-full border px-4 py-2 ${
-        selected ? 'border-primary-700 bg-primary-600' : 'border-outline-300 bg-background-0'
+        selected ? 'border-primary-200 bg-primary-100' : 'border-outline-200 bg-background-0'
       }`}
     >
       <Text
         className={
-          selected ? 'text-sm font-medium text-typography-0' : 'text-sm text-typography-700'
+          selected
+            ? 'font-body-bold text-sm text-primary-700'
+            : 'font-body-medium text-sm text-typography-600'
         }
       >
         {label}
@@ -307,7 +313,7 @@ export function CardBack({
   };
 
   return (
-    <Box className="h-full w-full overflow-hidden rounded-3xl border border-outline-200 bg-background-0 shadow-hard-2">
+    <Box className="h-full w-full overflow-hidden rounded-[28px] border border-outline-100 bg-background-0 shadow-soft-card">
       <HStack className="items-center px-3 pt-3">
         <Pressable
           accessibilityRole="button"
@@ -334,7 +340,7 @@ export function CardBack({
                 value={title}
                 onChangeText={setTitleDraft}
                 onBlur={flushTitle}
-                className="text-2xl font-semibold text-typography-900"
+                className="font-heading text-2xl text-typography-900"
               />
             </Input>
             <VStack className="gap-2">
@@ -358,7 +364,7 @@ export function CardBack({
                 inferred.includes('deadline') && onConfirm ? () => onConfirm('deadline') : undefined
               }
             >
-              <Text className="text-typography-900">{deadlineLabel}</Text>
+              <Text className="font-body-semibold text-typography-900">{deadlineLabel}</Text>
               <HStack className="flex-wrap gap-2">
                 <Chip
                   label="Today"

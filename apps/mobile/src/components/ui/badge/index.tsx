@@ -11,7 +11,7 @@ import { Svg } from 'react-native-svg';
 const SCOPE = 'BADGE';
 
 const badgeStyle = tva({
-  base: 'flex-row items-center rounded-sm data-[disabled=true]:opacity-50 px-2 py-1',
+  base: 'flex-row items-center rounded-full data-[disabled=true]:opacity-50 px-2.5 py-1',
   variants: {
     action: {
       error: 'bg-background-error border-error-300',
@@ -33,7 +33,7 @@ const badgeStyle = tva({
 });
 
 const badgeTextStyle = tva({
-  base: 'text-typography-700 font-body-semibold tracking-normal uppercase',
+  base: 'text-typography-700 font-body-semibold tracking-wide uppercase',
 
   parentVariants: {
     action: {

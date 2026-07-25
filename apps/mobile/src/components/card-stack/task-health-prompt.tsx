@@ -32,8 +32,8 @@ export function TaskHealthPrompt({
   onBreakDown?: () => void;
 }) {
   return (
-    <Box className="gap-3 rounded-xl border border-outline-200 bg-background-50 p-3">
-      <Text className="text-sm text-typography-700">{PROMPT_COPY[flag]}</Text>
+    <Box className="gap-3 rounded-2xl border border-outline-100 bg-background-50 p-4">
+      <Text className="font-body-medium text-sm text-typography-700">{PROMPT_COPY[flag]}</Text>
       <HStack className="flex-wrap gap-2">
         <Button
           size="sm"

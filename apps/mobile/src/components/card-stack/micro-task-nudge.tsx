@@ -47,8 +47,8 @@ export function MicroTaskNudge({
 
   if (state === 'proposal' && step) {
     return (
-      <VStack className="mx-6 mb-3 gap-2 rounded-xl border border-outline-200 bg-background-50 p-3">
-        <Text className="text-sm text-typography-900">{step}</Text>
+      <VStack className="mx-6 mb-3 gap-2 rounded-2xl border border-outline-100 bg-background-50 p-4">
+        <Text className="font-body-semibold text-sm text-typography-900">{step}</Text>
         <HStack className="gap-2">
           <Button size="sm" aria-label="Add it" onPress={onAdd}>
             <ButtonText>Add it</ButtonText>

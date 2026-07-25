@@ -8,7 +8,7 @@ import {
 import { Badge, BadgeText } from '@/components/ui/badge';
 import { Box } from '@/components/ui/box';
 import { HStack } from '@/components/ui/hstack';
-import { Icon, InfoIcon, StarIcon } from '@/components/ui/icon';
+import { CalendarDaysIcon, EditIcon, Icon, InfoIcon, StarIcon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 
@@ -46,52 +46,90 @@ export function TaskCard({ task, starValue }: { task: TaskData; starValue: numbe
   // live query re-renders the card whenever the underlying fields change.
   const healthFlag = evaluateTaskHealth(task, new Date());
 
+  const deadlineHint = task.deadline
+    ? task.deadline.toLocaleDateString(undefined, {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+      })
+    : null;
+  const notesHint = task.notes?.trim() ? task.notes.trim().split('\n')[0] : null;
+
   return (
-    <Box className="h-full w-full rounded-3xl border border-outline-200 bg-background-0 p-6 shadow-hard-2">
+    <Box className="h-full w-full rounded-[28px] border border-outline-100 bg-background-0 p-7 shadow-soft-card">
       {/* Review marker (Story 6.2): visual only — the interactive tap target
           lives in the stack layer, above the swipe gesture (the top card is
           an accessible container, so an inner button would be flattened away
           from TalkBack/Maestro). */}
       {task.hasCheckNeeded ? (
-        <Box className="absolute right-4 top-4">
+        <Box className="absolute right-5 top-5">
           <Icon as={InfoIcon} size="xl" className="text-warning-600" />
         </Box>
       ) : null}
-      <VStack className="gap-4">
-        <Text className="text-2xl font-semibold text-typography-900">{task.title}</Text>
-        <HStack className="flex-wrap items-center gap-2">
-          {/* Star-value chip (FR11): a reward preview, not a priority label —
-              urgency shows as value, never as red/overdue framing. */}
-          <HStack className="items-center gap-1 rounded-full bg-warning-50 px-2.5 py-1">
-            <Icon as={StarIcon} size="sm" className="text-warning-600" />
-            <Text className="text-sm font-medium text-warning-700">{starValue}</Text>
+      <VStack className="h-full justify-between">
+        <VStack className="gap-5">
+          <Text className="font-heading text-[30px] leading-[38px] text-typography-900">
+            {task.title}
+          </Text>
+          <HStack className="flex-wrap items-center gap-2">
+            {/* Star-value chip (FR11): a reward preview, not a priority label —
+                urgency shows as value, never as red/overdue framing. Gold is
+                reserved for stars (design brief). */}
+            <HStack className="items-center gap-1 rounded-full bg-tertiary-50 px-2.5 py-1">
+              <Icon as={StarIcon} size="sm" className="fill-tertiary-500 text-tertiary-500" />
+              <Text className="font-body-bold text-sm text-tertiary-700">{starValue}</Text>
+            </HStack>
+            {/* In-progress state marker (UX: card shows "Continue" on return). */}
+            {inProgress ? (
+              <Badge action="success" variant="solid">
+                <BadgeText>Continue</BadgeText>
+              </Badge>
+            ) : null}
+            {/* Health indicator (Story 7.2, AC6): kind honey/terracotta tints,
+                never red/alarming — a heads-up so the card-back prompt isn't a
+                surprise. */}
+            {healthFlag ? (
+              <Badge action={healthFlag === 'avoided' ? 'error' : 'warning'} variant="solid">
+                <BadgeText>{HEALTH_LABELS[healthFlag]}</BadgeText>
+              </Badge>
+            ) : null}
+            {/* Size chip: honey for Big time, muted teal for Quick win. */}
+            {task.size ? (
+              <Badge action={task.size === 'big_time' ? 'warning' : 'info'} variant="solid">
+                <BadgeText>{SIZE_LABELS[task.size]}</BadgeText>
+              </Badge>
+            ) : null}
+            {contexts.map((context) => (
+              <Badge key={context} action="muted" variant="solid">
+                <BadgeText>
+                  {(CONTEXT_LABELS as Record<string, string>)[context] ?? context}
+                </BadgeText>
+              </Badge>
+            ))}
           </HStack>
-          {/* In-progress state marker (UX: card shows "Continue" on return). */}
-          {inProgress ? (
-            <Badge action="success" variant="solid">
-              <BadgeText>Continue</BadgeText>
-            </Badge>
-          ) : null}
-          {/* Health indicator (Story 7.2, AC6): muted, never red/alarming —
-              a heads-up so the card-back prompt isn't a surprise. */}
-          {healthFlag ? (
-            <Badge action="muted" variant="solid">
-              <BadgeText>{HEALTH_LABELS[healthFlag]}</BadgeText>
-            </Badge>
-          ) : null}
-          {task.size ? (
-            <Badge action="info" variant="outline">
-              <BadgeText>{SIZE_LABELS[task.size]}</BadgeText>
-            </Badge>
-          ) : null}
-          {contexts.map((context) => (
-            <Badge key={context} action="muted" variant="outline">
-              <BadgeText>
-                {(CONTEXT_LABELS as Record<string, string>)[context] ?? context}
-              </BadgeText>
-            </Badge>
-          ))}
-        </HStack>
+        </VStack>
+        {/* Bottom hints: deadline + first line of notes, so cards with detail
+            don't feel empty (design brief). Muted — informational, not urgent. */}
+        {deadlineHint || notesHint ? (
+          <VStack className="gap-2 border-t border-outline-100 pt-4">
+            {deadlineHint ? (
+              <HStack className="items-center gap-2">
+                <Icon as={CalendarDaysIcon} size="sm" className="text-typography-400" />
+                <Text className="font-body-medium text-sm text-typography-500">
+                  Due {deadlineHint}
+                </Text>
+              </HStack>
+            ) : null}
+            {notesHint ? (
+              <HStack className="items-center gap-2">
+                <Icon as={EditIcon} size="sm" className="text-typography-400" />
+                <Text numberOfLines={1} className="flex-1 font-body text-sm text-typography-500">
+                  {notesHint}
+                </Text>
+              </HStack>
+            ) : null}
+          </VStack>
+        ) : null}
       </VStack>
     </Box>
   );
