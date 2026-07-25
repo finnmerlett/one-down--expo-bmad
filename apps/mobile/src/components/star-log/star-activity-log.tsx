@@ -4,6 +4,7 @@ import type { StarAction, StarActivityData } from '@one-down/shared';
 
 import { Box } from '@/components/ui/box';
 import { HStack } from '@/components/ui/hstack';
+import { Icon, StarIcon } from '@/components/ui/icon';
 import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
@@ -39,23 +40,26 @@ function formatTimestamp(createdAt: Date, now: Date): string {
 function ActivityRow({ entry, now }: { entry: StarActivityData; now: Date }) {
   const amountLabel = entry.amount < 0 ? `−${-entry.amount}` : `+${entry.amount}`;
   return (
-    <Box className="rounded-2xl border border-outline-200 bg-background-0 px-4 py-3">
+    <Box className="rounded-2xl border border-outline-100 bg-background-0 px-4 py-3.5">
       <HStack className="items-center gap-3">
         <VStack className="flex-1 gap-0.5">
-          <Text numberOfLines={1} className="text-base font-medium text-typography-900">
+          <Text numberOfLines={1} className="font-body-semibold text-base text-typography-900">
             {`${ACTION_LABELS[entry.action]} · ${entry.taskTitle}`}
           </Text>
-          <Text className="text-sm text-typography-500">
+          <Text className="font-body text-sm text-typography-500">
             {formatTimestamp(entry.createdAt, now)}
           </Text>
         </VStack>
-        <Text
-          className={`text-base font-semibold ${
-            entry.amount < 0 ? 'text-typography-500' : 'text-success-600'
-          }`}
-        >
-          {amountLabel}
-        </Text>
+        {/* Star amounts are gold (design brief: gold = stars only); negative
+            retractions stay neutral — never red, no negative framing. */}
+        {entry.amount < 0 ? (
+          <Text className="font-body-bold text-base text-typography-500">{amountLabel}</Text>
+        ) : (
+          <HStack className="items-center gap-1 rounded-full bg-tertiary-50 px-2.5 py-1">
+            <Icon as={StarIcon} size="sm" className="fill-tertiary-500 text-tertiary-500" />
+            <Text className="font-body-bold text-sm text-tertiary-700">{amountLabel}</Text>
+          </HStack>
+        )}
       </HStack>
     </Box>
   );
@@ -75,14 +79,16 @@ function FilterSegment({
       accessibilityRole="button"
       accessibilityState={{ selected }}
       onPress={onPress}
-      className={`h-11 flex-1 items-center justify-center rounded-lg ${
-        selected ? 'bg-background-100' : ''
+      className={`h-10 flex-1 items-center justify-center rounded-full ${
+        selected ? 'bg-background-0 shadow-segment' : 'active:bg-background-300/50'
       }`}
     >
       <Text
-        className={`text-sm ${
-          selected ? 'font-semibold text-typography-900' : 'text-typography-600'
-        }`}
+        className={
+          selected
+            ? 'font-body-bold text-sm text-primary-600'
+            : 'font-body-medium text-sm text-typography-500'
+        }
       >
         {label}
       </Text>
@@ -107,7 +113,7 @@ export function StarActivityLog({
   const now = new Date();
   return (
     <VStack className="flex-1">
-      <HStack className="mx-4 mb-2 gap-1 rounded-xl border border-outline-200 p-1">
+      <HStack className="mx-4 mb-3 gap-1 rounded-full bg-background-200 p-1">
         <FilterSegment
           label="Today"
           selected={filter === 'today'}

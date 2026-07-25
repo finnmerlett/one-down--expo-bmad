@@ -39,7 +39,7 @@ export default function StarLogScreen() {
         >
           <Icon as={ArrowLeftIcon} size="xl" className="text-typography-900" />
         </Pressable>
-        <Text className="text-xl font-semibold text-typography-900">Star activity</Text>
+        <Text className="font-heading text-2xl text-typography-900">Star activity</Text>
       </HStack>
       <StarActivityLog entries={visibleEntries} filter={filter} onFilterChange={setFilter} />
     </SafeAreaView>

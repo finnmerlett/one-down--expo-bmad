@@ -19,13 +19,13 @@ export function AccountSection({
   onSignOut: () => void;
 }) {
   return (
-    <VStack className="gap-3">
-      <Text className="text-lg font-semibold text-typography-900">Account</Text>
+    <VStack className="gap-3 rounded-3xl border border-outline-100 bg-background-0 p-5">
+      <Text className="font-heading text-lg text-typography-900">Account</Text>
       {email ? (
         <VStack className="gap-3">
           <Text
             accessibilityLabel={`Signed in as ${email}`}
-            className="text-sm text-typography-600"
+            className="font-body text-sm text-typography-600"
           >
             Signed in as {email}
           </Text>
@@ -35,7 +35,7 @@ export function AccountSection({
         </VStack>
       ) : (
         <VStack className="gap-3">
-          <Text className="text-sm text-typography-600">
+          <Text className="font-body text-sm text-typography-600">
             Sign in to sync your tasks across devices. Everything keeps working offline without an
             account.
           </Text>

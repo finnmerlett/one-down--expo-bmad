@@ -111,7 +111,7 @@ export default function SettingsScreen() {
         >
           <Icon as={ArrowLeftIcon} size="xl" className="text-typography-900" />
         </Pressable>
-        <Text className="text-xl font-semibold text-typography-900">Settings</Text>
+        <Text className="font-heading text-2xl text-typography-900">Settings</Text>
       </HStack>
       <SettingsView>
         <AccountSection

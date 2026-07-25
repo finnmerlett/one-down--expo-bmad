@@ -39,14 +39,14 @@ export function NotificationPreferencesSection({
   const challengesOn = prefs.challenges !== 'off';
 
   return (
-    <VStack className="gap-3">
-      <Text className="text-lg font-semibold text-typography-900">Notifications</Text>
+    <VStack className="gap-3 rounded-3xl border border-outline-100 bg-background-0 p-5">
+      <Text className="font-heading text-lg text-typography-900">Notifications</Text>
 
       {permission === 'denied' ? (
         // Calm, factual banner (AC5) — never framed as a loss. Prefs below
         // stay editable; scheduling simply resumes once permission exists.
-        <Box className="gap-2 rounded-lg bg-background-100 p-3">
-          <Text className="text-sm text-typography-600">
+        <Box className="gap-2 rounded-2xl bg-background-50 p-4">
+          <Text className="font-body text-sm text-typography-600">
             Notifications are off. You can enable them any time in system settings.
           </Text>
           <Pressable
@@ -56,13 +56,13 @@ export function NotificationPreferencesSection({
             onPress={onOpenSystemSettings}
             className="min-h-11 justify-center self-start"
           >
-            <Text className="font-medium text-primary-600">Open system settings</Text>
+            <Text className="font-body-bold text-primary-600">Open system settings</Text>
           </Pressable>
         </Box>
       ) : null}
 
       <HStack className="min-h-11 items-center justify-between">
-        <Text className="text-base text-typography-900">Deadline reminders</Text>
+        <Text className="font-body-medium text-base text-typography-900">Deadline reminders</Text>
         <Switch
           // accessibilityLabel, not aria-label: gluestack's createSwitch
           // drops aria-* before they reach RN's Switch, leaving the control
@@ -76,7 +76,9 @@ export function NotificationPreferencesSection({
       </HStack>
 
       <HStack className="min-h-11 items-center justify-between">
-        <Text className="text-base text-typography-900">Challenge invitations</Text>
+        <Text className="font-body-medium text-base text-typography-900">
+          Challenge invitations
+        </Text>
         <Switch
           accessibilityLabel="Challenge invitations toggle"
           value={challengesOn}
@@ -98,11 +100,15 @@ export function NotificationPreferencesSection({
                 hitSlop={8}
                 onPress={() => onChangeChallenges(option.value)}
                 className={`min-h-11 flex-1 items-center justify-center rounded-full border px-3 ${
-                  selected ? 'border-primary-600 bg-primary-50' : 'border-outline-200'
+                  selected ? 'border-primary-200 bg-primary-100' : 'border-outline-200'
                 }`}
               >
                 <Text
-                  className={`text-sm ${selected ? 'font-semibold text-primary-700' : 'text-typography-600'}`}
+                  className={
+                    selected
+                      ? 'font-body-bold text-sm text-primary-700'
+                      : 'font-body-medium text-sm text-typography-600'
+                  }
                 >
                   {option.label}
                 </Text>

@@ -11,7 +11,7 @@ import { VStack } from '@/components/ui/vstack';
 export function SettingsView({ children }: { children: ReactNode }) {
   return (
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerClassName="flex-grow">
-      <VStack className="gap-8 px-6 pb-8 pt-2">{children}</VStack>
+      <VStack className="gap-4 px-4 pb-8 pt-2">{children}</VStack>
     </ScrollView>
   );
 }
