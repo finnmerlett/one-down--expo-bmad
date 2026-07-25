@@ -23,6 +23,10 @@ appId: com.onedown.mobile
 - extendedWaitUntil:
     visible: 'Signed in as ${output.email}'
     timeout: 10000
+# The signed-in label appears while the auth->settings redirect is still
+# settling — a tap fired mid-transition gets swallowed (seen in CI: the flow
+# stayed on Settings and 'Add task' never appeared). Let the router finish.
+- waitForAnimationToEnd
 - tapOn: 'Back to home'
 
 # Add a task and let the debounced sync drain (post-6.1: quick add sits
@@ -63,6 +67,8 @@ appId: com.onedown.mobile
 - extendedWaitUntil:
     visible: 'Signed in as ${output.email}'
     timeout: 10000
+# Same settling wait as the first leg — don't tap mid-redirect.
+- waitForAnimationToEnd
 - tapOn: 'Back to home'
 - extendedWaitUntil:
     visible: 'Task: Sync me task. Worth 10 stars. Card 1 of 1'
