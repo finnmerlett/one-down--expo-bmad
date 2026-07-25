@@ -13,7 +13,9 @@ export const textStyle = tva({
       true: 'web:truncate',
     },
     bold: {
-      true: 'font-bold',
+      // Family swap, not font-weight: RN Android needs the real Nunito bold
+      // face (each static weight is its own family).
+      true: 'font-body-bold',
     },
     underline: {
       true: 'underline',

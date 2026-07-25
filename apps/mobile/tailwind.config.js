@@ -171,14 +171,15 @@ module.exports = {
         },
       },
       fontFamily: {
-        heading: undefined,
-        body: undefined,
+        // Nunito static weights loaded in the root layout (expo-google-fonts).
+        // RN Android resolves one weight per family name, so weights are
+        // separate families — use these aliases instead of font-weight utils.
+        heading: ['Nunito_800ExtraBold'],
+        body: ['Nunito_400Regular'],
+        'body-medium': ['Nunito_500Medium'],
+        'body-semibold': ['Nunito_600SemiBold'],
+        'body-bold': ['Nunito_700Bold'],
         mono: undefined,
-        jakarta: ['var(--font-plus-jakarta-sans)'],
-        roboto: ['var(--font-roboto)'],
-        code: ['var(--font-source-code-pro)'],
-        inter: ['var(--font-inter)'],
-        'space-mono': ['var(--font-space-mono)'],
       },
       fontWeight: {
         extrablack: '950',

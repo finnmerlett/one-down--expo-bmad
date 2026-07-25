@@ -33,7 +33,7 @@ const badgeStyle = tva({
 });
 
 const badgeTextStyle = tva({
-  base: 'text-typography-700 font-body font-normal tracking-normal uppercase',
+  base: 'text-typography-700 font-body-semibold tracking-normal uppercase',
 
   parentVariants: {
     action: {
@@ -54,7 +54,7 @@ const badgeTextStyle = tva({
       true: 'web:truncate',
     },
     bold: {
-      true: 'font-bold',
+      true: 'font-body-bold',
     },
     underline: {
       true: 'underline',

@@ -1,5 +1,13 @@
 import '../global.css';
 
+import {
+  Nunito_400Regular,
+  Nunito_500Medium,
+  Nunito_600SemiBold,
+  Nunito_700Bold,
+  Nunito_800ExtraBold,
+  useFonts,
+} from '@expo-google-fonts/nunito';
 import { Stack } from 'expo-router';
 import { useEffect, type ReactNode } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -50,6 +58,16 @@ function NotificationResync() {
 }
 
 export default function RootLayout() {
+  // Nunito is the app-wide typeface (tailwind font-heading/font-body aliases).
+  // Static weights = separate RN font families, all loaded up front.
+  const [fontsLoaded] = useFonts({
+    Nunito_400Regular,
+    Nunito_500Medium,
+    Nunito_600SemiBold,
+    Nunito_700Bold,
+    Nunito_800ExtraBold,
+  });
+
   // Hydrate entitlements on every launch (8.2b AC6) — a purchased
   // entitlement survives restarts via the provider's persisted state.
   useEffect(() => {
@@ -58,6 +76,12 @@ export default function RootLayout() {
       console.warn('Entitlements refresh failed', error),
     );
   }, []);
+
+  // Hold on the (blank) splash until fonts resolve — avoids a flash of the
+  // system font. useFonts resolves instantly from cache after first launch.
+  if (!fontsLoaded) {
+    return null;
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

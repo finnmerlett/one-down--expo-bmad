@@ -36,13 +36,13 @@ const toastStyle = tva({
 });
 
 const toastTitleStyle = tva({
-  base: 'text-left font-body font-medium tracking-normal',
+  base: 'text-left font-body-semibold tracking-normal',
   variants: {
     isTruncated: {
       true: '',
     },
     bold: {
-      true: 'font-bold',
+      true: 'font-body-bold',
     },
     underline: {
       true: 'underline',
@@ -73,13 +73,13 @@ const toastTitleStyle = tva({
 });
 
 const toastDescriptionStyle = tva({
-  base: 'text-left font-body font-normal tracking-normal',
+  base: 'text-left font-body tracking-normal',
   variants: {
     isTruncated: {
       true: '',
     },
     bold: {
-      true: 'font-bold',
+      true: 'font-body-bold',
     },
     underline: {
       true: 'underline',
