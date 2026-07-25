@@ -34,17 +34,31 @@ appId: com.onedown.mobile
 - tapOn: 'Task title'
 - eraseText
 - inputText: 'Edited task title'
-# Dismiss the keyboard BEFORE tapping the notes field: with the keyboard up
-# the field can sit underneath it, and the tap lands on the keys instead
-# (typing the note into the still-focused title). The blur-saves contract is
-# still exercised — focusing notes blurs the title either way.
-- hideKeyboard
+# Do NOT use hideKeyboard here: when the emulator IME runs in floating /
+# hardware-key mode there is no soft keyboard to hide and Maestro's fallback
+# key event acts as BACK — the card-back BackHandler (deliberately, see the
+# end of this flow) treats that as "close the card", killing the whole edit
+# session. scrollUntilVisible keeps the tap safe when a real soft keyboard IS
+# up (the field scrolls above it) and is a no-op when everything already
+# fits. The blur-saves contract is unchanged — focusing notes blurs the title.
+- scrollUntilVisible:
+    element:
+      text: 'Task notes'
+    direction: DOWN
 - tapOn: 'Task notes'
 - inputText: 'Working note'
-- hideKeyboard
 
-# Context toggle + size persist immediately (AC5, AC6)
+# Context toggle + size persist immediately (AC5, AC6). Tapping a chip with
+# the keyboard up both blurs (saves) and registers (persistTaps: handled).
+- scrollUntilVisible:
+    element:
+      text: 'Context: Home'
+    direction: DOWN
 - tapOn: 'Context: Home'
+- scrollUntilVisible:
+    element:
+      text: 'Size: Quick win'
+    direction: DOWN
 - tapOn: 'Size: Quick win'
 
 # Back button -> contracts to the front, which reflects every edit (AC7):
