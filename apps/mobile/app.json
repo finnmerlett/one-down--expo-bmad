@@ -46,6 +46,23 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "04c8cef8-4a88-452b-882b-d543b5643c09"
+      }
+    },
+    "owner": "finn.merlett",
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/04c8cef8-4a88-452b-882b-d543b5643c09",
+      "requestHeaders": {
+        "expo-channel-name": "production"
+      }
+    },
+    "ios": {}
   }
 }
