@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type, type Schema } from '@google/genai';
+import { GoogleGenAI, ThinkingLevel, Type, type Schema } from '@google/genai';
 import {
   GEMINI_MODEL,
   MAX_BREAKDOWN_STEP_CHARS,
@@ -425,8 +425,8 @@ export function createGeminiProvider(apiKey: string): AiProvider {
           systemInstruction: buildSystemInstruction(),
           responseMimeType: 'application/json',
           responseSchema,
-          // No thinking — fast + cheap; structured extraction needs none (NFR-P3 <3s).
-          thinkingConfig: { thinkingBudget: 0 },
+          // Minimal thinking — fast + cheap; structured extraction needs none (NFR-P3 <3s).
+          thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
         },
       });
 
@@ -445,8 +445,8 @@ export function createGeminiProvider(apiKey: string): AiProvider {
           systemInstruction: buildBreakdownSystemInstruction(input.mode),
           responseMimeType: 'application/json',
           responseSchema: breakdownResponseSchema,
-          // No thinking — fast + cheap; short step lists need none (NFR-P3 <3s).
-          thinkingConfig: { thinkingBudget: 0 },
+          // Minimal thinking — fast + cheap; structured extraction needs none (NFR-P3 <3s).
+          thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
         },
       });
 
@@ -465,8 +465,8 @@ export function createGeminiProvider(apiKey: string): AiProvider {
           systemInstruction: buildRefineSystemInstruction(),
           responseMimeType: 'application/json',
           responseSchema: refineResponseSchema,
-          // No thinking — fast + cheap; a short revision needs none (NFR-P3 <3s).
-          thinkingConfig: { thinkingBudget: 0 },
+          // Minimal thinking — fast + cheap; structured extraction needs none (NFR-P3 <3s).
+          thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
         },
       });
 
@@ -485,8 +485,8 @@ export function createGeminiProvider(apiKey: string): AiProvider {
           systemInstruction: buildMicroSystemInstruction(),
           responseMimeType: 'application/json',
           responseSchema: microResponseSchema,
-          // No thinking — fast + cheap; one tiny step needs none (NFR-P3 <3s).
-          thinkingConfig: { thinkingBudget: 0 },
+          // Minimal thinking — fast + cheap; structured extraction needs none (NFR-P3 <3s).
+          thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
         },
       });
 

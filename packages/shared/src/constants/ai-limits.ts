@@ -1,5 +1,9 @@
-/** Gemini model used for all AI parsing calls (server-side only, via tRPC). */
-export const GEMINI_MODEL = 'gemini-2.5-flash';
+/**
+ * Gemini model used for all AI parsing calls (server-side only, via tRPC).
+ * gemini-2.5-flash is retired for new API projects (404 "no longer available
+ * to new users", 2026-07) — pin the newest GA flash instead.
+ */
+export const GEMINI_MODEL = 'gemini-3.6-flash';
 
 /** Server rejects brain dumps longer than this (BAD_REQUEST); client enforces it too. */
 export const MAX_BRAIN_DUMP_CHARS = 2000;
