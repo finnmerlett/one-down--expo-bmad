@@ -37,7 +37,14 @@ export function ConnectionStatusView({ status }: { status: ConnectionState }) {
 
 // Container half — needs a live TrpcProvider above it.
 export function ConnectionStatus() {
-  const health = trpc.health.useQuery(undefined, { refetchOnWindowFocus: false });
+  // Poll rather than probe-once (2026-07-27): RN never fires the window
+  // focus/reconnect events TanStack relies on, so a single failed mount-time
+  // check (WiFi still waking, momentary cellular) wedged the offline banner
+  // for the whole session. Retry quickly while offline, lazily once green.
+  const health = trpc.health.useQuery(undefined, {
+    refetchOnWindowFocus: false,
+    refetchInterval: (query) => (query.state.status === 'error' ? 15_000 : 60_000),
+  });
   const status: ConnectionState = health.isPending
     ? 'checking'
     : health.isError
