@@ -195,21 +195,27 @@ export async function retractTaskStars(
 }
 
 /**
- * Retract a completion's outstanding star credit when a Done task is flipped
- * back to To do (undo-complete, 2026-07-27). Sums the task's
- * `task_completed` + `completion_undone` rows and inserts ONE negative
- * `completion_undone` row for the remainder — so repeated complete↔undo
- * cycles always net to zero, and a retry after a failed status write can't
- * double-retract. Subtask/triage stars are untouched (they belong to their
- * own actions and the subtasks stay ticked). Returns the amount removed for
- * the toast; failures are swallowed like every other ledger write (4.1 AC7).
+ * Remove a completion's award when a Done task is flipped back to To do
+ * (undo-complete, revised same-day by owner decision): DELETE the award
+ * row(s) instead of writing a negative `completion_undone` row, so an undone
+ * completion leaves no trace in the activity log. This is a deliberate,
+ * owner-requested exception to the append-only ledger rule — scoped to
+ * completion awards only.
+ *
+ * Mechanics: the outstanding completion credit is the signed sum of
+ * `task_completed` + `completion_undone` rows (legacy negative rows from the
+ * first undo iteration still count). Newest award rows are deleted first
+ * until the credit is consumed; any residual mismatch (odd legacy states)
+ * falls back to ONE negative row so totals stay exact no matter what.
+ * Subtask/triage stars are untouched. Returns the amount removed for the
+ * toast; failures are swallowed like every other ledger write (4.1 AC7).
  */
-export async function retractCompletionStars(
+export async function removeCompletionAward(
   db: TasksDb,
   task: Pick<TaskData, 'id' | 'title'>,
 ): Promise<number> {
   const rows = await db
-    .select({ net: sql<number>`coalesce(sum(${starActivityLog.amount}), 0)` })
+    .select()
     .from(starActivityLog)
     .where(
       and(
@@ -217,25 +223,44 @@ export async function retractCompletionStars(
         inArray(starActivityLog.action, ['task_completed', 'completion_undone']),
       ),
     );
-  const outstanding = rows[0]?.net ?? 0;
+  const outstanding = rows.reduce((sum, row) => sum + row.amount, 0);
   if (outstanding <= 0) return 0;
-  const breakdown: StarBreakdown = {
-    base: -outstanding,
-    urgencyBonus: 0,
-    sizeBonus: 0,
-    earlyBonus: 0,
-    total: -outstanding,
-  };
+
+  let remaining = outstanding;
+  const toDelete: string[] = [];
+  const completions = rows
+    .filter((row) => row.action === 'task_completed')
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  for (const row of completions) {
+    if (remaining === 0) break;
+    if (row.amount > 0 && row.amount <= remaining) {
+      toDelete.push(row.id);
+      remaining -= row.amount;
+    }
+  }
+
   try {
-    await insertAward(
-      db,
-      { taskId: task.id, taskTitle: task.title, action: 'completion_undone' },
-      breakdown,
-      new Date(),
-    );
+    if (toDelete.length > 0) {
+      await db.delete(starActivityLog).where(inArray(starActivityLog.id, toDelete));
+    }
+    if (remaining > 0) {
+      const breakdown: StarBreakdown = {
+        base: -remaining,
+        urgencyBonus: 0,
+        sizeBonus: 0,
+        earlyBonus: 0,
+        total: -remaining,
+      };
+      await insertAward(
+        db,
+        { taskId: task.id, taskTitle: task.title, action: 'completion_undone' },
+        breakdown,
+        new Date(),
+      );
+    }
   } catch (error) {
     // oxlint-disable-next-line no-console
-    console.warn('Star retraction insert failed', error);
+    console.warn('Star award removal failed', error);
   }
   return outstanding;
 }

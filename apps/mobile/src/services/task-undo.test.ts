@@ -32,15 +32,14 @@ function makeTask(overrides: Partial<TaskData> = {}): TaskData {
   };
 }
 
-function ledgerRow(taskId: string, amount: number, id: string, action: StarAction) {
-  return {
-    id,
-    taskId,
-    taskTitle: 'snapshot',
-    action,
-    amount,
-    createdAt: new Date('2026-06-05T10:00:00Z'),
-  };
+function ledgerRow(
+  taskId: string,
+  amount: number,
+  id: string,
+  action: StarAction,
+  createdAt = new Date('2026-06-05T10:00:00Z'),
+) {
+  return { id, taskId, taskTitle: 'snapshot', action, amount, createdAt };
 }
 
 describe('undoTaskCompletion (integration, real migration SQL)', () => {
@@ -63,7 +62,7 @@ describe('undoTaskCompletion (integration, real migration SQL)', () => {
     return rows.find((row) => row.id === id)?.status;
   }
 
-  it('returns the task to pending and retracts the completion award as a negative row', async () => {
+  it('returns the task to pending and DELETES the award — no trace in the log', async () => {
     const task = makeTask();
     await seedTask(task);
     await testDb.db.insert(starActivityLog).values(ledgerRow(task.id, 12, 'l1', 'task_completed'));
@@ -72,14 +71,11 @@ describe('undoTaskCompletion (integration, real migration SQL)', () => {
 
     expect(starsRemoved).toBe(12);
     expect(await taskStatus(task.id)).toBe('pending');
-    const ledger = await testDb.db.select().from(starActivityLog);
-    const retraction = ledger.find((row) => row.action === 'completion_undone');
-    expect(retraction).toMatchObject({ taskId: task.id, amount: -12 });
-    // Append-only: the original award row is untouched.
-    expect(ledger.filter((row) => row.action === 'task_completed')).toHaveLength(1);
+    // Owner decision: removal, not a negative pair — the log is empty.
+    expect(await testDb.db.select().from(starActivityLog)).toHaveLength(0);
   });
 
-  it('leaves subtask and triage stars untouched — only the completion credit moves', async () => {
+  it('leaves subtask and triage stars untouched — only the completion award goes', async () => {
     const task = makeTask();
     await seedTask(task);
     await testDb.db
@@ -94,15 +90,17 @@ describe('undoTaskCompletion (integration, real migration SQL)', () => {
 
     expect(starsRemoved).toBe(10);
     const ledger = await testDb.db.select().from(starActivityLog);
-    const net = ledger.reduce((sum, row) => sum + row.amount, 0);
-    expect(net).toBe(2); // subtask + triage stars survive
+    expect(ledger.map((row) => row.action).sort()).toEqual([
+      'subtask_completed',
+      'triage_confirmed',
+    ]);
+    expect(ledger.reduce((sum, row) => sum + row.amount, 0)).toBe(2);
   });
 
-  it('complete → undo → complete → undo cycles always net the completion credit to zero', async () => {
+  it('complete → undo cycles through the real award path leave zero completion rows', async () => {
     const task = makeTask({ status: 'pending' });
     await seedTask(task);
 
-    // Cycle twice through the REAL award path (amounts may differ per cycle).
     for (let cycle = 0; cycle < 2; cycle += 1) {
       await awardCompletionStars(testDb.db, { ...task, status: 'completed' });
       const { starsRemoved } = await undoTaskCompletion(testDb.db, {
@@ -110,17 +108,56 @@ describe('undoTaskCompletion (integration, real migration SQL)', () => {
         status: 'completed',
       });
       expect(starsRemoved).toBeGreaterThan(0);
+      const completionRows = (await testDb.db.select().from(starActivityLog)).filter(
+        (row) => row.action === 'task_completed' || row.action === 'completion_undone',
+      );
+      expect(completionRows).toHaveLength(0);
     }
-
-    const ledger = await testDb.db.select().from(starActivityLog);
-    const completionNet = ledger
-      .filter((row) => row.action === 'task_completed' || row.action === 'completion_undone')
-      .reduce((sum, row) => sum + row.amount, 0);
-    expect(completionNet).toBe(0);
     expect(await taskStatus(task.id)).toBe('pending');
   });
 
-  it('no outstanding credit → no retraction row, but the status still flips', async () => {
+  it('deletes only the newest unmatched award; a balanced legacy pair stays intact', async () => {
+    // First-iteration undo wrote award+negative pairs — they net 0 and stay.
+    const task = makeTask();
+    await seedTask(task);
+    await testDb.db
+      .insert(starActivityLog)
+      .values([
+        ledgerRow(task.id, 10, 'l1', 'task_completed', new Date('2026-06-05T10:00:00Z')),
+        ledgerRow(task.id, -10, 'l2', 'completion_undone', new Date('2026-06-05T11:00:00Z')),
+        ledgerRow(task.id, 12, 'l3', 'task_completed', new Date('2026-06-06T09:00:00Z')),
+      ]);
+
+    const { starsRemoved } = await undoTaskCompletion(testDb.db, task);
+
+    expect(starsRemoved).toBe(12);
+    const ledger = await testDb.db.select().from(starActivityLog);
+    expect(ledger.map((row) => row.id).sort()).toEqual(['l1', 'l2']);
+    expect(ledger.reduce((sum, row) => sum + row.amount, 0)).toBe(0);
+  });
+
+  it('falls back to one negative row when no award row fits the outstanding credit', async () => {
+    // Odd legacy state: award 12 but 2 already retracted — outstanding 10.
+    // Deleting the 12 would overshoot, so the remainder is cancelled instead.
+    const task = makeTask();
+    await seedTask(task);
+    await testDb.db
+      .insert(starActivityLog)
+      .values([
+        ledgerRow(task.id, 12, 'l1', 'task_completed'),
+        ledgerRow(task.id, -2, 'l2', 'completion_undone'),
+      ]);
+
+    const { starsRemoved } = await undoTaskCompletion(testDb.db, task);
+
+    expect(starsRemoved).toBe(10);
+    const ledger = await testDb.db.select().from(starActivityLog);
+    // Completion-family rows now net zero — totals stay exact.
+    expect(ledger.reduce((sum, row) => sum + row.amount, 0)).toBe(0);
+    expect(await taskStatus(task.id)).toBe('pending');
+  });
+
+  it('no outstanding credit → nothing deleted or inserted, but the status still flips', async () => {
     const task = makeTask();
     await seedTask(task);
 
@@ -143,7 +180,7 @@ describe('undoTaskCompletion (integration, real migration SQL)', () => {
     expect(await testDb.db.select().from(starActivityLog)).toHaveLength(1);
   });
 
-  it("only the target task's credit is retracted", async () => {
+  it("only the target task's award is removed", async () => {
     const task = makeTask();
     const other = makeTask({ id: 'task-2', title: 'Other task' });
     await seedTask(task);
@@ -160,9 +197,7 @@ describe('undoTaskCompletion (integration, real migration SQL)', () => {
     expect(starsRemoved).toBe(10);
     expect(await taskStatus(other.id)).toBe('completed');
     const ledger = await testDb.db.select().from(starActivityLog);
-    const otherNet = ledger
-      .filter((row) => row.taskId === other.id)
-      .reduce((sum, row) => sum + row.amount, 0);
-    expect(otherNet).toBe(15);
+    expect(ledger).toHaveLength(1);
+    expect(ledger[0]?.taskId).toBe(other.id);
   });
 });

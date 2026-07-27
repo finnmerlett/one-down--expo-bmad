@@ -45,11 +45,13 @@ appId: com.onedown.mobile
     timeout: 5000
 - assertVisible: '0 stars, 0 earned today'
 
-# Star log keeps the full audit trail: award + neutral retraction
+# Star log: the award was REMOVED (owner decision) — an undone completion
+# leaves no trace, so the log is back to its empty state.
 - tapOn: '0 stars, 0 earned today'
 - waitForAnimationToEnd
-- assertVisible: 'Marked not done · Undo me'
-- assertVisible: 'Completed · Undo me'
+- assertNotVisible: 'Completed · Undo me'
+- assertNotVisible: 'Marked not done · Undo me'
+- assertVisible: 'No stars yet'
 
 - assertNotVisible: 'Unhandled'
 - assertNotVisible: 'error occurred'

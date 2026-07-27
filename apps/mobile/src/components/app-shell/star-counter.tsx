@@ -54,7 +54,11 @@ export function StarCounter({
       <HStack className="items-center gap-1.5">
         <Icon as={StarIcon} size="sm" className="fill-tertiary-500 text-tertiary-500" />
         <Text className="font-body-bold text-base text-typography-900">{total}</Text>
-        <Text className="font-body-medium text-xs text-typography-500">{`+${today} today`}</Text>
+        {/* Sign-aware: the old hardcoded '+' rendered "+-10" on negative days
+            (possible via retractions/undo). Neutral minus, never red. */}
+        <Text className="font-body-medium text-xs text-typography-500">
+          {`${today < 0 ? `−${-today}` : `+${today}`} today`}
+        </Text>
       </HStack>
     </Pressable>
   );

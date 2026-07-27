@@ -28,3 +28,11 @@ export const WithStars: Story = {
     today: 5,
   },
 };
+
+/** Negative day (undo/archive retractions) — renders "−10", never "+-10". */
+export const NegativeDay: Story = {
+  args: {
+    total: 13,
+    today: -10,
+  },
+};
