@@ -12,6 +12,7 @@ import { AppShell } from '@/components/app-shell/app-shell';
 import { CardBackOverlay } from '@/components/card-stack/card-back-overlay';
 import { CardStack } from '@/components/card-stack/card-stack';
 import { MicroTaskNudge } from '@/components/card-stack/micro-task-nudge';
+import { UpdateReadyBanner } from '@/components/app-shell/update-ready-banner';
 import { ConnectionStatus } from '@/components/connection-status/connection-status';
 import { EmptyState } from '@/components/empty-state/empty-state';
 import { emptyStackCopy } from '@/components/empty-state/empty-stack-copy';
@@ -183,6 +184,9 @@ export default function HomeScreen() {
       onStarPress={openTask ? undefined : () => router.push('/star-log')}
       onSettingsPress={openTask ? undefined : () => router.push('/settings')}
     >
+      {/* OTA update prompt (2026-07-27) — appears only when a downloaded
+          update is pending; one tap reloads into it (no double-restart). */}
+      <UpdateReadyBanner />
       {/* Shared filter chrome stays visible in every home state — the user
           must always be able to un-filter. The CardBackOverlay paints over
           it. Tight gap so the stack loses minimal height. */}

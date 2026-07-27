@@ -159,6 +159,10 @@ export type AnalyticsEventMap = EnforceFlatProps<{
   task_restored: { from: 'recycle_bin' };
   /** Undo-complete (2026-07-27) — Done row flipped back to To do; completion stars retracted. */
   task_completion_undone: { stars_removed: number };
+  /** OTA update banner (2026-07-27) — a downloaded update is ready to apply. */
+  update_prompt_shown: { surface: 'home' };
+  /** OTA update banner — user restarted into the update or dismissed it. */
+  update_prompt_actioned: { action: 'restart' | 'dismiss' };
   /** Story 7.2 — a flagged task's card back opened (once per open, ref-guarded). */
   task_health_prompt_shown: { flag: 'stale' | 'avoided' };
   /** Story 7.2 — a prompt option was chosen (flag + action enums only). */
