@@ -56,7 +56,7 @@ export function TaskCard({ task, starValue }: { task: TaskData; starValue: numbe
   const notesHint = task.notes?.trim() ? task.notes.trim().split('\n')[0] : null;
 
   return (
-    <Box className="h-full w-full rounded-[28px] border border-outline-100 bg-background-0 p-7 shadow-soft-card">
+    <Box className="h-full w-full rounded-[28px] border border-outline-100 bg-background-0 p-6 shadow-soft-card">
       {/* Review marker (Story 6.2): visual only — the interactive tap target
           lives in the stack layer, above the swipe gesture (the top card is
           an accessible container, so an inner button would be flattened away
@@ -68,7 +68,12 @@ export function TaskCard({ task, starValue }: { task: TaskData; starValue: numbe
       ) : null}
       <VStack className="h-full justify-between">
         <VStack className="gap-5">
-          <Text className="font-heading text-[30px] leading-[38px] text-typography-900">
+          {/* Capped at 3 lines: the deck frame is fixed-height, so an epic
+              title must truncate rather than push the chips out of the card. */}
+          <Text
+            numberOfLines={3}
+            className="font-heading text-[30px] leading-[38px] text-typography-900"
+          >
             {task.title}
           </Text>
           <HStack className="flex-wrap items-center gap-2">

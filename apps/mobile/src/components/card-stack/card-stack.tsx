@@ -305,8 +305,12 @@ export function CardStack({
   };
 
   return (
-    <Box className="flex-1 px-6 py-6">
-      <Box className="relative flex-1">
+    // Compact deck (owner feedback 2026-07-27): a fixed-height frame hugging
+    // the card content instead of flex-1 filling the screen — full-height
+    // cards read as one giant card with a dead white middle. Bottom padding
+    // absorbs the background cards peeking below the frame.
+    <Box className="px-6 pb-12 pt-3">
+      <Box className="relative h-[330px]">
         {/* Deepest card first so the top card paints last (highest z). */}
         {stackWindow
           .slice()

@@ -35,8 +35,10 @@ const meta = {
   // Baseline star preview: completionBase with no bonuses (Story 3.3).
   args: { starValue: 10 },
   decorators: [
+    // Same 330dp frame the deck gives the card in production (2026-07-27
+    // compact-card feedback) — stories should show real proportions.
     (Story) => (
-      <Box className="flex-1 p-6" style={{ maxHeight: 480 }}>
+      <Box className="p-6" style={{ height: 378 }}>
         <Story />
       </Box>
     ),
