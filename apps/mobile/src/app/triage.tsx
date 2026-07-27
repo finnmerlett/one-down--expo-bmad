@@ -15,6 +15,7 @@ import { track } from '@/lib/analytics/track';
 import { db } from '@/lib/local-db';
 import { awardCutLooseStars } from '@/services/star-awards';
 import { cutLooseTask, keepTask } from '@/services/task-edits';
+import { undoTaskCutLoose } from '@/services/task-undo';
 import { selectAttentionTasks, type AttentionRow } from '@/services/welcome-back';
 import { useAppStore } from '@/stores/app-store';
 
@@ -86,8 +87,14 @@ export default function TriageScreen() {
           removeLocally(row);
           track('triage_task_actioned', { reason: row.reason, action: 'cut_loose' });
           // Same reward + toast contract as every other cut-loose surface.
+          // (Undo restores browsability; the triage row stays removed — the
+          // task simply returns to the deck.)
           void awardCutLooseStars(db, row.task).then((stars) => {
-            showRewardToast(toast, { title: 'Released', stars });
+            showRewardToast(toast, {
+              title: 'Released',
+              stars,
+              onUndo: () => void undoTaskCutLoose(db, row.task),
+            });
           });
         }}
         onLater={(row) => {

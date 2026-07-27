@@ -17,6 +17,7 @@ import {
   keepTask,
   startTask,
 } from '@/services/task-edits';
+import { undoTaskCutLoose } from '@/services/task-undo';
 
 // Third-party component — NativeWind only auto-interops react-native core.
 cssInterop(SafeAreaView, { className: 'style' });
@@ -119,9 +120,14 @@ export default function TaskDetailScreen() {
             cutLoosingRef.current = true;
             cutLooseTask(task, 'list_detail');
             // Toast renders at the provider root — it survives the pop and
-            // shows the persisted award amount (Story 4.1).
+            // shows the persisted award amount (Story 4.1). Undo re-reads
+            // status from the DB (2026-07-27), so the snapshot is safe.
             void awardCutLooseStars(db, task).then((stars) => {
-              showRewardToast(toast, { title: 'Released', stars });
+              showRewardToast(toast, {
+                title: 'Released',
+                stars,
+                onUndo: () => void undoTaskCutLoose(db, task),
+              });
             });
             // Explicit pop for responsiveness; the not-browsable self-pop
             // above is the backstop.

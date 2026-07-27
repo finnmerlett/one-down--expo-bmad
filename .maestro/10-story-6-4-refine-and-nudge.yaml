@@ -30,8 +30,6 @@ appId: com.onedown.mobile
 # Start the task and accept the initial first_steps breakdown (6.3 surface)
 - tapOn: 'Task: Sort the paperwork mountain\..*'
 - waitForAnimationToEnd
-- tapOn: 'Start task'
-- waitForAnimationToEnd
 - tapOn: 'Help me with this'
 - extendedWaitUntil:
     visible: 'Do just the first two minutes'
@@ -133,8 +131,6 @@ appId: com.onedown.mobile
 
 # The micro subtask shows on the task's running screen via 6.3's list
 - tapOn: 'Task: Ring the council office\..*'
-- waitForAnimationToEnd
-- tapOn: 'Start task'
 - waitForAnimationToEnd
 - extendedWaitUntil:
     visible: 'Subtask: Do just the very first minute of "Ring the council office"'

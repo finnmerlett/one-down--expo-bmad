@@ -17,9 +17,7 @@ appId: com.onedown.mobile
       TITLE: 'Counter task'
 - tapOn: 'Task: Counter task. Worth 10 stars. Card 1 of 1'
 - waitForAnimationToEnd
-- tapOn: 'Start task'
-- waitForAnimationToEnd
-- tapOn: 'Done'
+- tapOn: 'Mark as complete'
 - waitForAnimationToEnd
 
 # Back on home the counter live-updated — total AND today together (AC1/AC2)

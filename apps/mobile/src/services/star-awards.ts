@@ -112,9 +112,10 @@ export async function awardSubtaskStars(
 }
 
 /**
- * Award the flat review-confirmation amount (Story 6.2, AC7) — one small star
- * per confirmed item (tick or edit-confirm). One award per flag, ever: the
- * repository reports a cleared flag exactly once by construction.
+ * Award the flat review-confirmation amount (Story 6.2, AC7; owner-revised
+ * 2026-07-27) — one small star when a card's LAST review flag clears (tick
+ * or edit-confirm), not per item. Callers gate on `reviewCleared`, which the
+ * repository reports exactly once by construction.
  */
 export async function awardReviewConfirmStars(db: TasksDb, task: TaskData): Promise<number> {
   const amount = STAR_WEIGHTS.triageConfirmed;
@@ -263,6 +264,38 @@ export async function removeCompletionAward(
     console.warn('Star award removal failed', error);
   }
   return outstanding;
+}
+
+/**
+ * Remove a cut-loose award when the release is undone from its toast
+ * (2026-07-27): DELETE the newest positive `task_cut_loose` row — the same
+ * owner-approved exception to the append-only ledger as
+ * removeCompletionAward, scoped to accidental-action undo. Returns the
+ * removed amount (0 when no award row exists); failures are swallowed like
+ * every other ledger write (4.1 AC7).
+ */
+export async function removeCutLooseAward(
+  db: TasksDb,
+  task: Pick<TaskData, 'id'>,
+): Promise<number> {
+  try {
+    const rows = await db
+      .select()
+      .from(starActivityLog)
+      .where(
+        and(eq(starActivityLog.taskId, task.id), eq(starActivityLog.action, 'task_cut_loose')),
+      );
+    const newest = rows
+      .filter((row) => row.amount > 0)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+    if (!newest) return 0;
+    await db.delete(starActivityLog).where(eq(starActivityLog.id, newest.id));
+    return newest.amount;
+  } catch (error) {
+    // oxlint-disable-next-line no-console
+    console.warn('Star award removal failed', error);
+    return 0;
+  }
 }
 
 /**

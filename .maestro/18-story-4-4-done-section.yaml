@@ -41,19 +41,19 @@ appId: com.onedown.mobile
 - waitForAnimationToEnd
 - tapOn: 'Start task'
 - waitForAnimationToEnd
-- tapOn: 'Done'
+- tapOn: 'Mark as complete'
 - waitForAnimationToEnd
 - tapOn: 'Open task: Beta task'
 - waitForAnimationToEnd
 - tapOn: 'Start task'
 - waitForAnimationToEnd
-- tapOn: 'Done'
+- tapOn: 'Mark as complete'
 - waitForAnimationToEnd
 - tapOn: 'Open task: Gamma task'
 - waitForAnimationToEnd
 - tapOn: 'Start task'
 - waitForAnimationToEnd
-- tapOn: 'Done'
+- tapOn: 'Mark as complete'
 - waitForAnimationToEnd
 
 # Done section on top: latest completion (Gamma) peeks above "To do" after

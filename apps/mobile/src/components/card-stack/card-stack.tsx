@@ -18,8 +18,8 @@ import { evaluateTaskHealth } from '@/services/task-health';
 import { HEALTH_LABELS, TaskCard } from './task-card';
 
 const VISIBLE_CARDS = 3;
-/** Drag past this fraction of the screen width to dismiss (story-tuned value — deliberately under half). */
-const DISMISS_THRESHOLD_RATIO = 0.35;
+/** Drag past this fraction of the screen width to dismiss (owner-tuned 2026-07-27: a light flick should skip). */
+const DISMISS_THRESHOLD_RATIO = 0.15;
 const FLY_OFF_RATIO = 1.2;
 const FLY_OFF_DURATION_MS = 250;
 const SNAP_SPRING = { damping: 70, stiffness: 900 };
@@ -37,6 +37,12 @@ const PROMOTE_DURATION_MS = 200;
 const CARD_FRAME = { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 } as const;
 const FILL = { height: '100%', width: '100%' } as const;
 
+// Playing-card proportions (owner feedback 2026-07-27): 2.5:3.5.
+export const CARD_WIDTH = 280;
+export const CARD_HEIGHT = 392;
+/** Corner tap zones (edit top-left, review top-right) routed inside the tap gesture. */
+const CORNER_SIZE = 64;
+
 /**
  * The interactive top card OWNS its shared values, so they are born zeroed on
  * mount and there is never a cross-thread reset racing a Fabric commit (the
@@ -51,12 +57,18 @@ function SwipeableTopCard({
   accessibilityLabel,
   onDismiss,
   onPress,
+  onEdit,
+  onReview,
 }: {
   task: TaskData;
   starValue: number;
   accessibilityLabel: string;
   onDismiss: () => void;
   onPress: () => void;
+  /** Top-left corner tap → edit surface (2026-07-27). */
+  onEdit?: () => void;
+  /** Top-right corner tap → review mode, wired only on flagged cards (6.2). */
+  onReview?: () => void;
 }) {
   const { width: screenWidth } = useWindowDimensions();
   const translateX = useSharedValue(0);
@@ -98,13 +110,26 @@ function SwipeableTopCard({
       }
     });
 
-  // Tap-to-flip (Story 1.4). Exclusive: the pan wins as soon as the finger
-  // moves its minimum distance; the tap can only activate once the pan has
-  // FAILED (released without dragging), so a swipe never also flips.
-  const tap = Gesture.Tap().onEnd((_event, success) => {
-    if (success) {
-      scheduleOnRN(onPress);
+  // Tap-to-open (Story 1.4; rerouted 2026-07-27). Exclusive: the pan wins as
+  // soon as the finger moves its minimum distance; the tap can only activate
+  // once the pan has FAILED (released without dragging), so a swipe never
+  // also opens. Corner taps are routed HERE by location, not left to the
+  // transparent corner Pressables painted above this card: RNGH claims the
+  // raw touch stream, so those siblings can't be trusted to receive presses
+  // (they remain as TalkBack targets — both paths fire idempotent actions).
+  const tap = Gesture.Tap().onEnd((event, success) => {
+    if (!success) return;
+    if (event.y <= CORNER_SIZE) {
+      if (onEdit && event.x <= CORNER_SIZE) {
+        scheduleOnRN(onEdit);
+        return;
+      }
+      if (onReview && event.x >= CARD_WIDTH - CORNER_SIZE) {
+        scheduleOnRN(onReview);
+        return;
+      }
     }
+    scheduleOnRN(onPress);
   });
   const gesture = Gesture.Exclusive(pan, tap);
 
@@ -215,6 +240,7 @@ export function CardStack({
   tasks,
   getStarValue,
   onCardPress,
+  onEditPress,
   onReviewPress,
   onSwipe,
   onTopChange,
@@ -224,6 +250,8 @@ export function CardStack({
    *  list, so relative urgency ranks against ALL active tasks. */
   getStarValue: (task: TaskData) => number;
   onCardPress?: (task: TaskData) => void;
+  /** Pencil-icon tap on the top card → edit surface (2026-07-27: card tap now opens the working screen instead). */
+  onEditPress?: (task: TaskData) => void;
   /** Info-icon tap on a flagged top card → review mode (Story 6.2). */
   onReviewPress?: (task: TaskData) => void;
   /** A swipe COMMITTED past this task (Story 6.4 skip counting) — pure pass-through. */
@@ -305,12 +333,12 @@ export function CardStack({
   };
 
   return (
-    // Compact deck (owner feedback 2026-07-27): a fixed-height frame hugging
-    // the card content instead of flex-1 filling the screen — full-height
-    // cards read as one giant card with a dead white middle. Bottom padding
-    // absorbs the background cards peeking below the frame.
-    <Box className="px-6 pb-12 pt-3">
-      <Box className="relative h-[330px]">
+    // Playing-card deck (owner feedback 2026-07-27, round 2): the card keeps
+    // real playing-card proportions (2.5:3.5 → 280×392) with breathing room
+    // on every side — centered in the leftover vertical space, never a
+    // full-screen fill (that read as one giant card with a dead middle).
+    <Box className="flex-1 items-center justify-center py-2">
+      <Box className="relative" style={{ width: CARD_WIDTH, height: CARD_HEIGHT }}>
         {/* Deepest card first so the top card paints last (highest z). */}
         {stackWindow
           .slice()
@@ -327,16 +355,30 @@ export function CardStack({
                 accessibilityLabel={`Task: ${task.title}. Worth ${getStarValue(task)} stars. Card ${topIndex + 1} of ${tasks.length}${healthSuffix(task)}`}
                 onDismiss={advance}
                 onPress={() => onCardPress?.(task)}
+                onEdit={onEditPress ? () => onEditPress(task) : undefined}
+                onReview={
+                  task.hasCheckNeeded && onReviewPress ? () => onReviewPress(task) : undefined
+                }
               />
             ) : (
               <StackedCard key={task.id} task={task} starValue={getStarValue(task)} depth={depth} />
             ),
           )}
-        {/* Review entry (Story 6.2, AC1): a transparent tap target OVER the
-            top card's info marker. It must be a sibling painted above the
-            GestureDetector — an inner Pressable would be swallowed by the
-            tap-to-flip gesture AND flattened out of the accessibility tree
-            by the card's accessible container. */}
+        {/* Corner entries: transparent tap targets OVER the top card's
+            markers. They must be siblings painted above the GestureDetector —
+            an inner Pressable would be swallowed by the card tap gesture AND
+            flattened out of the accessibility tree by the card's accessible
+            container. Edit (pencil, top-left) opens the edit surface
+            (2026-07-27); review (info, top-right) enters review mode (6.2). */}
+        {topTask && onEditPress ? (
+          <Pressable
+            accessibilityRole="button"
+            aria-label={`Edit task: ${topTask.title}`}
+            hitSlop={8}
+            onPress={() => onEditPress(topTask)}
+            className="absolute left-0 top-0 h-14 w-14"
+          />
+        ) : null}
         {topTask?.hasCheckNeeded && onReviewPress ? (
           <Pressable
             accessibilityRole="button"

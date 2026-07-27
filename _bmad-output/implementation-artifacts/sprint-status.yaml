@@ -113,3 +113,7 @@ development_status:
   8-2b-subscription-purchase-and-entitlements: done
   8-3-analytics-and-logging-foundation: done
   epic-8-retrospective: optional
+
+  # Epic 9: Post-launch remote fixes (owner-driven via Telegram relay; no BMad ceremony)
+  9-1-post-launch-remote-fixes-round-1: done
+  9-2-post-launch-remote-fixes-round-2: done

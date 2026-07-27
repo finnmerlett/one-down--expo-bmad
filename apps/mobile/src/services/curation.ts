@@ -116,19 +116,21 @@ export function urgentContexts(tasks: TaskData[], now: Date): Set<TaskContext> {
   return urgent;
 }
 
-// Unsized tasks (manual sizing is optional until Epic 6 AI sizing) pass BOTH
-// modes — filtering them out would make tasks silently unreachable, violating
-// "the app does the worrying". Mode filters *to* a size only among tasks that
-// declare one.
+// STRICT size match (owner decision 2026-07-27, reversing the 3.2 call):
+// a mode filter shows ONLY tasks that declare that size — unsized tasks are
+// reachable with the filter off, and Epic 6 AI sizing keeps unsized rare.
 function matchesSize(task: TaskData, size: TaskSize | null | undefined): boolean {
-  return !size || task.size === size || task.size === null;
+  return !size || task.size === size;
 }
 
-// Tasks with NO contexts are doable anywhere and always pass.
+// Contexts are REQUIREMENTS and active filters are what the user has right
+// now (owner decision 2026-07-27): a task passes only when EVERY context it
+// requires is currently available. Tasks with no contexts are doable
+// anywhere and always pass (`every` over an empty list).
 function matchesContexts(task: TaskData, active: readonly string[] | undefined): boolean {
   if (!active?.length) return true;
   const contexts = parseTaskContexts(task.contexts);
-  return contexts.length === 0 || contexts.some((c) => active.includes(c));
+  return contexts.every((c) => active.includes(c));
 }
 
 /**

@@ -35,6 +35,7 @@ import { availableContexts, curateTasks, urgentContexts } from '@/services/curat
 import { awardCutLooseStars } from '@/services/star-awards';
 import { potentialStars } from '@/services/star-calculator';
 import { recordTaskSkipped } from '@/services/task-activity';
+import { undoTaskCutLoose } from '@/services/task-undo';
 import {
   applyTaskPatch,
   confirmReviewItem,
@@ -223,10 +224,13 @@ export default function HomeScreen() {
                 <ButtonText>Exit review</ButtonText>
               </Button>
             </HStack>
+            {/* Review mode keeps tap = open the card back: the whole point
+                of this stack is confirming AI guesses, i.e. editing. */}
             <CardStack
               tasks={reviewCards}
               getStarValue={getStarValue}
               onCardPress={(task) => setOpenTaskId(task.id)}
+              onEditPress={(task) => setOpenTaskId(task.id)}
               onReviewPress={handleReviewPress}
             />
           </>
@@ -265,7 +269,11 @@ export default function HomeScreen() {
           <CardStack
             tasks={curated}
             getStarValue={getStarValue}
-            onCardPress={(task) => setOpenTaskId(task.id)}
+            // Tap = go DO it (2026-07-27): straight to the working screen,
+            // without starting the task — the working screen flips status on
+            // the first meaningful action. Editing moved to the pencil.
+            onCardPress={(task) => router.push(`/task-running/${task.id}`)}
+            onEditPress={(task) => setOpenTaskId(task.id)}
             onReviewPress={handleReviewPress}
             onSwipe={recordTaskSkipped}
             onTopChange={handleTopChange}
@@ -315,7 +323,16 @@ export default function HomeScreen() {
             // shows the persisted award amount (Story 4.1).
             setOpenTaskId(null);
             void awardCutLooseStars(db, openTask).then((stars) => {
-              showRewardToast(toast, { title: 'Released', stars });
+              showRewardToast(toast, {
+                title: 'Released',
+                stars,
+                onUndo: () => {
+                  // Re-arm the idempotency ref — an undone task must be
+                  // cut-loosable again later.
+                  cutLooseFiredRef.current = null;
+                  void undoTaskCutLoose(db, openTask);
+                },
+              });
             });
           }}
         />

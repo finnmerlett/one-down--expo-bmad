@@ -14,7 +14,7 @@ appId: com.onedown.mobile
     file: common/add-task.yaml
     env:
       TITLE: 'Skip target'
-- tapOn: 'Task: Skip target. Worth 10 stars. Card 1 of 1'
+- tapOn: 'Edit task: Skip target'
 - waitForAnimationToEnd
 - tapOn: 'Size: Quick win'
 - tapOn: 'Back to card front'
@@ -38,7 +38,7 @@ appId: com.onedown.mobile
 - assertVisible: 'Task: Skip target. Worth 10 stars. Card 1 of 2. Skipped a lot'
 
 # --- Card back shows the gentle prompt (AC5) ---
-- tapOn: 'Task: Skip target. Worth 10 stars. Card 1 of 2. Skipped a lot'
+- tapOn: 'Edit task: Skip target'
 - waitForAnimationToEnd
 - assertVisible: 'You keep skipping this one. No judgement — what would help?'
 - takeScreenshot: .claude/run-notes/screenshots/7-2-health-prompt

@@ -16,8 +16,6 @@ appId: com.onedown.mobile
 # Open the card back and start the task
 - tapOn: 'Task: Notes survive task. Worth 10 stars. Card 1 of 1'
 - waitForAnimationToEnd
-- tapOn: 'Start task'
-- waitForAnimationToEnd
 
 # Type notes and DO NOT blur, DO NOT navigate — just idle past the debounce.
 # extendedWaitUntil on a never-present anchor is the Maestro sleep idiom:
@@ -40,8 +38,6 @@ appId: com.onedown.mobile
     timeout: 5000
 - assertVisible: 'Continue'
 - tapOn: 'Task: Notes survive task. Worth 10 stars. Card 1 of 1'
-- waitForAnimationToEnd
-- tapOn: 'Continue task'
 - waitForAnimationToEnd
 
 # The never-blurred note survived process death (AC1) and re-opening shows

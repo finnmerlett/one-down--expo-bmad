@@ -12,7 +12,7 @@ appId: com.onedown.mobile
     file: common/add-task.yaml
     env:
       TITLE: 'Quick one'
-- tapOn: 'Task: Quick one. Worth 10 stars. Card 1 of 1'
+- tapOn: 'Edit task: Quick one'
 - waitForAnimationToEnd
 - tapOn: 'Size: Quick win'
 - tapOn: 'Back to card front'

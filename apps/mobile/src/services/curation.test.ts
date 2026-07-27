@@ -41,22 +41,29 @@ describe('curateTasks', () => {
     ).toEqual(['a', 'c']);
   });
 
-  it('filters by context overlap when active contexts are set', () => {
+  it('filters to tasks whose REQUIRED contexts are all available (2026-07-27)', () => {
     const tasks = [
       makeTask({ id: 'home-only', contexts: '["home"]', createdAt: new Date('2026-06-01') }),
       makeTask({
-        id: 'phone-or-home',
+        id: 'phone-and-home',
         contexts: '["phone","home"]',
         createdAt: new Date('2026-06-02'),
       }),
       makeTask({ id: 'laptop-only', contexts: '["laptop"]', createdAt: new Date('2026-06-03') }),
     ];
 
+    // Active filters = what the user HAS: home alone can't satisfy a task
+    // that also requires phone.
     expect(
       curateTasks(tasks, { contexts: ['home'] })
         .map((t) => t.id)
         .sort(),
-    ).toEqual(['home-only', 'phone-or-home']);
+    ).toEqual(['home-only']);
+    expect(
+      curateTasks(tasks, { contexts: ['home', 'phone'] })
+        .map((t) => t.id)
+        .sort(),
+    ).toEqual(['home-only', 'phone-and-home']);
   });
 
   it('always includes context-free tasks when filtering (doable anywhere)', () => {
@@ -79,23 +86,15 @@ describe('curateTasks', () => {
     expect(curateTasks(tasks, { contexts: ['home'] }).map((t) => t.id)).toEqual(['broken']);
   });
 
-  it('mode keeps matching-size and unsized tasks, drops the other size', () => {
+  it('mode keeps ONLY tasks that declare the matching size (strict, 2026-07-27)', () => {
     const tasks = [
       makeTask({ id: 'quick', size: 'quick_win', createdAt: new Date('2026-06-03') }),
       makeTask({ id: 'big', size: 'big_time', createdAt: new Date('2026-06-02') }),
       makeTask({ id: 'unsized', size: null, createdAt: new Date('2026-06-01') }),
     ];
 
-    expect(
-      curateTasks(tasks, { size: 'quick_win' })
-        .map((t) => t.id)
-        .sort(),
-    ).toEqual(['quick', 'unsized']);
-    expect(
-      curateTasks(tasks, { size: 'big_time' })
-        .map((t) => t.id)
-        .sort(),
-    ).toEqual(['big', 'unsized']);
+    expect(curateTasks(tasks, { size: 'quick_win' }).map((t) => t.id)).toEqual(['quick']);
+    expect(curateTasks(tasks, { size: 'big_time' }).map((t) => t.id)).toEqual(['big']);
   });
 
   it('null/undefined mode keeps every size', () => {
@@ -124,11 +123,12 @@ describe('curateTasks', () => {
       makeTask({ id: 'anywhere-unsized', contexts: null, size: null }),
     ];
 
+    // Strict size (2026-07-27): the unsized task no longer rides along.
     expect(
       curateTasks(tasks, { contexts: ['home'], size: 'quick_win' })
         .map((t) => t.id)
         .sort(),
-    ).toEqual(['anywhere-unsized', 'home-quick']);
+    ).toEqual(['home-quick']);
   });
 
   it('does not mutate the input array', () => {
@@ -190,9 +190,10 @@ describe('availableContexts', () => {
       makeTask({ id: 'unsized-phone', size: null, contexts: '["phone"]' }),
     ];
 
-    // Unsized tasks pass both modes, so phone stays available either way.
-    expect(availableContexts(tasks, 'quick_win')).toEqual(new Set(['home', 'phone']));
-    expect(availableContexts(tasks, 'big_time')).toEqual(new Set(['laptop', 'phone']));
+    // Strict size (2026-07-27): the unsized task matches no mode, so phone
+    // greys out whenever a mode is active.
+    expect(availableContexts(tasks, 'quick_win')).toEqual(new Set(['home']));
+    expect(availableContexts(tasks, 'big_time')).toEqual(new Set(['laptop']));
     expect(availableContexts(tasks, null)).toEqual(new Set(['laptop', 'home', 'phone']));
   });
 });
@@ -237,8 +238,9 @@ describe('curateTasks scoring (Story 3.3)', () => {
       makeTask({ id: 'unsized' }),
     ];
 
+    // Strict size (2026-07-27): only the declared big_time task remains.
     const result = curateTasks(tasks, { size: 'big_time' }, options(0));
-    expect(result.map((t) => t.id).sort()).toEqual(['big', 'unsized']);
+    expect(result.map((t) => t.id)).toEqual(['big']);
     expect(result[0]?.size).not.toBe('quick_win');
   });
 

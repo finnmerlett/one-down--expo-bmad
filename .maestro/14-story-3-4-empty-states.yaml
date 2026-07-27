@@ -29,7 +29,7 @@ appId: com.onedown.mobile
 - waitForAnimationToEnd
 
 # Tag the task Home + Quick win on the card back
-- tapOn: 'Task: Solo task. Worth 10 stars. Card 1 of 1'
+- tapOn: 'Edit task: Solo task'
 - waitForAnimationToEnd
 - tapOn: 'Context: Home'
 - tapOn: 'Size: Quick win'

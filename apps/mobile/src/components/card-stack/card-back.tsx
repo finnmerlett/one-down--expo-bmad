@@ -428,7 +428,7 @@ export function CardBack({
               </Textarea>
             </VStack>
             <ReviewSection
-              label="Contexts"
+              label="Requires:"
               flagged={inferred.includes('contexts')}
               confirmLabel="Confirm contexts"
               onConfirm={

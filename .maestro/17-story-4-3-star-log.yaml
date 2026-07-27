@@ -21,9 +21,7 @@ appId: com.onedown.mobile
       TITLE: 'Log me task'
 - tapOn: 'Task: Log me task. Worth 10 stars. Card 1 of 1'
 - waitForAnimationToEnd
-- tapOn: 'Start task'
-- waitForAnimationToEnd
-- tapOn: 'Done'
+- tapOn: 'Mark as complete'
 - waitForAnimationToEnd
 
 # The log shows the transaction: action label, title snapshot, amount (AC2)

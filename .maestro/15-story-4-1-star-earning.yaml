@@ -13,10 +13,8 @@ appId: com.onedown.mobile
       TITLE: 'Earn stars task'
 - tapOn: 'Task: Earn stars task. Worth 10 stars. Card 1 of 1'
 - waitForAnimationToEnd
-- tapOn: 'Start task'
-- waitForAnimationToEnd
 # Assert the toast fast — it auto-dismisses after ~2 s
-- tapOn: 'Done'
+- tapOn: 'Mark as complete'
 - assertVisible: 'One down!'
 - assertVisible: '+10 stars'
 - takeScreenshot: .claude/run-notes/screenshots/4-1-star-toast

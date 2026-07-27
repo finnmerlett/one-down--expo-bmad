@@ -57,17 +57,21 @@ export function TaskCard({ task, starValue }: { task: TaskData; starValue: numbe
 
   return (
     <Box className="h-full w-full rounded-[28px] border border-outline-100 bg-background-0 p-6 shadow-soft-card">
-      {/* Review marker (Story 6.2): visual only — the interactive tap target
-          lives in the stack layer, above the swipe gesture (the top card is
-          an accessible container, so an inner button would be flattened away
-          from TalkBack/Maestro). */}
-      {task.hasCheckNeeded ? (
-        <Box className="absolute right-5 top-5">
-          <Icon as={InfoIcon} size="xl" className="text-warning-600" />
-        </Box>
-      ) : null}
       <VStack className="h-full justify-between">
-        <VStack className="gap-5">
+        <VStack className="gap-4">
+          {/* Corner markers: edit pencil top-left (2026-07-27: tap-to-edit
+              moved here — tapping the card itself opens the working screen)
+              and the review marker top-right (Story 6.2). Both are VISUAL
+              only — the interactive tap targets live in the stack layer,
+              above the swipe gesture (the top card is an accessible
+              container, so inner buttons would be flattened away from
+              TalkBack/Maestro). */}
+          <HStack className="items-center justify-between">
+            <Icon as={EditIcon} size="md" className="text-typography-400" />
+            {task.hasCheckNeeded ? (
+              <Icon as={InfoIcon} size="xl" className="text-warning-600" />
+            ) : null}
+          </HStack>
           {/* Capped at 3 lines: the deck frame is fixed-height, so an epic
               title must truncate rather than push the chips out of the card. */}
           <Text

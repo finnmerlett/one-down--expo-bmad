@@ -1,5 +1,5 @@
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
-import { KeyboardAvoidingView, ScrollView } from 'react-native';
+import { Keyboard, KeyboardAvoidingView, ScrollView } from 'react-native';
 
 import type { SubtaskData, TaskData } from '@one-down/shared';
 
@@ -62,6 +62,22 @@ export function TaskRunningView({
   onHelp?: () => void;
   ref?: Ref<TaskRunningViewHandle>;
 }) {
+  // Terminal actions hide while the keyboard is up (2026-07-27): with the
+  // notes field focused, "Mark as complete" / "Cut loose" read as
+  // dismiss-the-keyboard buttons — and a mistap is a terminal action. Only
+  // "Help me with this" stays, floating above the keyboard via the
+  // KeyboardAvoidingView padding. (`Did` events: Android edge-to-edge fires
+  // no `will` phase.)
+  const [keyboardUp, setKeyboardUp] = useState(false);
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardUp(true));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardUp(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+
   // Draft-or-stored: null draft = not editing, the field follows the DB.
   const [notesDraft, setNotesDraft] = useState<string | null>(null);
 
@@ -211,14 +227,26 @@ export function TaskRunningView({
           </VStack>
           <Box className="flex-1" />
           <VStack className="gap-3">
-            {/* Primary action — completes the task (Story 2.3). */}
-            <Button size="xl" isDisabled={!onDone} onPress={handleDone} aria-label="Done">
-              <ButtonText>Done</ButtonText>
-            </Button>
+            {/* Primary action — completes the task (Story 2.3). "Mark as
+                complete", not "Done" (2026-07-27): "Done" read as a
+                dismiss-this-screen button. Hidden while typing (see
+                keyboardUp above). */}
+            {!keyboardUp ? (
+              <Button
+                size="xl"
+                isDisabled={!onDone}
+                onPress={handleDone}
+                aria-label="Mark as complete"
+              >
+                <ButtonText>Mark as complete</ButtonText>
+              </Button>
+            ) : null}
             {/* AI breakdown entry (Story 6.3) with the premium discovery
                 sparkle beside it (Story 8.2a). Hidden once subtasks exist or
                 a proposal is in flight — the subtask area owns the flow then.
-                Disabled placeholder when the route doesn't wire onHelp. */}
+                Disabled placeholder when the route doesn't wire onHelp.
+                Deliberately NOT hidden with the keyboard: asking for help
+                mid-note is a natural move (2026-07-27). */}
             {(!subtasks || subtasks.length === 0) && (!breakdown || breakdown.state === 'idle') ? (
               <HStack className="items-center gap-2">
                 <Button
@@ -234,16 +262,19 @@ export function TaskRunningView({
                 <SparkleBadge feature="ai_breakdown" />
               </HStack>
             ) : null}
-            {/* Frictionless release (Story 2.4) — no confirm, no warning color. */}
-            <Button
-              size="lg"
-              variant="outline"
-              isDisabled={!onCutLoose}
-              onPress={handleCutLoose}
-              aria-label="Cut loose"
-            >
-              <ButtonText>Cut loose</ButtonText>
-            </Button>
+            {/* Frictionless release (Story 2.4) — no confirm, no warning
+                color. Hidden while typing, same as Mark as complete. */}
+            {!keyboardUp ? (
+              <Button
+                size="lg"
+                variant="outline"
+                isDisabled={!onCutLoose}
+                onPress={handleCutLoose}
+                aria-label="Cut loose"
+              >
+                <ButtonText>Cut loose</ButtonText>
+              </Button>
+            ) : null}
           </VStack>
         </VStack>
       </ScrollView>

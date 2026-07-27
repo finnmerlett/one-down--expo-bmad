@@ -13,7 +13,7 @@ appId: com.onedown.mobile
     file: common/add-task.yaml
     env:
       TITLE: 'Tiny task'
-- tapOn: 'Task: Tiny task. Worth 10 stars. Card 1 of 1'
+- tapOn: 'Edit task: Tiny task'
 - waitForAnimationToEnd
 - tapOn: 'Size: Quick win'
 - tapOn: 'Back to card front'
@@ -29,7 +29,7 @@ appId: com.onedown.mobile
     start: 80%, 45%
     end: 5%, 45%
 - waitForAnimationToEnd
-- tapOn: 'Task: Huge task. Worth 10 stars. Card 2 of 2'
+- tapOn: 'Edit task: Huge task'
 - waitForAnimationToEnd
 - tapOn: 'Size: Big time'
 - tapOn: 'Back to card front'

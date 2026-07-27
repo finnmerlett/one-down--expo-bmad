@@ -14,7 +14,7 @@ appId: com.onedown.mobile
     file: common/add-task.yaml
     env:
       TITLE: 'Tiny chore'
-- tapOn: 'Task: Tiny chore. Worth 10 stars. Card 1 of 1'
+- tapOn: 'Edit task: Tiny chore'
 - waitForAnimationToEnd
 - tapOn: 'Size: Quick win'
 - tapOn: 'Back to card front'
@@ -30,7 +30,7 @@ appId: com.onedown.mobile
     start: 80%, 45%
     end: 5%, 45%
 - waitForAnimationToEnd
-- tapOn: 'Task: Giant project. Worth 10 stars. Card 2 of 2'
+- tapOn: 'Edit task: Giant project'
 - waitForAnimationToEnd
 - tapOn: 'Size: Big time'
 - tapOn: 'Back to card front'
@@ -53,7 +53,7 @@ appId: com.onedown.mobile
 # AC5 combined: isolate Tiny chore via Quick wins mode, tag it Home, then
 # filter Home + Quick wins -> only the task matching BOTH remains
 - tapOn: 'Mode: Quick wins'
-- tapOn: 'Task: Tiny chore. Worth 10 stars. Card 1 of 1'
+- tapOn: 'Edit task: Tiny chore'
 - waitForAnimationToEnd
 - tapOn: 'Context: Home'
 - tapOn: 'Back to card front'

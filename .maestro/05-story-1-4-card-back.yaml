@@ -22,7 +22,7 @@ appId: com.onedown.mobile
 - waitForAnimationToEnd
 
 # Tap the top card -> back view expands (AC1) with all sections (AC2-3)
-- tapOn: 'Task: Edit me task. Worth 10 stars. Card 1 of 1'
+- tapOn: 'Edit task: Edit me task'
 - waitForAnimationToEnd
 - assertVisible: 'Back to card front'
 - assertVisible: 'No deadline'
@@ -49,7 +49,7 @@ appId: com.onedown.mobile
     when:
       notVisible: 'Back to card front'
     commands:
-      - tapOn: 'Task: Edited task title. Worth 10 stars. Card 1 of 1'
+      - tapOn: 'Edit task: Edited task title'
       - waitForAnimationToEnd
 - tapOn: 'Task notes'
 - inputText: 'Working note'
@@ -61,7 +61,7 @@ appId: com.onedown.mobile
     when:
       notVisible: 'Back to card front'
     commands:
-      - tapOn: 'Task: Edited task title. Worth 10 stars. Card 1 of 1'
+      - tapOn: 'Edit task: Edited task title'
       - waitForAnimationToEnd
 
 # Context toggle + size persist immediately (AC5, AC6)
@@ -81,7 +81,7 @@ appId: com.onedown.mobile
 # Reopen: stored values survived the close (notes flushed on close).
 # Close with the system back gesture this time — it must close the card,
 # not exit the app (review fix: BackHandler in the overlay).
-- tapOn: 'Task: Edited task title. Worth 10 stars. Card 1 of 1'
+- tapOn: 'Edit task: Edited task title'
 - waitForAnimationToEnd
 - assertVisible: 'Working note'
 - back

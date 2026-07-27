@@ -14,7 +14,7 @@ appId: com.onedown.mobile
     file: common/add-task.yaml
     env:
       TITLE: 'Water plants'
-- tapOn: 'Task: Water plants. Worth 10 stars. Card 1 of 1'
+- tapOn: 'Edit task: Water plants'
 - waitForAnimationToEnd
 - tapOn: 'Context: Home'
 - tapOn: 'Size: Quick win'
@@ -31,7 +31,7 @@ appId: com.onedown.mobile
     start: 80%, 45%
     end: 5%, 45%
 - waitForAnimationToEnd
-- tapOn: 'Task: Email plumber. Worth 10 stars. Card 2 of 2'
+- tapOn: 'Edit task: Email plumber'
 - waitForAnimationToEnd
 - tapOn: 'Context: Phone'
 - tapOn: 'Back to card front'

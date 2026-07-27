@@ -33,7 +33,7 @@ describe('TaskRunningView (portable stories)', () => {
     expect(screen.getByLabelText('Task notes').props.value).toBe('Shelves are up, boxes next');
     // Done is disabled without onDone (Story 2.3); the rest stay inert until
     // their stories land (Epic 6 / 2.4).
-    expect(screen.getByLabelText('Done').props.accessibilityState?.disabled).toBe(true);
+    expect(screen.getByLabelText('Mark as complete').props.accessibilityState?.disabled).toBe(true);
     expect(screen.getByLabelText('Help me with this').props.accessibilityState?.disabled).toBe(
       true,
     );
@@ -43,7 +43,9 @@ describe('TaskRunningView (portable stories)', () => {
   it('enables Done when onDone is provided (Story 2.3)', async () => {
     await render(<WithDetailsAndNotes onDone={() => {}} />);
 
-    expect(screen.getByLabelText('Done').props.accessibilityState?.disabled).toBeFalsy();
+    expect(
+      screen.getByLabelText('Mark as complete').props.accessibilityState?.disabled,
+    ).toBeFalsy();
   });
 
   it('enables Cut loose when onCutLoose is provided (Story 2.4)', async () => {
@@ -77,7 +79,7 @@ describe('TaskRunningView (portable stories)', () => {
 
     // Keyboard still up, debounce not yet fired — tap Done immediately.
     await fireEvent.changeText(screen.getByLabelText('Task notes'), 'Final thought');
-    await fireEvent.press(screen.getByLabelText('Done'));
+    await fireEvent.press(screen.getByLabelText('Mark as complete'));
 
     expect(onPatch).toHaveBeenCalledWith({ notes: 'Final thought' });
     expect(onDone).toHaveBeenCalledTimes(1);

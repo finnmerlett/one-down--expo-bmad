@@ -33,8 +33,9 @@ function reviewItemField(item: ReviewItem): 'size' | 'contexts' | 'deadline' | '
  * detail): fire-and-forget against local SQLite (instantaneous, no network —
  * AC), tracking `task_edited` per changed field after a successful write.
  * From Story 6.2 an edit to a flagged field also auto-confirms its review
- * item: one small star per cleared flag (the repository clears each exactly
- * once, so awards can't double).
+ * item. The confirmation star lands only when the LAST flag on the card
+ * clears (owner decision 2026-07-27: per-item awards racked up too fast);
+ * the repository reports `reviewCleared` exactly once, so it can't double.
  */
 export function applyTaskPatch(task: TaskData, patch: UpdateTaskPatch): void {
   void updateTask(db, task.id, patch)
@@ -43,10 +44,10 @@ export function applyTaskPatch(task: TaskData, patch: UpdateTaskPatch): void {
         track('task_edited', { field });
       }
       for (const item of confirmedItems) {
-        await awardReviewConfirmStars(db, task);
         track('review_item_confirmed', { field: reviewItemField(item), via: 'edit' });
       }
       if (reviewCleared) {
+        await awardReviewConfirmStars(db, task);
         track('review_completed', {});
       }
     })
@@ -56,16 +57,17 @@ export function applyTaskPatch(task: TaskData, patch: UpdateTaskPatch): void {
 
 /**
  * Tick-confirm one review item (Story 6.2, AC4): clears the flag without
- * touching the value, then awards the confirmation star. Fire-and-forget like
+ * touching the value. The star lands only when the card's LAST flag clears
+ * (owner decision 2026-07-27 — see applyTaskPatch). Fire-and-forget like
  * startTask; a double tap reports `confirmed: false` and awards nothing.
  */
 export function confirmReviewItem(task: TaskData, item: ReviewItem): void {
   void repoConfirmReviewItem(db, task.id, item)
     .then(async ({ confirmed, reviewCleared }) => {
       if (!confirmed) return;
-      await awardReviewConfirmStars(db, task);
       track('review_item_confirmed', { field: reviewItemField(item), via: 'tick' });
       if (reviewCleared) {
+        await awardReviewConfirmStars(db, task);
         track('review_completed', {});
       }
     })
@@ -101,7 +103,10 @@ export function createNotesAutosaver(taskId: string): (notes: string | null) => 
  * Continue on an already-started task changes nothing (notes/progress are
  * simply re-opened, screen views are PostHog built-ins).
  */
-export function startTask(task: TaskData, via: 'card_back_overlay' | 'list_detail'): void {
+export function startTask(
+  task: TaskData,
+  via: 'card_back_overlay' | 'list_detail' | 'task_running',
+): void {
   if (task.status !== 'pending') return;
   void setTaskStatus(db, task.id, 'in_progress')
     .then(async () => {

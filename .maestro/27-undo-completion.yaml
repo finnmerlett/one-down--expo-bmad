@@ -14,9 +14,7 @@ appId: com.onedown.mobile
 # Complete it via the running screen (2.3 path)
 - tapOn: 'Task: Undo me. Worth 10 stars. Card 1 of 1'
 - waitForAnimationToEnd
-- tapOn: 'Start task'
-- waitForAnimationToEnd
-- tapOn: 'Done'
+- tapOn: 'Mark as complete'
 - assertVisible: 'One down!'
 - extendedWaitUntil:
     visible: '10 stars, 10 earned today'

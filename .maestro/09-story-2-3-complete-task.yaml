@@ -14,7 +14,7 @@ appId: com.onedown.mobile
     file: common/add-task.yaml
     env:
       TITLE: 'Finish me first'
-- tapOn: 'Task: Finish me first. Worth 10 stars. Card 1 of 1'
+- tapOn: 'Edit task: Finish me first'
 - waitForAnimationToEnd
 - tapOn: 'Size: Quick win'
 - tapOn: 'Back to card front'
@@ -29,11 +29,9 @@ appId: com.onedown.mobile
 # Open the top card's back, start the task, land on the running screen
 - tapOn: 'Task: Finish me first. Worth 10 stars. Card 1 of 2'
 - waitForAnimationToEnd
-- tapOn: 'Start task'
-- waitForAnimationToEnd
 
 # Complete it — assert the toast fast (it auto-dismisses after ~2 s)
-- tapOn: 'Done'
+- tapOn: 'Mark as complete'
 - assertVisible: 'One down!'
 - assertVisible: '+10 stars'
 - takeScreenshot: .claude/run-notes/screenshots/2-3-completion-toast

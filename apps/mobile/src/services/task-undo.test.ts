@@ -1,10 +1,12 @@
+import { eq } from 'drizzle-orm';
+
 import type { StarAction, TaskData } from '@one-down/shared';
 import { starActivityLog, tasks } from '@one-down/shared/schema-local';
 
 import { createTestDb, type TestDb } from '../test-utils/db';
 import { loadLocalMigrationsSql } from '../test-utils/migrations';
-import { awardCompletionStars } from './star-awards';
-import { undoTaskCompletion } from './task-undo';
+import { awardCompletionStars, awardCutLooseStars } from './star-awards';
+import { undoTaskCompletion, undoTaskCutLoose } from './task-undo';
 
 // expo-crypto is a native module; under Node the equivalent is node:crypto.
 jest.mock('expo-crypto', () => ({
@@ -62,6 +64,10 @@ describe('undoTaskCompletion (integration, real migration SQL)', () => {
     return rows.find((row) => row.id === id)?.status;
   }
 
+  async function setStatus(id: string, status: TaskData['status']): Promise<void> {
+    await testDb.db.update(tasks).set({ status }).where(eq(tasks.id, id));
+  }
+
   it('returns the task to pending and DELETES the award — no trace in the log', async () => {
     const task = makeTask();
     await seedTask(task);
@@ -102,11 +108,11 @@ describe('undoTaskCompletion (integration, real migration SQL)', () => {
     await seedTask(task);
 
     for (let cycle = 0; cycle < 2; cycle += 1) {
+      // Mirror the real flow: the status write lands, then the award —
+      // undoTaskCompletion reads status from the DB (toast-undo staleness).
+      await setStatus(task.id, 'completed');
       await awardCompletionStars(testDb.db, { ...task, status: 'completed' });
-      const { starsRemoved } = await undoTaskCompletion(testDb.db, {
-        ...task,
-        status: 'completed',
-      });
+      const { starsRemoved } = await undoTaskCompletion(testDb.db, task);
       expect(starsRemoved).toBeGreaterThan(0);
       const completionRows = (await testDb.db.select().from(starActivityLog)).filter(
         (row) => row.action === 'task_completed' || row.action === 'completion_undone',
@@ -114,6 +120,21 @@ describe('undoTaskCompletion (integration, real migration SQL)', () => {
       expect(completionRows).toHaveLength(0);
     }
     expect(await taskStatus(task.id)).toBe('pending');
+  });
+
+  it('undo reads status from the DB, not the caller snapshot (toast-undo path)', async () => {
+    // The toast closes over a task whose status is STALE ('pending' — the
+    // completion write hadn't landed when the handler captured it).
+    const task = makeTask({ status: 'pending' });
+    await seedTask(task);
+    await setStatus(task.id, 'completed');
+    await testDb.db.insert(starActivityLog).values(ledgerRow(task.id, 10, 'l1', 'task_completed'));
+
+    const { starsRemoved } = await undoTaskCompletion(testDb.db, task);
+
+    expect(starsRemoved).toBe(10);
+    expect(await taskStatus(task.id)).toBe('pending');
+    expect(await testDb.db.select().from(starActivityLog)).toHaveLength(0);
   });
 
   it('deletes only the newest unmatched award; a balanced legacy pair stays intact', async () => {
@@ -178,6 +199,49 @@ describe('undoTaskCompletion (integration, real migration SQL)', () => {
     expect(starsRemoved).toBe(0);
     expect(await taskStatus(task.id)).toBe('in_progress');
     expect(await testDb.db.select().from(starActivityLog)).toHaveLength(1);
+  });
+
+  it('cut-loose undo removes the newest release award and restores pending', async () => {
+    const task = makeTask({ status: 'pending' });
+    await seedTask(task);
+    await setStatus(task.id, 'cut_loose');
+    const awarded = await awardCutLooseStars(testDb.db, { ...task, status: 'cut_loose' });
+
+    const { starsRemoved } = await undoTaskCutLoose(testDb.db, task);
+
+    expect(starsRemoved).toBe(awarded);
+    expect(await taskStatus(task.id)).toBe('pending');
+    expect(await testDb.db.select().from(starActivityLog)).toHaveLength(0);
+  });
+
+  it('cut-loose undo is a no-op when the task is not cut loose', async () => {
+    const task = makeTask({ status: 'completed' });
+    await seedTask(task);
+    await testDb.db.insert(starActivityLog).values(ledgerRow(task.id, 2, 'l1', 'task_cut_loose'));
+
+    const { starsRemoved } = await undoTaskCutLoose(testDb.db, task);
+
+    expect(starsRemoved).toBe(0);
+    expect(await taskStatus(task.id)).toBe('completed');
+    expect(await testDb.db.select().from(starActivityLog)).toHaveLength(1);
+  });
+
+  it('cut-loose undo removes only the NEWEST release row (cut → undo → cut again)', async () => {
+    const task = makeTask({ status: 'pending' });
+    await seedTask(task);
+    await setStatus(task.id, 'cut_loose');
+    await testDb.db
+      .insert(starActivityLog)
+      .values([
+        ledgerRow(task.id, 2, 'l1', 'task_cut_loose', new Date('2026-06-05T10:00:00Z')),
+        ledgerRow(task.id, 2, 'l2', 'task_cut_loose', new Date('2026-06-06T10:00:00Z')),
+      ]);
+
+    const { starsRemoved } = await undoTaskCutLoose(testDb.db, task);
+
+    expect(starsRemoved).toBe(2);
+    const ledger = await testDb.db.select().from(starActivityLog);
+    expect(ledger.map((row) => row.id)).toEqual(['l1']);
   });
 
   it("only the target task's award is removed", async () => {

@@ -15,7 +15,7 @@ appId: com.onedown.mobile
       TITLE: 'Archive me A'
 # Make A a quick win while it is the only card so it deterministically stays
 # on top after B arrives (3.3 momentum rule — flow 09 pattern).
-- tapOn: 'Task: Archive me A. Worth 10 stars. Card 1 of 1'
+- tapOn: 'Edit task: Archive me A'
 - waitForAnimationToEnd
 - tapOn: 'Size: Quick win'
 - tapOn: 'Back to card front'
@@ -27,9 +27,7 @@ appId: com.onedown.mobile
 # Start + complete A so it has earned stars (2.1/2.3 flows).
 - tapOn: 'Task: Archive me A. Worth 10 stars. Card 1 of 2'
 - waitForAnimationToEnd
-- tapOn: 'Start task'
-- waitForAnimationToEnd
-- tapOn: 'Done'
+- tapOn: 'Mark as complete'
 - extendedWaitUntil:
     visible: 'Task: Archive me B. Worth 10 stars. Card 1 of 1'
     timeout: 5000

@@ -26,8 +26,6 @@ appId: com.onedown.mobile
 # Open the card back and start the task (2.1 surface)
 - tapOn: 'Task: Sort the paperwork mountain\..*'
 - waitForAnimationToEnd
-- tapOn: 'Start task'
-- waitForAnimationToEnd
 
 # Request a breakdown (AC1). The 'Breaking this down...' loading state is NOT
 # asserted: against the instant local fake provider it can render for only a
@@ -67,8 +65,6 @@ appId: com.onedown.mobile
 - tapOn: 'Pause and go back'
 - waitForAnimationToEnd
 - tapOn: 'Task: Sort the paperwork mountain\..*'
-- waitForAnimationToEnd
-- tapOn: 'Continue task'
 - waitForAnimationToEnd
 - assertVisible:
     text: 'Subtask: Do just the first two minutes'

@@ -23,7 +23,7 @@ export type AnalyticsEventMap = EnforceFlatProps<{
   /** Story 1.4 — a field was edited inline on the card back (field NAME only, never the value). */
   task_edited: { field: 'title' | 'details' | 'notes' | 'contexts' | 'size' | 'deadline' };
   /** Story 2.1 — first pending → in_progress transition (Continue taps don't re-emit). */
-  task_started: { via: 'card_back_overlay' | 'list_detail' };
+  task_started: { via: 'card_back_overlay' | 'list_detail' | 'task_running' };
   /** Story 2.3 — task marked completed (star earning is Epic 4's `stars_awarded`). */
   task_completed: { size: 'quick_win' | 'big_time' | null; had_notes: boolean };
   /** Story 2.4 — task archived guilt-free (7.3 adds the triage surface). */
@@ -157,8 +157,10 @@ export type AnalyticsEventMap = EnforceFlatProps<{
   tasks_deleted_permanently: { count: number };
   /** Story 7.1 — a task returned to the active list. */
   task_restored: { from: 'recycle_bin' };
-  /** Undo-complete (2026-07-27) — Done row flipped back to To do; completion stars retracted. */
+  /** Undo-complete (2026-07-27) — Done row or reward-toast Undo; completion stars retracted. */
   task_completion_undone: { stars_removed: number };
+  /** Undo cut-loose (2026-07-27) — reward-toast Undo; the release award row is removed. */
+  task_cut_loose_undone: { stars_removed: number };
   /** OTA update banner (2026-07-27) — a downloaded update is ready to apply. */
   update_prompt_shown: { surface: 'home' };
   /** OTA update banner — user restarted into the update or dismissed it. */

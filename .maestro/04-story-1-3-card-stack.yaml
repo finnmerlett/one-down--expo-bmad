@@ -16,7 +16,7 @@ appId: com.onedown.mobile
     file: common/add-task.yaml
     env:
       TITLE: 'Stack task beta'
-- tapOn: 'Task: Stack task beta. Worth 10 stars. Card 1 of 1'
+- tapOn: 'Edit task: Stack task beta'
 - waitForAnimationToEnd
 - tapOn: 'Size: Quick win'
 - tapOn: 'Back to card front'
@@ -62,8 +62,8 @@ appId: com.onedown.mobile
 
 # Below-threshold drag snaps back: top card unchanged
 - swipe:
-    start: 60%, 45%
-    end: 45%, 45%
+    start: 58%, 45%
+    end: 51%, 45%
 - waitForAnimationToEnd
 - assertVisible: 'Task: Stack task alpha. Worth 10 stars. Card [23] of 3'
 

@@ -17,8 +17,6 @@ appId: com.onedown.mobile
 # Prefix regex (flow 09 pattern): 3.3 extended the label with "Worth n stars".
 - tapOn: 'Task: Sparkle me task\..*'
 - waitForAnimationToEnd
-- tapOn: 'Start task'
-- waitForAnimationToEnd
 
 # Running screen shows the premium sparkle beside the AI action (AC1)
 - assertVisible: 'Help me with this'
