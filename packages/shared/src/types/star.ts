@@ -11,6 +11,9 @@ export const STAR_ACTIONS = [
   'triage_confirmed',
   // Story 7.1 — negative row retracting a task's net stars at archive time.
   'archive_retraction',
+  // Undo-complete (2026-07-27) — negative row returning a completion's award
+  // when the task is flipped back to To do from the Done list.
+  'completion_undone',
 ] as const;
 export type StarAction = (typeof STAR_ACTIONS)[number];
 

@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "mcp__argent"
+      "mcp__argent",
+      "Edit(//Users/finnmerlett/Repos/claude-remote/**)",
+      "Write(//Users/finnmerlett/Repos/claude-remote/**)",
+      "Bash(security find-generic-password -s \"Claude Code-credentials\" -w)"
     ]
   }
 }

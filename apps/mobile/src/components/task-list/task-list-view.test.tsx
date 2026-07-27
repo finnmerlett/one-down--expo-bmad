@@ -107,11 +107,13 @@ describe('TaskListView (portable stories)', () => {
     expect(screen.getByText('Done')).toBeTruthy();
     expect(screen.getByText('To do')).toBeTruthy();
 
-    // Done rows show plain title text (Maestro-visible) with NO press target.
+    // Done rows show plain title text (Maestro-visible) with NO press target —
+    // the only affordance is the sibling Undo button (undo-complete, 2026-07-27).
     expect(screen.getByText('Book dentist appointment')).toBeTruthy();
     expect(screen.getByText('Sort out the garage')).toBeTruthy();
     expect(screen.queryByLabelText('Open task: Book dentist appointment')).toBeNull();
     expect(screen.queryByLabelText('Open task: Sort out the garage')).toBeNull();
+    expect(screen.getByLabelText('Undo completion: Book dentist appointment')).toBeTruthy();
 
     // Active tasks stay pressable To do rows.
     expect(screen.getByLabelText('Open task: Water the plants')).toBeTruthy();
@@ -119,6 +121,16 @@ describe('TaskListView (portable stories)', () => {
 
     // Cut-loose task appears in NEITHER section (recycle bin is Epic 7).
     expect(screen.queryByText('Cancel gym membership')).toBeNull();
+  });
+
+  it('reports the done task from its Undo button (undo-complete, 2026-07-27)', async () => {
+    const onUndoComplete = jest.fn();
+    await render(<WithDoneTasks onUndoComplete={onUndoComplete} />);
+
+    fireEvent.press(screen.getByLabelText('Undo completion: Book dentist appointment'));
+
+    expect(onUndoComplete).toHaveBeenCalledTimes(1);
+    expect(onUndoComplete.mock.calls[0]?.[0]?.title).toBe('Book dentist appointment');
   });
 
   it('multi-select rows toggle instead of navigating and announce state (Story 7.1)', async () => {

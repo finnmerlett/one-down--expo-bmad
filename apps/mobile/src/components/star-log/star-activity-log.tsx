@@ -23,6 +23,8 @@ const ACTION_LABELS: Record<StarAction, string> = {
   triage_confirmed: 'Info confirmed',
   // Story 7.1 — negative retraction row; the amount renders neutral, not red.
   archive_retraction: 'Archived',
+  // Undo-complete (2026-07-27) — negative row, renders neutral like archive.
+  completion_undone: 'Marked not done',
 };
 
 // Today -> time only; older -> "12 Jun, 14:32" (task-list date conventions).

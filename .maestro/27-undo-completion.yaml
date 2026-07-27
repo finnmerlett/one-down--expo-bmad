@@ -1,0 +1,55 @@
+# Undo-complete (2026-07-27, remote request) — a Done row's Undo button flips
+# the task back to To do and retracts the completion stars: the star counter
+# returns to its pre-completion value and the star log shows a neutral
+# "Marked not done" retraction row.
+appId: com.onedown.mobile
+---
+- runFlow: common/launch-app.yaml
+
+- runFlow:
+    file: common/add-task.yaml
+    env:
+      TITLE: 'Undo me'
+
+# Complete it via the running screen (2.3 path)
+- tapOn: 'Task: Undo me. Worth 10 stars. Card 1 of 1'
+- waitForAnimationToEnd
+- tapOn: 'Start task'
+- waitForAnimationToEnd
+- tapOn: 'Done'
+- assertVisible: 'One down!'
+- extendedWaitUntil:
+    visible: '10 stars, 10 earned today'
+    timeout: 5000
+
+# Done section shows the row with its Undo affordance
+- tapOn: 'Open task list'
+- waitForAnimationToEnd
+- assertVisible: 'Done'
+- assertVisible: 'Undo me'
+- tapOn: 'Undo completion: Undo me'
+
+# Toast is honest about the star cost, row is a To do row again, Done section
+# collapses (it was the only completed task)
+- assertVisible: 'Marked as not done — ★10 removed'
+- extendedWaitUntil:
+    visible: 'Open task: Undo me'
+    timeout: 5000
+- assertNotVisible: 'Done'
+
+# Star counter is back to zero on home; the card is back in the stack
+- tapOn: 'Back to home'
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: 'Task: Undo me. Worth 10 stars. Card 1 of 1'
+    timeout: 5000
+- assertVisible: '0 stars, 0 earned today'
+
+# Star log keeps the full audit trail: award + neutral retraction
+- tapOn: '0 stars, 0 earned today'
+- waitForAnimationToEnd
+- assertVisible: 'Marked not done · Undo me'
+- assertVisible: 'Completed · Undo me'
+
+- assertNotVisible: 'Unhandled'
+- assertNotVisible: 'error occurred'

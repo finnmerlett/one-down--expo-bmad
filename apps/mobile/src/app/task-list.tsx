@@ -23,6 +23,7 @@ import {
   needsArchiveWarning,
   restoreFromBin,
 } from '@/services/task-archive';
+import { undoTaskCompletion } from '@/services/task-undo';
 import { useQuickAddStore } from '@/stores/quick-add-store';
 
 // Third-party component — NativeWind only auto-interops react-native core.
@@ -141,6 +142,21 @@ export default function TaskListScreen() {
       showNoticeToast(toast, `Deleted ${pluralTasks(count)}`);
     });
 
+  // Per-row undo on Done rows (2026-07-27): frictionless like restore —
+  // it's reversible (just complete again), so no confirm; the toast carries
+  // the star retraction so the cost is never silent (archive-toast wording).
+  const handleUndoComplete = (task: TaskData) => {
+    void undoTaskCompletion(db, task)
+      .then(({ starsRemoved }) =>
+        showNoticeToast(
+          toast,
+          starsRemoved > 0 ? `Marked as not done — ★${starsRemoved} removed` : 'Marked as not done',
+        ),
+      )
+      // oxlint-disable-next-line no-console
+      .catch((error: unknown) => console.warn('Undo completion failed', error));
+  };
+
   // Frictionless single restore (AC6 — no confirm, reversible-in-spirit).
   const handleRestore = (task: TaskData) => {
     void restoreFromBin(db, task)
@@ -210,6 +226,7 @@ export default function TaskListScreen() {
         onToggleSelect={toggleSelect}
         onLongPressTask={enterSelection}
         onRestore={handleRestore}
+        onUndoComplete={handleUndoComplete}
         onTaskPress={(task) => router.push(`/task/${task.id}`)}
         onAddPress={() => {
           // The quick-add sheet is mounted on the home screen — open it via

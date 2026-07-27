@@ -120,11 +120,15 @@ function TaskRow({
 }
 
 // Completed rows are a calm achievement record (Story 4.4): check icon,
-// muted title, completion date — display-only outside multi-select (no
-// navigation to a card back offering Start on a finished task, AC6).
+// muted title, completion date — no navigation to a card back offering Start
+// on a finished task (AC6). A per-row Undo button (2026-07-27) flips the task
+// back to To do and returns its completion stars; like BinRow's Restore it
+// must be a SIBLING of the row pressable (nested pressables inside an
+// accessible container are flattened away from TalkBack/Maestro) and hides
+// while selecting (the bulk bar owns actions then).
 // `accessible={false}` outside selection so inner text stays visible to
 // Maestro (todo rows keep the `Open task:` label — selectors can't collide);
-// the long-press still bubbles to this Pressable, so a done row can enter
+// the long-press still bubbles to the row Pressable, so a done row can enter
 // multi-select too (archiving completed tasks is the 7.1 warned path).
 function DoneRow({
   task,
@@ -132,41 +136,56 @@ function DoneRow({
   selected,
   onPress,
   onLongPress,
+  onUndo,
 }: {
   task: TaskData;
   selecting: boolean;
   selected: boolean;
   onPress?: () => void;
   onLongPress?: () => void;
+  onUndo?: () => void;
 }) {
   return (
-    <Pressable
-      accessible={selecting}
-      accessibilityRole={selecting ? 'button' : undefined}
-      aria-label={selecting ? selectionLabel(task, selected) : undefined}
-      accessibilityState={selecting ? { selected } : undefined}
-      onPress={selecting ? onPress : undefined}
-      onLongPress={onLongPress}
-      className="rounded-2xl bg-background-50 px-4 py-3"
-    >
-      <HStack className="items-center gap-3">
-        {selecting ? (
-          <SelectionIndicator selected={selected} />
-        ) : (
-          <Box className="h-6 w-6 items-center justify-center rounded-full bg-success-50">
-            <Icon as={CheckIcon} size="sm" className="text-success-600" />
-          </Box>
-        )}
-        <VStack className="flex-1 gap-0.5">
-          <Text numberOfLines={1} className="font-body text-base text-typography-500">
-            {task.title}
-          </Text>
-          <Text className="font-body text-sm text-typography-400">
-            {task.updatedAt.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
-          </Text>
-        </VStack>
-      </HStack>
-    </Pressable>
+    <HStack className="items-center gap-2">
+      <Pressable
+        accessible={selecting}
+        accessibilityRole={selecting ? 'button' : undefined}
+        aria-label={selecting ? selectionLabel(task, selected) : undefined}
+        accessibilityState={selecting ? { selected } : undefined}
+        onPress={selecting ? onPress : undefined}
+        onLongPress={onLongPress}
+        className="flex-1 rounded-2xl bg-background-50 px-4 py-3"
+      >
+        <HStack className="items-center gap-3">
+          {selecting ? (
+            <SelectionIndicator selected={selected} />
+          ) : (
+            <Box className="h-6 w-6 items-center justify-center rounded-full bg-success-50">
+              <Icon as={CheckIcon} size="sm" className="text-success-600" />
+            </Box>
+          )}
+          <VStack className="flex-1 gap-0.5">
+            <Text numberOfLines={1} className="font-body text-base text-typography-500">
+              {task.title}
+            </Text>
+            <Text className="font-body text-sm text-typography-400">
+              {task.updatedAt.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+            </Text>
+          </VStack>
+        </HStack>
+      </Pressable>
+      {selecting ? null : (
+        <Pressable
+          accessibilityRole="button"
+          aria-label={`Undo completion: ${task.title}`}
+          hitSlop={8}
+          onPress={onUndo}
+          className="h-11 items-center justify-center rounded-full bg-background-0 px-4 shadow-segment active:bg-background-100"
+        >
+          <Text className="font-body-bold text-sm text-primary-600">Undo</Text>
+        </Pressable>
+      )}
+    </HStack>
   );
 }
 
@@ -254,6 +273,7 @@ export function TaskListView({
   onToggleSelect,
   onLongPressTask,
   onRestore,
+  onUndoComplete,
 }: {
   tasks: TaskData[];
   onTaskPress: (task: TaskData) => void;
@@ -268,6 +288,8 @@ export function TaskListView({
   onLongPressTask?: (task: TaskData) => void;
   /** Bin rows only — frictionless single-task restore (no confirm). */
   onRestore?: (task: TaskData) => void;
+  /** Done rows only — flip back to To do, returning the completion stars. */
+  onUndoComplete?: (task: TaskData) => void;
 }) {
   const selecting = selectedIds !== null;
   const isSelected = (task: TaskData) => selectedIds?.has(task.id) ?? false;
@@ -329,6 +351,7 @@ export function TaskListView({
             selected={isSelected(item)}
             onPress={() => onToggleSelect?.(item)}
             onLongPress={() => onLongPressTask?.(item)}
+            onUndo={() => onUndoComplete?.(item)}
           />
         ) : (
           <TaskRow

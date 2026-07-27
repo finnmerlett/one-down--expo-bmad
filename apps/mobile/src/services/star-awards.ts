@@ -1,4 +1,4 @@
-import { inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { randomUUID } from 'expo-crypto';
 
 import { STAR_WEIGHTS, type StarAction, type SubtaskData, type TaskData } from '@one-down/shared';
@@ -192,6 +192,52 @@ export async function retractTaskStars(
     // oxlint-disable-next-line no-console
     console.warn('Star retraction insert failed', error);
   }
+}
+
+/**
+ * Retract a completion's outstanding star credit when a Done task is flipped
+ * back to To do (undo-complete, 2026-07-27). Sums the task's
+ * `task_completed` + `completion_undone` rows and inserts ONE negative
+ * `completion_undone` row for the remainder — so repeated complete↔undo
+ * cycles always net to zero, and a retry after a failed status write can't
+ * double-retract. Subtask/triage stars are untouched (they belong to their
+ * own actions and the subtasks stay ticked). Returns the amount removed for
+ * the toast; failures are swallowed like every other ledger write (4.1 AC7).
+ */
+export async function retractCompletionStars(
+  db: TasksDb,
+  task: Pick<TaskData, 'id' | 'title'>,
+): Promise<number> {
+  const rows = await db
+    .select({ net: sql<number>`coalesce(sum(${starActivityLog.amount}), 0)` })
+    .from(starActivityLog)
+    .where(
+      and(
+        eq(starActivityLog.taskId, task.id),
+        inArray(starActivityLog.action, ['task_completed', 'completion_undone']),
+      ),
+    );
+  const outstanding = rows[0]?.net ?? 0;
+  if (outstanding <= 0) return 0;
+  const breakdown: StarBreakdown = {
+    base: -outstanding,
+    urgencyBonus: 0,
+    sizeBonus: 0,
+    earlyBonus: 0,
+    total: -outstanding,
+  };
+  try {
+    await insertAward(
+      db,
+      { taskId: task.id, taskTitle: task.title, action: 'completion_undone' },
+      breakdown,
+      new Date(),
+    );
+  } catch (error) {
+    // oxlint-disable-next-line no-console
+    console.warn('Star retraction insert failed', error);
+  }
+  return outstanding;
 }
 
 /**

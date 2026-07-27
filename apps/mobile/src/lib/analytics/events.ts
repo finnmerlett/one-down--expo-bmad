@@ -45,7 +45,8 @@ export type AnalyticsEventMap = EnforceFlatProps<{
       | 'triage_confirmed'
       | 'subtask_completed'
       | 'subtask_deleted'
-      | 'archive_retraction';
+      | 'archive_retraction'
+      | 'completion_undone';
     amount: number;
     base: number;
     urgency_bonus: number;
@@ -156,6 +157,8 @@ export type AnalyticsEventMap = EnforceFlatProps<{
   tasks_deleted_permanently: { count: number };
   /** Story 7.1 — a task returned to the active list. */
   task_restored: { from: 'recycle_bin' };
+  /** Undo-complete (2026-07-27) — Done row flipped back to To do; completion stars retracted. */
+  task_completion_undone: { stars_removed: number };
   /** Story 7.2 — a flagged task's card back opened (once per open, ref-guarded). */
   task_health_prompt_shown: { flag: 'stale' | 'avoided' };
   /** Story 7.2 — a prompt option was chosen (flag + action enums only). */
