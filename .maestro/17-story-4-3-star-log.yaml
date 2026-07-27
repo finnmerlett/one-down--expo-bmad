@@ -24,6 +24,11 @@ appId: com.onedown.mobile
 - tapOn: 'Mark as complete'
 - waitForAnimationToEnd
 
+# The undoable reward toast lingers ~5 s over the top bar (2026-07-27) —
+# wait it out before tapping the counter beneath it.
+- extendedWaitUntil:
+    notVisible: 'One down!'
+    timeout: 7000
 # The log shows the transaction: action label, title snapshot, amount (AC2)
 - extendedWaitUntil:
     visible: '10 stars, 10 earned today'

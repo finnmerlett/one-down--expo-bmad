@@ -62,7 +62,9 @@ appId: com.onedown.mobile
 - waitForAnimationToEnd
 - tapOn: 'Open task: Premium purchase task'
 - waitForAnimationToEnd
-- tapOn: 'Continue task'
+# The task was never started (2026-07-27: browsing the working screen does
+# not start it), so the detail's primary action still reads Start.
+- tapOn: 'Start task'
 - waitForAnimationToEnd
 - assertVisible: 'Help me with this'
 - assertNotVisible: 'Premium feature: AI task breakdown'
