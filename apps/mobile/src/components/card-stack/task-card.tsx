@@ -5,18 +5,24 @@ import {
   type TaskSize,
 } from '@one-down/shared';
 
-import { Badge, BadgeText } from '@/components/ui/badge';
 import { Box } from '@/components/ui/box';
 import { HStack } from '@/components/ui/hstack';
-import { CalendarDaysIcon, EditIcon, Icon, InfoIcon, StarIcon } from '@/components/ui/icon';
+import { EditIcon, Icon, InfoIcon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 
+import { CONTEXT_ICONS } from '@/components/stack-filters/context-icons';
 import { evaluateTaskHealth, type TaskHealthFlag } from '@/services/task-health';
 
 export const SIZE_LABELS: Record<TaskSize, string> = {
   quick_win: 'Quick win',
   big_time: 'Big time',
+};
+
+// Bottom-rail caps variants (v1.5 — DM Mono caps, letterspaced).
+const SIZE_CAPS: Record<TaskSize, string> = {
+  quick_win: 'QUICK WIN',
+  big_time: 'BIG TIME',
 };
 
 // Health indicator copy (Story 7.2, AC6) — small and non-alarming, shared by
@@ -36,9 +42,13 @@ export const CONTEXT_LABELS: Record<TaskContext, string> = {
   internet: 'Internet',
 };
 
-// Card front (Story 1.4 adds the back). Fills whatever frame the stack gives
-// it. `starValue` is computed in the home layer (star-calculator) so the card
-// stays presentational.
+/**
+ * Card front, v1.5 "Clay & Paper" (frame 02): pencil + value on the top line,
+ * Gabarito title, state chip, the one-line reason filling the middle, and a
+ * bottom rail carrying what the card REQUIRES — size caps + due line left,
+ * context glyphs right. Fills whatever frame the stack gives it; `starValue`
+ * is computed in the home layer so the card stays presentational.
+ */
 export function TaskCard({ task, starValue }: { task: TaskData; starValue: number }) {
   const contexts = parseTaskContexts(task.contexts);
   const inProgress = task.status === 'in_progress';
@@ -53,92 +63,94 @@ export function TaskCard({ task, starValue }: { task: TaskData; starValue: numbe
         month: 'short',
       })
     : null;
-  const notesHint = task.notes?.trim() ? task.notes.trim().split('\n')[0] : null;
+  const reason = task.details?.trim() ? task.details.trim().split('\n')[0] : null;
 
   return (
-    <Box className="h-full w-full rounded-[28px] border border-outline-100 bg-background-0 p-6 shadow-soft-card">
-      <VStack className="h-full justify-between">
-        <VStack className="gap-4">
-          {/* Corner markers: edit pencil top-left (2026-07-27: tap-to-edit
-              moved here — tapping the card itself opens the working screen)
-              and the review marker top-right (Story 6.2). Both are VISUAL
-              only — the interactive tap targets live in the stack layer,
-              above the swipe gesture (the top card is an accessible
-              container, so inner buttons would be flattened away from
-              TalkBack/Maestro). */}
-          <HStack className="items-center justify-between">
-            <Icon as={EditIcon} size="md" className="text-typography-400" />
-            {task.hasCheckNeeded ? (
-              <Icon as={InfoIcon} size="xl" className="text-warning-600" />
-            ) : null}
+    <Box className="h-full w-full overflow-hidden rounded-[22px] border border-outline-100 bg-background-0 shadow-soft-card">
+      <VStack className="h-full">
+        <VStack className="flex-1 gap-4 px-6 pt-6">
+          {/* Corner markers: edit pencil top-left (tap-to-edit) and the review
+              marker top-right — VISUAL only; the interactive tap targets live
+              in the stack layer, above the swipe gesture (the top card is an
+              accessible container, so inner buttons would be flattened away
+              from TalkBack/Maestro). Review ink is blueprint blue now: blue =
+              "we guessed, you haven't agreed" (spec §2). */}
+          <HStack className="items-start justify-between">
+            <Icon as={EditIcon} size="sm" className="text-typography-200" />
+            <HStack className="items-baseline gap-1">
+              {task.hasCheckNeeded ? (
+                <Icon as={InfoIcon} size="lg" className="mr-1 self-center text-info-500" />
+              ) : null}
+              <Text className="font-mono text-[21px] leading-none text-tertiary-500">
+                {starValue}
+              </Text>
+              <Text className="text-[11px] text-tertiary-500">★</Text>
+            </HStack>
           </HStack>
           {/* Capped at 3 lines: the deck frame is fixed-height, so an epic
-              title must truncate rather than push the chips out of the card. */}
+              title must truncate rather than push the rail out of the card. */}
           <Text
             numberOfLines={3}
-            className="font-heading text-[30px] leading-[38px] text-typography-900"
+            className="font-heading text-[31px] leading-[36px] tracking-tight text-typography-900"
           >
             {task.title}
           </Text>
-          <HStack className="flex-wrap items-center gap-2">
-            {/* Star-value chip (FR11): a reward preview, not a priority label —
-                urgency shows as value, never as red/overdue framing. Gold is
-                reserved for stars (design brief). */}
-            <HStack className="items-center gap-1 rounded-full bg-tertiary-50 px-2.5 py-1">
-              <Icon as={StarIcon} size="sm" className="fill-tertiary-500 text-tertiary-500" />
-              <Text className="font-body-bold text-sm text-tertiary-700">{starValue}</Text>
+          {inProgress || healthFlag ? (
+            <HStack className="flex-wrap items-center gap-2">
+              {/* State chip (v1.5): pine dot + label, quiet. */}
+              {inProgress ? (
+                <HStack className="h-[27px] items-center gap-[7px] self-start rounded-[9px] bg-success-100 px-[11px]">
+                  <Box className="h-1.5 w-1.5 rounded-full bg-success-500" />
+                  <Text className="font-body-semibold text-[11.5px] text-success-700">
+                    In progress
+                  </Text>
+                </HStack>
+              ) : null}
+              {/* Health indicator (Story 7.2, AC6) — kept from the previous
+                  design as a quiet muted chip (ambiguity #20), never red. */}
+              {healthFlag ? (
+                <HStack className="h-[27px] items-center self-start rounded-[9px] bg-background-200 px-[11px]">
+                  <Text className="font-body-semibold text-[11.5px] text-typography-600">
+                    {HEALTH_LABELS[healthFlag]}
+                  </Text>
+                </HStack>
+              ) : null}
             </HStack>
-            {/* In-progress state marker (UX: card shows "Continue" on return). */}
-            {inProgress ? (
-              <Badge action="success" variant="solid">
-                <BadgeText>Continue</BadgeText>
-              </Badge>
-            ) : null}
-            {/* Health indicator (Story 7.2, AC6): kind honey/terracotta tints,
-                never red/alarming — a heads-up so the card-back prompt isn't a
-                surprise. */}
-            {healthFlag ? (
-              <Badge action={healthFlag === 'avoided' ? 'error' : 'warning'} variant="solid">
-                <BadgeText>{HEALTH_LABELS[healthFlag]}</BadgeText>
-              </Badge>
-            ) : null}
-            {/* Size chip: honey for Big time, muted teal for Quick win. */}
-            {task.size ? (
-              <Badge action={task.size === 'big_time' ? 'warning' : 'info'} variant="solid">
-                <BadgeText>{SIZE_LABELS[task.size]}</BadgeText>
-              </Badge>
-            ) : null}
-            {contexts.map((context) => (
-              <Badge key={context} action="muted" variant="solid">
-                <BadgeText>
-                  {(CONTEXT_LABELS as Record<string, string>)[context] ?? context}
-                </BadgeText>
-              </Badge>
-            ))}
-          </HStack>
+          ) : null}
+          {/* The one-line reason (spec §4): details' first line fills what
+              used to be dead space — why this is worth doing, kept short. */}
+          {reason ? (
+            <Text
+              numberOfLines={3}
+              className="font-body text-[13.5px] leading-5 text-typography-500"
+            >
+              {reason}
+            </Text>
+          ) : null}
         </VStack>
-        {/* Bottom hints: deadline + first line of notes, so cards with detail
-            don't feel empty (design brief). Muted — informational, not urgent. */}
-        {deadlineHint || notesHint ? (
-          <VStack className="gap-2 border-t border-outline-100 pt-4">
-            {deadlineHint ? (
-              <HStack className="items-center gap-2">
-                <Icon as={CalendarDaysIcon} size="sm" className="text-typography-400" />
-                <Text className="font-body-medium text-sm text-typography-500">
-                  Due {deadlineHint}
-                </Text>
-              </HStack>
+        {/* Bottom rail: requirements live below the hairline on a faintly
+            tinted panel — size + due left, context glyphs right. Always
+            rendered so every card shares one silhouette. */}
+        <HStack className="items-end justify-between border-t border-outline-100 bg-[#FAFCFB] px-6 pb-[18px] pt-[15px]">
+          <VStack className="min-w-0 flex-1 gap-[5px]">
+            {task.size ? (
+              <Text className="font-mono text-[11px] tracking-caps-tight text-typography-500">
+                {SIZE_CAPS[task.size]}
+              </Text>
             ) : null}
-            {notesHint ? (
-              <HStack className="items-center gap-2">
-                <Icon as={EditIcon} size="sm" className="text-typography-400" />
-                <Text numberOfLines={1} className="flex-1 font-body text-sm text-typography-500">
-                  {notesHint}
-                </Text>
-              </HStack>
-            ) : null}
+            <Text className="font-body-semibold text-[12.5px] text-typography-600">
+              {deadlineHint ? `Due ${deadlineHint}` : 'No deadline'}
+            </Text>
           </VStack>
-        ) : null}
+          <HStack className="flex-none gap-[9px]">
+            {contexts.map((context) => {
+              const IconCmp = CONTEXT_ICONS[context as TaskContext];
+              return IconCmp ? (
+                <Icon key={context} as={IconCmp} size="sm" className="text-typography-400" />
+              ) : null;
+            })}
+          </HStack>
+        </HStack>
       </VStack>
     </Box>
   );

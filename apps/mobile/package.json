@@ -13,7 +13,9 @@
     "storybook:generate": "sb-rn-get-stories"
   },
   "dependencies": {
-    "@expo-google-fonts/nunito": "^0.4.2",
+    "@expo-google-fonts/dm-mono": "^0.4.2",
+    "@expo-google-fonts/gabarito": "^0.4.2",
+    "@expo-google-fonts/karla": "^0.4.2",
     "@expo/html-elements": "^0.10.1",
     "@gluestack-ui/core": "^3.0.10",
     "@gluestack-ui/utils": "^3.0.11",
@@ -36,6 +38,7 @@
     "expo-dev-client": "~56.0.20",
     "expo-device": "~56.0.4",
     "expo-file-system": "~56.0.8",
+    "expo-font": "~56.0.7",
     "expo-linking": "~56.0.14",
     "expo-localization": "~56.0.6",
     "expo-notifications": "~56.0.21",

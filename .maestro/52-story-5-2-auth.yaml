@@ -5,7 +5,7 @@ appId: com.onedown.mobile
 - runFlow: common/launch-app.yaml
 
 # AC-6: signed out, core features live — no login wall.
-- assertVisible: 'Add task'
+- assertVisible: 'Add a task'
 
 # Unique credentials per run (GoTrue keeps users across runs).
 - evalScript: ${output.email = 'e2e-' + Date.now() + '@test.local'}

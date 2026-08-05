@@ -13,8 +13,8 @@ appId: com.onedown.mobile
 ---
 - runFlow: common/launch-app.yaml
 
-# Seed via brain dump (6.1 surface)
-- tapOn: 'Add task'
+# Seed via brain dump (6.1 surface; v1.5 home pill, then the screen's textarea)
+- tapOn: 'Brain dump'
 - waitForAnimationToEnd
 - tapOn: 'Brain dump'
 - inputText: 'Call the dentist soon. Ponder the universe quietly for a while'

@@ -1,0 +1,11 @@
+# v1.5 — the "Right now" sheet auto-expands on the session's first home mount
+# when tasks already exist (relaunch scenarios). Collapse it if present so the
+# calling flow lands on the plain deck. Safe to run when the sheet is absent.
+appId: com.onedown.mobile
+---
+- runFlow:
+    when:
+      visible: 'What have you got to hand?'
+    commands:
+      - tapOn: 'Done choosing contexts'
+      - waitForAnimationToEnd

@@ -31,7 +31,7 @@ export function EmptyState({
       >
         {glyph}
       </Text>
-      <Text className="text-center font-body-bold text-xl text-typography-900">{title}</Text>
+      <Text className="text-center font-heading text-2xl text-typography-900">{title}</Text>
       <Text className="text-center text-typography-500">{body}</Text>
       {actionLabel && onAction ? (
         // gluestack creator components take aria-label, not accessibilityLabel.

@@ -1,5 +1,5 @@
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   MICRO_TASK_SKIP_THRESHOLD,
@@ -9,6 +9,7 @@ import {
 } from '@one-down/shared';
 
 import { AppShell } from '@/components/app-shell/app-shell';
+import { BottomActions } from '@/components/app-shell/bottom-actions';
 import { CardBackOverlay } from '@/components/card-stack/card-back-overlay';
 import { CardStack } from '@/components/card-stack/card-stack';
 import { MicroTaskNudge } from '@/components/card-stack/micro-task-nudge';
@@ -18,20 +19,24 @@ import { EmptyState } from '@/components/empty-state/empty-state';
 import { emptyStackCopy } from '@/components/empty-state/empty-stack-copy';
 import { showRewardToast } from '@/components/feedback/reward-toast';
 import { QuickAddSheet } from '@/components/quick-add-sheet/quick-add-sheet';
-import { ContextToggleBar } from '@/components/stack-filters/context-toggle-bar';
-import { ModeToggle } from '@/components/stack-filters/mode-toggle';
+import { ContextBar } from '@/components/stack-filters/context-bar';
+import { ContextSheet } from '@/components/stack-filters/context-sheet';
+import { SizeSwitcher } from '@/components/stack-filters/size-switcher';
+import { Box } from '@/components/ui/box';
 import { Button, ButtonText } from '@/components/ui/button';
 import { HStack } from '@/components/ui/hstack';
+import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
 import { useToast } from '@/components/ui/toast';
 import { VStack } from '@/components/ui/vstack';
 import { useAbsenceCheck } from '@/hooks/use-absence-check';
+import { useBankedStars } from '@/hooks/use-banked-stars';
 import { useMicroTask } from '@/hooks/use-micro-task';
 import { useStarTotals } from '@/hooks/use-star-totals';
 import { useTasks } from '@/hooks/use-tasks';
 import { track } from '@/lib/analytics/track';
 import { db } from '@/lib/local-db';
-import { availableContexts, curateTasks, urgentContexts } from '@/services/curation';
+import { availableContexts, curateTasks } from '@/services/curation';
 import { awardCutLooseStars } from '@/services/star-awards';
 import { potentialStars } from '@/services/star-calculator';
 import { recordTaskSkipped } from '@/services/task-activity';
@@ -46,6 +51,7 @@ import {
 import { createTask, type CreateTaskInput } from '@/services/tasks-repository';
 import { promoteQuickWin } from '@/services/welcome-back';
 import { useAppStore } from '@/stores/app-store';
+import { useContextBarStore } from '@/stores/context-bar-store';
 import { useQuickAddStore } from '@/stores/quick-add-store';
 import { useReviewModeStore } from '@/stores/review-mode-store';
 import { useStackFiltersStore } from '@/stores/stack-filters-store';
@@ -58,6 +64,7 @@ export default function HomeScreen() {
   const toast = useToast();
   const tasks = useTasks();
   const starTotals = useStarTotals();
+  const bankedStars = useBankedStars();
 
   // Card-back state lives HERE, not in the stack — stack cards remount on
   // depth promotion, which would wipe any card-local flip state. The open
@@ -71,8 +78,28 @@ export default function HomeScreen() {
   const activeContexts = useStackFiltersStore((state) => state.activeContexts);
   const toggleContext = useStackFiltersStore((state) => state.toggleContext);
   const mode = useStackFiltersStore((state) => state.mode);
-  const toggleMode = useStackFiltersStore((state) => state.toggleMode);
+  const setMode = useStackFiltersStore((state) => state.setMode);
   const clearFilters = useStackFiltersStore((state) => state.clearFilters);
+
+  // "Right now" sheet (v1.5 frame 01): expands in place over the scrimmed
+  // deck; opens automatically the first time home mounts each app session.
+  const barExpanded = useContextBarStore((state) => state.expanded);
+  const expandBar = useContextBarStore((state) => state.expand);
+  const collapseBar = useContextBarStore((state) => state.collapse);
+  const autoOpenOnce = useContextBarStore((state) => state.autoOpenOnce);
+  const consumeAutoOpen = useContextBarStore((state) => state.consumeAutoOpen);
+  // Auto-open belongs to SESSION OPEN only: if the first live-query emit
+  // (well inside the grace window) has tasks, expand; an empty deck at open
+  // forfeits it for the session — the sheet must never pop up mid-session
+  // when the first task lands (brand-new-user seeding would hit that).
+  const mountedAtRef = useRef(Date.now());
+  useEffect(() => {
+    if (Date.now() - mountedAtRef.current > 1500) {
+      consumeAutoOpen();
+      return;
+    }
+    if (tasks.length > 0) autoOpenOnce();
+  }, [tasks.length, autoOpenOnce, consumeAutoOpen]);
 
   // Session curation seed — stable across re-renders/live-query emits (the
   // order can't shuffle under the user's fingers mid-browse), fresh per app
@@ -138,7 +165,6 @@ export default function HomeScreen() {
     topTask.status === 'pending' &&
     topTask.skipCount >= MICRO_TASK_SKIP_THRESHOLD;
   const available = useMemo(() => availableContexts(tasks, mode), [tasks, mode]);
-  const urgent = useMemo(() => urgentContexts(tasks, new Date()), [tasks]);
 
   // Star preview closes over the UNFILTERED browsable list — relative
   // urgency ranks against ALL active tasks (matches 4.1's award input),
@@ -166,24 +192,39 @@ export default function HomeScreen() {
     });
   };
 
-  const handleToggleMode = (size: TaskSize) => {
-    const nowActive = mode !== size;
-    toggleMode(size);
-    track('mode_toggled', { mode: size, now_active: nowActive });
+  const handleSetMode = (next: TaskSize | null) => {
+    if (next === mode) return;
+    setMode(next);
+    track('mode_toggled', { mode: next ?? 'all', now_active: next !== null });
   };
+
+  const overlayUp = openTask !== null;
 
   return (
     <AppShell
-      // FAB → brain dump (Story 6.1, UX-DR15); quick add stays reachable via
-      // the sheet on this screen ("Add one task instead" on the dump screen).
-      onAddPress={openTask ? undefined : () => router.push('/brain-dump')}
-      // Inert while the overlay is open (same as the FAB) — pushing a route
-      // would leave the overlay's BackHandler swallowing hardware back.
-      onListPress={openTask ? undefined : () => router.push('/task-list')}
+      onListPress={overlayUp ? undefined : () => router.push('/task-list')}
       starTotals={starTotals}
-      // Same inert-while-overlay guard as the list icon (4.3 AC5).
-      onStarPress={openTask ? undefined : () => router.push('/star-log')}
-      onSettingsPress={openTask ? undefined : () => router.push('/settings')}
+      bankedStars={bankedStars}
+      // Inert while the card-back overlay is open — pushing a route would
+      // leave the overlay's BackHandler swallowing hardware back (4.3 AC5).
+      onStarPress={overlayUp ? undefined : () => router.push('/star-log')}
+      onSettingsPress={overlayUp ? undefined : () => router.push('/settings')}
+      // Standing actions (v1.5): plus = quick add, Brain dump pill; the
+      // dashed triage entry joins while the Right-now sheet is expanded.
+      footer={
+        overlayUp ? undefined : (
+          <BottomActions
+            onAddPress={open}
+            onBrainDumpPress={() => router.push('/brain-dump')}
+            showTriage={barExpanded}
+            triageCount={reviewCards.length}
+            onTriagePress={() => {
+              collapseBar();
+              handleReviewPress();
+            }}
+          />
+        )
+      }
     >
       {/* OTA update prompt (2026-07-27) — appears only when a downloaded
           update is pending; one tap reloads into it (no double-restart). */}
@@ -194,16 +235,17 @@ export default function HomeScreen() {
       <VStack className="gap-1">
         {/* Fixed-height slot: the reachability dot can flip states without
             ever shifting the card stack below (Story 5.1 AC-5). */}
-        <HStack className="h-4 items-center justify-end px-1">
+        <HStack className="h-4 items-center justify-end px-2">
           <ConnectionStatus />
         </HStack>
-        <ContextToggleBar
-          activeContexts={activeContexts}
-          availableContexts={available}
-          urgentContexts={urgent}
-          onToggle={handleToggleContext}
-        />
-        <ModeToggle mode={mode} onToggle={handleToggleMode} />
+        {isReviewing ? null : (
+          <VStack className="px-[22px]">
+            <ContextBar activeContexts={activeContexts} onExpand={expandBar} />
+            <Box className="mt-[9px]">
+              <SizeSwitcher mode={mode} onSetMode={handleSetMode} />
+            </Box>
+          </VStack>
+        )}
       </VStack>
       {isReviewing ? (
         // Review mode (Story 6.2): flagged cards only, banner above the stack.
@@ -216,8 +258,8 @@ export default function HomeScreen() {
           />
         ) : (
           <>
-            <HStack className="items-center justify-between px-2 pt-1">
-              <Text className="text-sm font-medium text-typography-700">
+            <HStack className="items-center justify-between px-4 pt-1">
+              <Text className="font-body-medium text-sm text-typography-700">
                 {`Reviewing ${reviewCards.length} ${reviewCards.length === 1 ? 'task' : 'tasks'}`}
               </Text>
               <Button size="sm" variant="outline" aria-label="Exit review" onPress={exitReview}>
@@ -241,7 +283,7 @@ export default function HomeScreen() {
           title="No tasks yet"
           body="Get things out of your head — add your first task."
           actionLabel="Add a task"
-          onAction={openTask ? undefined : open}
+          onAction={overlayUp ? undefined : open}
         />
       ) : curated.length === 0 ? (
         activeContexts.length > 0 || mode !== null ? (
@@ -261,7 +303,7 @@ export default function HomeScreen() {
             title="All clear"
             body="Nothing waiting right now. Add a task or check your list."
             actionLabel="Add a task"
-            onAction={openTask ? undefined : open}
+            onAction={overlayUp ? undefined : open}
           />
         )
       ) : (
@@ -290,6 +332,29 @@ export default function HomeScreen() {
           ) : null}
         </>
       )}
+      {/* Expanded "Right now" sheet (frame 01): scrim over the content, the
+          sheet floating where the bar sits. The standing actions below stay
+          live (they carry the triage entry in this state). */}
+      {barExpanded && !isReviewing && !overlayUp ? (
+        <Box className="absolute inset-0">
+          <Pressable
+            accessibilityRole="button"
+            aria-label="Close context sheet"
+            onPress={collapseBar}
+            className="absolute inset-0 bg-background-100/70"
+          />
+          <Box className="mx-3.5 mt-9">
+            <ContextSheet
+              activeContexts={activeContexts}
+              availableContexts={available}
+              mode={mode}
+              onToggleContext={handleToggleContext}
+              onSetMode={handleSetMode}
+              onDone={collapseBar}
+            />
+          </Box>
+        </Box>
+      ) : null}
       {openTask ? (
         <CardBackOverlay
           task={openTask}

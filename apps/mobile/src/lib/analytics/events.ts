@@ -33,8 +33,8 @@ export type AnalyticsEventMap = EnforceFlatProps<{
   };
   /** Story 3.1 — a context filter button toggled on the home screen (enum names only). */
   context_toggled: { context: TaskContext; now_active: boolean; active_count: number };
-  /** Story 3.2 — the mode segmented control toggled (`now_active: false` = re-press deactivated it). */
-  mode_toggled: { mode: TaskSize; now_active: boolean };
+  /** Story 3.2 — the mode control changed (v1.5: explicit `all` segment; `now_active: false` = All/Either chosen). */
+  mode_toggled: { mode: TaskSize | 'all'; now_active: boolean };
   /** Story 3.4 — all filters reset atomically (a semantic mutation, not individual toggles). */
   stack_filters_cleared: { via: 'empty_state' };
   /** Story 4.1 — a star transaction was recorded (amounts only, never task text). */

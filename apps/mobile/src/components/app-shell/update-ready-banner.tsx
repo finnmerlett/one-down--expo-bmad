@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import * as Updates from 'expo-updates';
+
+import { Updates } from '@/lib/expo-updates-safe';
 
 import { HStack } from '@/components/ui/hstack';
 import { CloseIcon, Icon } from '@/components/ui/icon';
@@ -68,6 +69,7 @@ export function UpdateReadyBanner() {
   const handleRestart = () => {
     setRestarting(true);
     track('update_prompt_actioned', { action: 'restart' });
+    // Stub binaries never report ready, so this only runs with a real engine.
     Updates.reloadAsync().catch((error: unknown) => {
       // A failed reload leaves the CURRENT version running — recoverable by
       // a normal restart, so just log and reset the button.

@@ -31,6 +31,9 @@ appId: com.onedown.mobile
 # launch subflow here) — the debounced write must already be in SQLite
 - stopApp
 - launchApp
+# v1.5: a task exists at this relaunch, so the Right-now sheet auto-expands
+# over the deck — collapse it before asserting on the card front
+- runFlow: common/dismiss-context-sheet.yaml
 
 # Card front shows the Continue marker; reopen the back and continue
 - extendedWaitUntil:

@@ -37,7 +37,11 @@ appId: com.onedown.mobile
 - waitForAnimationToEnd
 
 # AC1: filters that match nothing name the active filter(s), never "no tasks"
+# (v1.5: context chips live in the expandable Right-now sheet — open it,
+# toggle, then collapse before using the on-deck mode pill)
+- tapOn: 'Right now.*'
 - tapOn: 'Filter context: Home'
+- tapOn: 'Done choosing contexts'
 - waitForAnimationToEnd
 - tapOn: 'Mode: Big time'
 - waitForAnimationToEnd

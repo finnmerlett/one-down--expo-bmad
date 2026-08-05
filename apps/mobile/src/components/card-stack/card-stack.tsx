@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useWindowDimensions, View } from 'react-native';
+import { View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
@@ -18,20 +18,24 @@ import { evaluateTaskHealth } from '@/services/task-health';
 import { HEALTH_LABELS, TaskCard } from './task-card';
 
 const VISIBLE_CARDS = 3;
-/** Drag past this fraction of the screen width to dismiss (owner-tuned 2026-07-27: a light flick should skip). */
-const DISMISS_THRESHOLD_RATIO = 0.15;
-const FLY_OFF_RATIO = 1.2;
-const FLY_OFF_DURATION_MS = 250;
+/** v1.5 deck physics: commit once the drag travels ~⅓ of the card width
+ *  (design interactive deck: `reach > 92`) — supersedes the 2026-07-27
+ *  screen-fraction tuning (ambiguity #18; flip this constant to revert). */
+const DISMISS_THRESHOLD_PX = 92;
+const FLY_OFF_DISTANCE = 1000;
+const FLY_OFF_DURATION_MS = 680;
+/** Drag styling from the design deck: slight drop + rotation follow. */
+const DRAG_DROP_RATIO = 0.05;
+const DRAG_ROTATE_DEG_PER_PX = 0.035;
 const SNAP_SPRING = { damping: 70, stiffness: 900 };
 
-// Background-card stagger. translateY must out-run the bottom-edge rise from
-// the scale shrink (~2.5% of card height per depth) or the card hides
-// entirely behind the top card (AC1 peek). The promoted card's entrance
-// animation starts from the depth-1 values, so keep them in sync.
-const DEPTH_SCALE_STEP = 0.05;
-const DEPTH_TRANSLATE_STEP = 30;
-const DEPTH_1_OPACITY = 0.7;
-const DEPTH_2_OPACITY = 0.4;
+// v1.5 fan slots (design SLOTS): each depth sits offset down-right with a
+// slight clockwise rotation — a hand-squared pile of paper cards.
+const SLOT_X = [0, 7, 15];
+const SLOT_Y = [0, 5, 11];
+const SLOT_R = [0, 1.1, 2.4];
+/** Frame opacity per depth (design FADE). */
+const SLOT_FADE = [1, 1, 0.82];
 const PROMOTE_DURATION_MS = 200;
 
 const CARD_FRAME = { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 } as const;
@@ -48,7 +52,7 @@ const CORNER_SIZE = 64;
  * mount and there is never a cross-thread reset racing a Fabric commit (the
  * old card unmounts off-screen; the new one mounts centered). The parent
  * remounts it via key on every advance — and the mount entrance animates from
- * the depth-1 background position to full size, so the promoted card grows
+ * the depth-1 fan slot to the top slot, so the promoted card slides square
  * into place instead of jumping.
  */
 function SwipeableTopCard({
@@ -70,20 +74,14 @@ function SwipeableTopCard({
   /** Top-right corner tap → review mode, wired only on flagged cards (6.2). */
   onReview?: () => void;
 }) {
-  const { width: screenWidth } = useWindowDimensions();
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
-  // Entrance: born at the depth-1 background position, settles to the top slot.
-  const settleY = useSharedValue(DEPTH_TRANSLATE_STEP);
-  const settleScale = useSharedValue(1 - DEPTH_SCALE_STEP);
-  const contentFade = useSharedValue(DEPTH_1_OPACITY);
+  // Entrance: born at the depth-1 fan slot, settles square to the top slot.
+  const settle = useSharedValue(1);
 
   useEffect(() => {
-    const timing = { duration: PROMOTE_DURATION_MS };
-    settleY.value = withTiming(0, timing);
-    settleScale.value = withTiming(1, timing);
-    contentFade.value = withTiming(1, timing);
-  }, [settleY, settleScale, contentFade]);
+    settle.value = withTiming(0, { duration: PROMOTE_DURATION_MS });
+  }, [settle]);
 
   const pan = Gesture.Pan()
     .onChange((event) => {
@@ -91,10 +89,10 @@ function SwipeableTopCard({
       translateY.value += event.changeY;
     })
     .onEnd(() => {
-      if (Math.abs(translateX.value) > screenWidth * DISMISS_THRESHOLD_RATIO) {
+      if (Math.abs(translateX.value) > DISMISS_THRESHOLD_PX) {
         const direction = Math.sign(translateX.value);
         translateX.value = withTiming(
-          direction * screenWidth * FLY_OFF_RATIO,
+          direction * FLY_OFF_DISTANCE,
           { duration: FLY_OFF_DURATION_MS },
           (finished) => {
             // finished is false when a new touch re-grabs the card mid-flight
@@ -135,13 +133,18 @@ function SwipeableTopCard({
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
-      { translateX: translateX.value },
-      { translateY: translateY.value + settleY.value },
-      { scale: settleScale.value },
+      { translateX: translateX.value + settle.value * SLOT_X[1]! },
+      {
+        translateY:
+          translateY.value +
+          Math.abs(translateX.value) * DRAG_DROP_RATIO +
+          settle.value * SLOT_Y[1]!,
+      },
+      // Drag rotation follows the finger (design: rotate(dx·0.035°)); the
+      // entrance un-rotates from the depth-1 slot angle.
+      { rotate: `${translateX.value * DRAG_ROTATE_DEG_PER_PX + settle.value * SLOT_R[1]!}deg` },
     ],
   }));
-
-  const fadeStyle = useAnimatedStyle(() => ({ opacity: contentFade.value }));
 
   return (
     <GestureDetector gesture={gesture}>
@@ -150,12 +153,8 @@ function SwipeableTopCard({
         accessible
         accessibilityLabel={accessibilityLabel}
       >
-        {/* Solid base under the fading content so the entrance fade never
-            shows the card below through this one. */}
-        <View className="h-full w-full rounded-3xl bg-background-0">
-          <Animated.View style={[FILL, fadeStyle]}>
-            <TaskCard task={task} starValue={starValue} />
-          </Animated.View>
+        <View className="h-full w-full rounded-[22px] bg-background-0">
+          <TaskCard task={task} starValue={starValue} />
         </View>
       </Animated.View>
     </GestureDetector>
@@ -163,13 +162,14 @@ function SwipeableTopCard({
 }
 
 /**
- * Background card that animates toward its current slot: a single `progress`
- * value tracks depth, so on every advance depth-2 rises/brightens into
- * depth-1, a freshly mounted card rises in from one slot deeper while fading
- * in (AC4), and a card pushed back down (task added mid-browse) recedes
- * smoothly. The solid base fades only on entry (progress 2→3 region) — at
- * resting depths it is opaque, so lower cards never show through the content
- * fade.
+ * Background card animating toward its fan slot: a single `progress` value
+ * tracks depth, so on every advance depth-2 slides square into depth-1, a
+ * freshly mounted card eases in from one slot deeper while fading, and a card
+ * pushed back down (task added mid-browse) recedes smoothly.
+ *
+ * v1.5: only the card directly under the top one carries content (it is the
+ * next task, ready before the front card leaves); deeper cards are blank
+ * card-stock backs — the fan reads as a pile of paper, not a queue of text.
  */
 function StackedCard({
   task,
@@ -186,40 +186,36 @@ function StackedCard({
     progress.value = withTiming(depth, { duration: PROMOTE_DURATION_MS });
   }, [depth, progress]);
 
-  const frameStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateY: progress.value * DEPTH_TRANSLATE_STEP },
-      { scale: 1 - progress.value * DEPTH_SCALE_STEP },
-    ],
-  }));
+  const frameStyle = useAnimatedStyle(() => {
+    const clamped = Math.min(Math.max(progress.value, 0), 2);
+    return {
+      transform: [
+        { translateX: interpolate(clamped, [0, 1, 2], SLOT_X) },
+        { translateY: interpolate(clamped, [0, 1, 2], SLOT_Y) },
+        { rotate: `${interpolate(clamped, [0, 1, 2], SLOT_R)}deg` },
+      ],
+      opacity: interpolate(
+        progress.value,
+        [1, 2, VISIBLE_CARDS],
+        [SLOT_FADE[1]!, SLOT_FADE[2]!, 0],
+        Extrapolation.CLAMP,
+      ),
+    };
+  });
 
-  const baseStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(
-      progress.value,
-      [VISIBLE_CARDS - 1, VISIBLE_CARDS],
-      [1, 0],
-      Extrapolation.CLAMP,
-    ),
-  }));
-
+  // Content crossfades out as the card recedes past depth 1 — blank card
+  // backs from depth 2 (design: "only the two top cards carry content").
   const contentStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(
-      progress.value,
-      [0, 1, 2],
-      [1, DEPTH_1_OPACITY, DEPTH_2_OPACITY],
-      Extrapolation.CLAMP,
-    ),
+    opacity: interpolate(progress.value, [1, 2], [1, 0], Extrapolation.CLAMP),
   }));
 
   return (
     <Animated.View pointerEvents="none" style={[CARD_FRAME, frameStyle]}>
-      <Animated.View style={[FILL, baseStyle]}>
-        <View className="h-full w-full rounded-3xl bg-background-0">
-          <Animated.View style={[FILL, contentStyle]}>
-            <TaskCard task={task} starValue={starValue} />
-          </Animated.View>
-        </View>
-      </Animated.View>
+      <View className="h-full w-full rounded-[22px] border border-outline-50 bg-background-50">
+        <Animated.View style={[FILL, contentStyle]}>
+          {depth <= 1 ? <TaskCard task={task} starValue={starValue} /> : null}
+        </Animated.View>
+      </View>
     </Animated.View>
   );
 }
@@ -281,9 +277,9 @@ export function CardStack({
     }
   }, [tasks, topTaskId]);
 
-  // advance() fires from an animation callback up to 250ms after the gesture
-  // ended — read the freshest list/index/handler via a ref so a task created
-  // or removed mid-flight can't desync the cycle.
+  // advance() fires from an animation callback well after the gesture ended —
+  // read the freshest list/index/handler via a ref so a task created or
+  // removed mid-flight can't desync the cycle.
   const latest = useRef({ tasks, topIndex, onSwipe });
   useEffect(() => {
     latest.current = { tasks, topIndex, onSwipe };

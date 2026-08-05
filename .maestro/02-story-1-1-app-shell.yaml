@@ -1,11 +1,13 @@
-# Story 1.1 — app shell: top bar controls + FAB all present on launch.
+# Story 1.1 — app shell: top bar controls + standing home buttons all present
+# on launch (v1.5: the 'Add task' FAB became 'Add a task' + 'Brain dump').
 appId: com.onedown.mobile
 ---
 - runFlow: common/launch-app.yaml
 - assertVisible: 'Open task list'
 - assertVisible: '0 stars, 0 earned today'
 - assertVisible: 'Open settings'
-- assertVisible: 'Add task'
+- assertVisible: 'Add a task'
+- assertVisible: 'Brain dump'
 - assertNotVisible: 'Unhandled'
 - assertNotVisible: 'uncaught'
 - assertNotVisible: 'error occurred'

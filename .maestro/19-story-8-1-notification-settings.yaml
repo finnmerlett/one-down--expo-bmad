@@ -41,10 +41,10 @@ appId: com.onedown.mobile
 # Challenges still on — the cadence row only exists while enabled
 - assertVisible: 'Challenge frequency: Weekly'
 
-# Back to home cleanly
+# Back to home cleanly (v1.5: the 'Add task' FAB became the 'Add a task' plus circle)
 - back
 - waitForAnimationToEnd
-- assertVisible: 'Add task'
+- assertVisible: 'Add a task'
 
 - assertNotVisible: 'Unhandled'
 - assertNotVisible: 'error occurred'

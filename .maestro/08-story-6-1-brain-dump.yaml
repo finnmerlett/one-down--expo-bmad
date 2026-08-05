@@ -1,7 +1,7 @@
-# Story 6.1 — brain dump: the FAB now opens the brain dump screen (UX-DR15),
-# submitting a dump creates one local task per extracted item via the server's
-# ai.parseBrainDump (deterministic fake provider), and quick add stays
-# reachable through 'Add one task instead'.
+# Story 6.1 — brain dump: the standing 'Brain dump' pill (v1.5, no FAB) opens
+# the brain dump screen (UX-DR15), submitting a dump creates one local task
+# per extracted item via the server's ai.parseBrainDump (deterministic fake
+# provider), and quick add stays reachable through 'Add one task instead'.
 # Prereq (batched wave-end run): local server running WITHOUT GEMINI_API_KEY
 # (fake mode) and the APK built with EXPO_PUBLIC_API_URL=http://10.0.2.2:3000
 # (Story 5.1).
@@ -9,8 +9,8 @@ appId: com.onedown.mobile
 ---
 - runFlow: common/launch-app.yaml
 
-# FAB opens the brain dump screen (AC1)
-- tapOn: 'Add task'
+# The 'Brain dump' pill opens the brain dump screen (AC1)
+- tapOn: 'Brain dump'
 - waitForAnimationToEnd
 - assertVisible: "What's on your mind?"
 
@@ -25,8 +25,9 @@ appId: com.onedown.mobile
 # Main leg: submit a dump. Fake-provider contract: segments split on '.',
 # 'call' → phone context, 'tomorrow' → deadline tomorrow 18:00,
 # 'clean' → home context (AC2/AC4/AC6)
-- tapOn: 'Add task'
+- tapOn: 'Brain dump'
 - waitForAnimationToEnd
+# Second 'Brain dump' tap targets the textarea (same a11y label) to focus it
 - tapOn: 'Brain dump'
 - inputText: 'Call the dentist tomorrow. Clean out the garage'
 - tapOn: 'Parse my tasks'

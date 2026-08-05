@@ -4,26 +4,29 @@ import { cssInterop } from 'nativewind';
 
 import { Box } from '@/components/ui/box';
 
-import { FloatingAddButton } from './floating-add-button';
 import { TopBar } from './top-bar';
 
 // Third-party component — NativeWind only auto-interops react-native core.
 cssInterop(SafeAreaView, { className: 'style' });
 
-// All four edges: bottom inset keeps the FAB clear of the Android gesture bar.
+// All four edges: bottom inset keeps the footer clear of the Android gesture bar.
 export function AppShell({
   children,
-  onAddPress,
+  footer,
   onListPress,
   starTotals,
+  bankedStars,
   onStarPress,
   onSettingsPress,
 }: {
   children: ReactNode;
-  onAddPress?: () => void;
+  /** Standing bottom actions (v1.5) — screens pass <BottomActions/> or nothing. */
+  footer?: ReactNode;
   onListPress?: () => void;
   /** Live totals for the top-bar star counter (Story 4.2). */
   starTotals?: { total: number; today: number };
+  /** Net stars banked on active tasks (v1.5 counter cluster). */
+  bankedStars?: number;
   /** Opens the star activity log (wired in Story 4.3). */
   onStarPress?: () => void;
   /** Opens the settings screen (Story 8.1). */
@@ -34,14 +37,13 @@ export function AppShell({
       <TopBar
         onListPress={onListPress}
         starTotals={starTotals}
+        bankedStars={bankedStars}
         onStarPress={onStarPress}
         onSettingsPress={onSettingsPress}
       />
 
       <Box className="flex-1">{children}</Box>
-      {/* No handler → no FAB: it paints above the content Box, so screens hide
-          it while an overlay (e.g. the expanded card back) is up. */}
-      {onAddPress ? <FloatingAddButton onPress={onAddPress} /> : null}
+      {footer}
     </SafeAreaView>
   );
 }

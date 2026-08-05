@@ -171,15 +171,19 @@ module.exports = {
         },
       },
       fontFamily: {
-        // Nunito static weights loaded in the root layout (expo-google-fonts).
+        // v1.5 type stack, loaded in the root layout (expo-google-fonts).
         // RN Android resolves one weight per family name, so weights are
         // separate families — use these aliases instead of font-weight utils.
-        heading: ['Nunito_800ExtraBold'],
-        body: ['Nunito_400Regular'],
-        'body-medium': ['Nunito_500Medium'],
-        'body-semibold': ['Nunito_600SemiBold'],
-        'body-bold': ['Nunito_700Bold'],
-        mono: undefined,
+        // heading = Gabarito 500 (saved titleFont; spec §1), body = Karla,
+        // mono = DM Mono 500 for every number, date and caps label.
+        heading: ['Gabarito_500Medium'],
+        'heading-regular': ['Gabarito_400Regular'],
+        body: ['Karla_400Regular'],
+        'body-medium': ['Karla_500Medium'],
+        'body-semibold': ['Karla_600SemiBold'],
+        'body-bold': ['Karla_700Bold'],
+        mono: ['DMMono_500Medium'],
+        'mono-regular': ['DMMono_400Regular'],
       },
       fontWeight: {
         extrablack: '950',
@@ -187,12 +191,22 @@ module.exports = {
       fontSize: {
         '2xs': '10px',
       },
+      letterSpacing: {
+        // DM Mono caps labels run .07–.11em (spec §1)
+        caps: '0.11em',
+        'caps-tight': '0.07em',
+      },
       boxShadow: {
-        // Warm-tinted shadows (ink #33302B / coral #F2634F based, never gray-black)
-        'soft-card': '0px 10px 30px 0px rgba(58, 52, 44, 0.10)',
-        fab: '0px 8px 20px 0px rgba(242, 99, 79, 0.35)',
-        segment: '0px 1px 3px 0px rgba(58, 52, 44, 0.15)',
-        toast: '0px 8px 24px 0px rgba(58, 52, 44, 0.28)',
+        // Warm-tinted shadows (ink rgba(44,39,35,…) / teal primary — never gray-black)
+        'soft-card': '0px 12px 30px 0px rgba(44, 39, 35, 0.13)',
+        'card-drag': '0px 22px 48px 0px rgba(44, 39, 35, 0.22)',
+        fab: '0px 8px 20px 0px rgba(67, 167, 161, 0.26)',
+        segment: '0px 1px 2px 0px rgba(44, 39, 35, 0.14)',
+        toast: '0px 12px 28px 0px rgba(44, 39, 35, 0.32)',
+        sheet: '0px 20px 46px 0px rgba(44, 39, 35, 0.20)',
+        float: '0px 5px 14px 0px rgba(44, 39, 35, 0.09)',
+        'row-lift': '0px 14px 30px 0px rgba(44, 39, 35, 0.20)',
+        'step-now': '0px 4px 12px 0px rgba(44, 39, 35, 0.08)',
         'hard-1': '-2px 2px 8px 0px rgba(38, 38, 38, 0.20)',
         'hard-2': '0px 3px 10px 0px rgba(38, 38, 38, 0.20)',
         'hard-3': '2px 2px 8px 0px rgba(38, 38, 38, 0.20)',

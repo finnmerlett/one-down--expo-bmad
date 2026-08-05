@@ -58,6 +58,8 @@ appId: com.onedown.mobile
 # Launch-refresh path (AC6): plain relaunch (NO clearState) keeps premium
 - launchApp
 - waitForAnimationToEnd
+# v1.5: relaunch with existing tasks auto-opens the Right-now sheet — collapse it
+- runFlow: common/dismiss-context-sheet.yaml
 - tapOn: 'Open task list'
 - waitForAnimationToEnd
 - tapOn: 'Open task: Premium purchase task'

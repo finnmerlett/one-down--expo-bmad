@@ -8,10 +8,8 @@ appId: com.onedown.mobile
 ---
 - runFlow: common/launch-app.yaml
 
-# Seed one task via quick add (post-6.1: reached through the brain dump screen)
-- tapOn: 'Add task'
-- waitForAnimationToEnd
-- tapOn: 'Add one task instead'
+# Seed one task via quick add (v1.5: the plus circle opens the sheet directly)
+- tapOn: 'Add a task'
 - waitForAnimationToEnd
 - tapOn: 'Task title'
 - inputText: 'Start me task'
@@ -96,7 +94,7 @@ appId: com.onedown.mobile
 - waitForAnimationToEnd
 - back
 - waitForAnimationToEnd
-- assertVisible: 'Add task'
+- assertVisible: 'Add a task'
 
 - assertNotVisible: 'Unhandled'
 - assertNotVisible: 'error occurred'

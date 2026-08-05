@@ -1,15 +1,16 @@
 import '../global.css';
 
+import { DMMono_400Regular, DMMono_500Medium } from '@expo-google-fonts/dm-mono';
+import { Gabarito_400Regular, Gabarito_500Medium } from '@expo-google-fonts/gabarito';
 import {
-  Nunito_400Regular,
-  Nunito_500Medium,
-  Nunito_600SemiBold,
-  Nunito_700Bold,
-  Nunito_800ExtraBold,
-  useFonts,
-} from '@expo-google-fonts/nunito';
+  Karla_400Regular,
+  Karla_500Medium,
+  Karla_600SemiBold,
+  Karla_700Bold,
+} from '@expo-google-fonts/karla';
+import * as Font from 'expo-font';
 import { Stack } from 'expo-router';
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 
@@ -58,15 +59,41 @@ function NotificationResync() {
 }
 
 export default function RootLayout() {
-  // Nunito is the app-wide typeface (tailwind font-heading/font-body aliases).
-  // Static weights = separate RN font families, all loaded up front.
-  const [fontsLoaded] = useFonts({
-    Nunito_400Regular,
-    Nunito_500Medium,
-    Nunito_600SemiBold,
-    Nunito_700Bold,
-    Nunito_800ExtraBold,
-  });
+  // v1.5 type stack (designs/v1.5-implementation-spec.md §1): Gabarito for
+  // titles, Karla for UI text, DM Mono for numbers & caps labels. Static
+  // weights = separate RN font families, all loaded up front.
+  //
+  // Imperative loadAsync instead of the useFonts hook: on cold start under
+  // this app's setup the hook's state update was lost (loaded stayed false
+  // until a fast-refresh remount — 2026-08-05). The promise path releases the
+  // gate deterministically, and a 4s race means a hung/failed load degrades
+  // to system fonts instead of a forever-blank app.
+  const [fontsReady, setFontsReady] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    const load = Font.loadAsync({
+      Gabarito_400Regular,
+      Gabarito_500Medium,
+      Karla_400Regular,
+      Karla_500Medium,
+      Karla_600SemiBold,
+      Karla_700Bold,
+      DMMono_400Regular,
+      DMMono_500Medium,
+    });
+    const timeout = new Promise((resolve) => setTimeout(resolve, 4000));
+    void Promise.race([load, timeout])
+      .catch((error: unknown) => {
+        // oxlint-disable-next-line no-console
+        console.warn('Font load failed — falling back to system fonts', error);
+      })
+      .finally(() => {
+        if (!cancelled) setFontsReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Hydrate entitlements on every launch (8.2b AC6) — a purchased
   // entitlement survives restarts via the provider's persisted state.
@@ -78,8 +105,8 @@ export default function RootLayout() {
   }, []);
 
   // Hold on the (blank) splash until fonts resolve — avoids a flash of the
-  // system font. useFonts resolves instantly from cache after first launch.
-  if (!fontsLoaded) {
+  // system font. The 4s race above guarantees this gate always releases.
+  if (!fontsReady) {
     return null;
   }
 

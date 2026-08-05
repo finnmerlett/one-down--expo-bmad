@@ -8,27 +8,28 @@ const { ThreeTasks, SingleTask } = composeStories(cardStackStories);
 const { TitleOnly, WithSizeAndContexts } = composeStories(taskCardStories);
 
 describe('TaskCard (portable stories)', () => {
-  it('shows title, size tag, context badges, and the star-value chip', async () => {
+  it('shows title, star value, and the bottom-rail size caps (v1.5 face)', async () => {
     await render(<WithSizeAndContexts />);
 
     expect(screen.getByText('Book dentist appointment')).toBeTruthy();
-    expect(screen.getByText('Quick win')).toBeTruthy();
-    expect(screen.getByText('Phone')).toBeTruthy();
-    expect(screen.getByText('Internet')).toBeTruthy();
+    // Bottom rail carries size as mono caps + the due line (spec §4).
+    expect(screen.getByText('QUICK WIN')).toBeTruthy();
     // Star preview (Story 3.3) — every card front shows its potential value.
     expect(screen.getByText('10')).toBeTruthy();
   });
 
-  it('renders without badges when size and contexts are unset', async () => {
+  it('renders without a size caps line when size is unset', async () => {
     await render(<TitleOnly />);
 
     expect(screen.getByText('Water the plants')).toBeTruthy();
-    expect(screen.queryByText('Quick win')).toBeNull();
+    expect(screen.queryByText('QUICK WIN')).toBeNull();
+    // The rail is always present — no-deadline cards state it plainly.
+    expect(screen.getByText('No deadline')).toBeTruthy();
   });
 });
 
 describe('CardStack (portable stories)', () => {
-  it('announces the top card and renders the 3-card window', async () => {
+  it('announces the top card; only the next card carries content (v1.5 fan)', async () => {
     await render(<ThreeTasks />);
 
     // Label announces the star preview (Story 3.3) — the top card is an
@@ -36,9 +37,10 @@ describe('CardStack (portable stories)', () => {
     expect(
       screen.getByLabelText('Task: Water the plants. Worth 10 stars. Card 1 of 3'),
     ).toBeTruthy();
-    // Background cards render content too (decorative hints).
+    // Depth-1 renders content (it is the next task, ready before the front
+    // card leaves); depth-2+ are blank card-stock backs (spec §4).
     expect(screen.getByText('Write trip packing list')).toBeTruthy();
-    expect(screen.getByText('Renew passport')).toBeTruthy();
+    expect(screen.queryByText('Renew passport')).toBeNull();
   });
 
   it('renders a single task without duplicating it in the window', async () => {

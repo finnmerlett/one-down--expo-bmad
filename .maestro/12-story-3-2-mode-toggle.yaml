@@ -1,7 +1,8 @@
 # Story 3.2 — mode toggle: Quick wins / Big time segmented control re-curates
-# the stack to the matching size (AC2/AC3), re-pressing the active option
-# deactivates it and both sizes return (AC4), and mode combines with the
-# context filter with AND semantics (AC5).
+# the stack to the matching size (AC2/AC3), the explicit 'Mode: All' segment
+# clears the mode and both sizes return (AC4 — v1.5: re-pressing an active
+# mode no longer deactivates it), and mode combines with the context filter
+# with AND semantics (AC5).
 # Updated for Story 3.3: curation order is seed-jittered, so 'Tiny chore' is
 # sized while it is the only card — the momentum rule then pins it as the top
 # card and one swipe deterministically reaches 'Giant project'.
@@ -45,9 +46,10 @@ appId: com.onedown.mobile
 - tapOn: 'Mode: Big time'
 - assertVisible: 'Task: Giant project. Worth 15 stars. Card 1 of 1'
 
-# AC4: re-pressing the active option deactivates it — both sizes return
-# (the momentum rule puts the quick win back on top)
-- tapOn: 'Mode: Big time'
+# AC4: the 'Mode: All' segment clears the mode — both sizes return
+# (v1.5: re-pressing an active mode no longer deactivates it; 'Mode: All'
+# is the explicit clear. The momentum rule puts the quick win back on top.)
+- tapOn: 'Mode: All'
 - assertVisible: 'Task: Tiny chore. Worth 10 stars. Card 1 of 2'
 
 # AC5 combined: isolate Tiny chore via Quick wins mode, tag it Home, then
@@ -58,7 +60,11 @@ appId: com.onedown.mobile
 - tapOn: 'Context: Home'
 - tapOn: 'Back to card front'
 - waitForAnimationToEnd
+# (v1.5: context chips live in the expandable Right-now sheet)
+- tapOn: 'Right now.*'
 - tapOn: 'Filter context: Home'
+- tapOn: 'Done choosing contexts'
+- waitForAnimationToEnd
 - assertVisible: 'Task: Tiny chore. Worth 10 stars. Card 1 of 1'
 
 - assertNotVisible: 'Unhandled'

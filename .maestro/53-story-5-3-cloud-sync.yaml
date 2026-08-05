@@ -29,11 +29,9 @@ appId: com.onedown.mobile
 - waitForAnimationToEnd
 - tapOn: 'Back to home'
 
-# Add a task and let the debounced sync drain (post-6.1: quick add sits
-# behind the brain dump screen).
-- tapOn: 'Add task'
-- waitForAnimationToEnd
-- tapOn: 'Add one task instead'
+# Add a task and let the debounced sync drain (v1.5: the 'Add a task' plus
+# circle opens the quick-add sheet directly).
+- tapOn: 'Add a task'
 - waitForAnimationToEnd
 - tapOn: 'Task title'
 - inputText: 'Sync me task'

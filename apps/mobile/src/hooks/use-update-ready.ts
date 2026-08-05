@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
-import * as Updates from 'expo-updates';
+
+import { Updates } from '@/lib/expo-updates-safe';
 
 /**
  * Update-ready detection (2026-07-27): expo-updates only checks at cold
@@ -9,6 +10,9 @@ import * as Updates from 'expo-updates';
  * to the foreground (throttled), so a pending update surfaces mid-session;
  * `isUpdatePending` flips once a downloaded update is ready to boot via
  * Updates.reloadAsync() (a JS reload — no OS-level restart).
+ *
+ * Binaries without the ExpoUpdates native module get the inert stub from
+ * expo-updates-safe — `isUpdatePending` is then always false.
  */
 const FOREGROUND_CHECK_MIN_MS = 60_000;
 

@@ -14,6 +14,8 @@ interface StackFiltersState {
   mode: TaskSize | null;
   toggleContext: (context: TaskContext) => void;
   toggleMode: (size: TaskSize) => void;
+  /** v1.5 explicit tri-state setter (size switcher / HOW MUCH TIME segments). */
+  setMode: (mode: TaskSize | null) => void;
   /** Single atomic reset — the empty-state "Show all tasks" CTA (Story 3.4). */
   clearFilters: () => void;
 }
@@ -31,6 +33,7 @@ export const useStackFiltersStore = create<StackFiltersState>()(
         })),
       // Re-press deactivates: quick wins / big time / neither (3-state).
       toggleMode: (size) => set((state) => ({ mode: state.mode === size ? null : size })),
+      setMode: (mode) => set({ mode }),
       clearFilters: () => set({ activeContexts: [], mode: null }),
     }),
     { name: 'stack-filters', storage: createJSONStorage(() => AsyncStorage) },

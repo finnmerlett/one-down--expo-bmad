@@ -37,7 +37,7 @@ appId: com.onedown.mobile
 - waitForAnimationToEnd
 - back
 - waitForAnimationToEnd
-- assertVisible: 'Add task'
+- assertVisible: 'Add a task'
 
 - takeScreenshot: .claude/run-notes/screenshots/8-3-telemetry-smoke
 - assertNotVisible: 'Unhandled'

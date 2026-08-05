@@ -2,8 +2,9 @@
 appId: com.onedown.mobile
 ---
 - runFlow: common/launch-app.yaml
-# Anchor element: the FAB exists on the home screen from Story 1.1 onwards.
-- assertVisible: 'Add task'
+# Anchor element: the plus circle ('Add a task') exists on the home screen
+# from Story 1.1 onwards (v1.5: the old 'Add task' FAB was replaced).
+- assertVisible: 'Add a task'
 - assertNotVisible: 'Unhandled'
 - assertNotVisible: 'uncaught'
 - assertNotVisible: 'error occurred'

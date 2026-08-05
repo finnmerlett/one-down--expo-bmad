@@ -15,6 +15,6 @@ appId: com.onedown.mobile
 - takeScreenshot: .maestro/screenshots/5-1-server-connected
 
 # Home stays intact around the indicator.
-- assertVisible: 'Add task'
+- assertVisible: 'Add a task'
 - assertNotVisible: 'Unhandled'
 - assertNotVisible: 'error occurred'

@@ -13,7 +13,7 @@ export const textStyle = tva({
       true: 'web:truncate',
     },
     bold: {
-      // Family swap, not font-weight: RN Android needs the real Nunito bold
+      // Family swap, not font-weight: RN Android needs the real Karla bold
       // face (each static weight is its own family).
       true: 'font-body-bold',
     },

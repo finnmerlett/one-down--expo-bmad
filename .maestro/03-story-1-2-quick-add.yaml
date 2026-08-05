@@ -3,11 +3,9 @@
 appId: com.onedown.mobile
 ---
 - runFlow: common/launch-app.yaml
-# Post-6.1 entry: the FAB opens the brain dump screen; the sheet under test
-# is reached via 'Add one task instead'.
-- tapOn: 'Add task'
-- waitForAnimationToEnd
-- tapOn: 'Add one task instead'
+# v1.5 entry: the plus circle ('Add a task') opens the quick-add sheet
+# directly (no detour through the brain dump screen).
+- tapOn: 'Add a task'
 - waitForAnimationToEnd
 - assertVisible: 'Task title'
 # Empty title is rejected with inline feedback

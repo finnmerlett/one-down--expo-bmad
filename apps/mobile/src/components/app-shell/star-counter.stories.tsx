@@ -29,6 +29,15 @@ export const WithStars: Story = {
   },
 };
 
+/** v1.5 banked cluster — hollow-star segment appears only when > 0. */
+export const WithBanked: Story = {
+  args: {
+    total: 65,
+    today: 1,
+    banked: 1,
+  },
+};
+
 /** Negative day (undo/archive retractions) — renders "−10", never "+-10". */
 export const NegativeDay: Story = {
   args: {
