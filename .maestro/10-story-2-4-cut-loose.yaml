@@ -1,17 +1,14 @@
-# Story 2.4 — cut loose a task: frictionless guilt-free release from all
-# three surfaces (running screen, home card-back overlay, list detail). Each
-# release shows the "Released" toast with the cut-loose star amount
-# (display-only until Epic 4); released tasks appear in NEITHER task-list
-# section, and releasing every task shows the empty-browse state.
-# Updated for Story 3.3: curation order is seed-jittered, so each surface's
-# subject is seeded and released one at a time (always the only card — no
-# dependence on multi-card ordering). Stack advancement after a release is
-# covered by flow 09.
+# Story 2.4 → v1.5 D5 — cut loose a task: frictionless guilt-free release.
+# The card back lost its Cut loose button (D5) — the working screen owns the
+# release now (triage and the 7.2 health prompt are the other paths). The
+# release shows the "Released" toast with the cut-loose stars, the released
+# task appears in NEITHER task-list section but DOES sit in the recycle bin,
+# and home shows the empty-browse state once everything is released.
 appId: com.onedown.mobile
 ---
 - runFlow: common/launch-app.yaml
 
-# --- Surface 1: task running screen ---
+# --- Release from the working screen ---
 - runFlow:
     file: common/add-task.yaml
     env:
@@ -29,44 +26,17 @@ appId: com.onedown.mobile
     timeout: 5000
 - assertNotVisible: 'Release from running'
 
-# --- Surface 2: home card-back overlay ---
-- runFlow:
-    file: common/add-task.yaml
-    env:
-      TITLE: 'Release from overlay'
-- tapOn: 'Edit task: Release from overlay'
-- waitForAnimationToEnd
-- tapOn: 'Cut loose'
-- assertVisible: 'Released'
-# Overlay unmounted, card gone — no route push involved (AC6)
-- extendedWaitUntil:
-    visible: 'All clear'
-    timeout: 5000
-- assertNotVisible: 'Release from overlay'
-
-# --- Surface 3: task list detail ---
-- runFlow:
-    file: common/add-task.yaml
-    env:
-      TITLE: 'Release from list'
+# --- Released tasks live in the recycle bin, not the list (AC7) ---
 - tapOn: 'Open task list'
 - waitForAnimationToEnd
-- tapOn: 'Open task: Release from list'
+- assertVisible: 'No tasks yet'
+- assertNotVisible: 'Open task: Release from running'
+- tapOn: 'Tab: Recycle bin'
 - waitForAnimationToEnd
-- tapOn: 'Cut loose'
-- assertVisible: 'Released'
-# Lands back on the task list; released tasks are in NEITHER section (AC7).
-# All tasks are now cut loose, so the list shows its empty state (4.4: no
-# section headers without content).
-- extendedWaitUntil:
-    visible: 'No tasks yet'
-    timeout: 5000
-- assertNotVisible: 'Open task: Release from list'
-- assertNotVisible: 'Release from list'
-- assertNotVisible: 'Release from running'
-- assertNotVisible: 'Release from overlay'
+- assertVisible: 'Release from running'
+- assertVisible: 'Cut loose'
 
-# --- All tasks released: home shows the empty-browse state (AC2 tail) ---
+# --- Home still shows the empty-browse state (AC2 tail) ---
 - tapOn: 'Back to home'
 - waitForAnimationToEnd
 - assertVisible: 'All clear'

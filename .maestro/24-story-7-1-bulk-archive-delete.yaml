@@ -59,7 +59,7 @@ appId: com.onedown.mobile
     timeout: 5000
 - tapOn: 'Archive anyway'
 # Toast auto-dismisses after ~2 s — assert fast.
-- assertVisible: 'Archived 2 tasks — ★10 removed'
+- assertVisible: 'Archived 2 tasks — ★5 removed'
 - extendedWaitUntil:
     visible: 'No tasks yet'
     timeout: 5000

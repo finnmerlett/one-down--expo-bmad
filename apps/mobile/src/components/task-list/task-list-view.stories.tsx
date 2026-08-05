@@ -48,6 +48,26 @@ export const Empty: Story = {
   },
 };
 
+/** v1.5 frame 08 — star values on rows; a live badge tints its row gold
+ *  (`+N` chip before the value, gold meta ink). */
+export const WithValuesAndBonusRow: Story = {
+  args: {
+    tasks: [
+      makeTask({
+        id: 'task-bonus',
+        title: 'Book dentist appointment',
+        size: 'quick_win',
+        contexts: '["phone"]',
+        deadline: new Date('2026-06-20T09:00:00Z'),
+      }),
+      makeTask({ id: 'task-plain', title: 'Sort out the garage', size: 'big_time' }),
+    ],
+    getStarValue: (task) => (task.size === 'big_time' ? 20 : 5),
+    getBadge: (task) =>
+      task.id === 'task-bonus' ? { kind: 'window', amount: 3, reason: 'BONUS UNTIL SAT' } : null,
+  },
+};
+
 /**
  * Story 4.4 — the visual reference: Done section on top (oldest completion
  * first, latest nearest the To do boundary), muted check rows, cut-loose

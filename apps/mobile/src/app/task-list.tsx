@@ -15,8 +15,10 @@ import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
 import { useToast } from '@/components/ui/toast';
 import { useTasks } from '@/hooks/use-tasks';
+import { useTaskOffers } from '@/hooks/use-task-offers';
 import { db } from '@/lib/local-db';
 import { netStarsByTask } from '@/services/star-awards';
+import { liveBadge, taskValue } from '@/services/star-calculator';
 import {
   archiveSelection,
   deleteSelection,
@@ -43,6 +45,7 @@ export default function TaskListScreen() {
   const navigation = useNavigation();
   const toast = useToast();
   const tasks = useTasks();
+  const offers = useTaskOffers();
 
   // Tab + multi-select state live HERE (component state, no router tabs) —
   // Story 7.1. `selectedIds === null` means not selecting.
@@ -188,8 +191,8 @@ export default function TaskListScreen() {
         </Pressable>
         <Text className="font-heading text-2xl text-typography-900">Tasks</Text>
       </HStack>
-      {/* Two-segment tab control (Story 7.1, AC4) — ModeToggle pattern. */}
-      <HStack className="mb-3 self-center rounded-full bg-background-200 p-1">
+      {/* Two-segment tab control (Story 7.1 → v1.5 frame 08: 36px pill track). */}
+      <HStack className="mb-3 self-center rounded-full bg-[rgba(44,39,35,0.06)] p-[3px]">
         {TABS.map(({ key, label }) => {
           const selected = tab === key;
           return (
@@ -202,7 +205,7 @@ export default function TaskListScreen() {
                 setTab(key);
                 exitSelection();
               }}
-              className={`h-10 items-center justify-center rounded-full px-6 ${
+              className={`h-[30px] items-center justify-center rounded-full px-5 ${
                 selected ? 'bg-background-0 shadow-segment' : 'active:bg-background-300/50'
               }`}
             >
@@ -227,6 +230,8 @@ export default function TaskListScreen() {
         onLongPressTask={enterSelection}
         onRestore={handleRestore}
         onUndoComplete={handleUndoComplete}
+        getStarValue={taskValue}
+        getBadge={(task) => liveBadge(task, offers.get(task.id), new Date())}
         onTaskPress={(task) => router.push(`/task/${task.id}`)}
         onAddPress={() => {
           // The quick-add sheet is mounted on the home screen — open it via

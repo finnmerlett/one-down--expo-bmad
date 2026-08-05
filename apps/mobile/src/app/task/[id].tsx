@@ -13,6 +13,7 @@ import { awardCutLooseStars } from '@/services/star-awards';
 import {
   applyTaskPatch,
   confirmReviewItem,
+  confirmReviewItems,
   cutLooseTask,
   keepTask,
   startTask,
@@ -99,6 +100,7 @@ export default function TaskDetailScreen() {
           task={task}
           onPatch={(patch) => applyTaskPatch(task, patch)}
           onConfirm={(item) => confirmReviewItem(task, item)}
+          onConfirmAll={(items) => confirmReviewItems(task, items)}
           onKeep={() => keepTask(task)}
           onClose={close}
           onStart={() => {
@@ -106,14 +108,6 @@ export default function TaskDetailScreen() {
             startingRef.current = true;
             startTask(task, 'list_detail');
             router.push(`/task-running/${task.id}`);
-          }}
-          onHelp={() => {
-            // Shares the Start once-per-focus guard — either action pushes
-            // the running screen; ?breakdown=1 auto-fires the request (6.3).
-            if (startingRef.current) return;
-            startingRef.current = true;
-            startTask(task, 'list_detail');
-            router.push(`/task-running/${task.id}?breakdown=1`);
           }}
           onCutLoose={() => {
             if (cutLoosingRef.current) return;

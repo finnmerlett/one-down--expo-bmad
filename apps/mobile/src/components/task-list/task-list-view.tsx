@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { SectionList, type SectionListData } from 'react-native';
 
-import { parseTaskContexts, type TaskData } from '@one-down/shared';
+import { parseTaskContexts, type TaskContext, type TaskData } from '@one-down/shared';
 
 import { Box } from '@/components/ui/box';
 import { HStack } from '@/components/ui/hstack';
@@ -10,8 +10,12 @@ import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 
-import { CONTEXT_LABELS, SIZE_LABELS } from '@/components/card-stack/task-card';
+import { deadlineCopy, SIZE_LABELS } from '@/components/card-stack/task-card';
+import { CONTEXT_ICONS } from '@/components/stack-filters/context-icons';
 import { EmptyState } from '@/components/empty-state/empty-state';
+import type { StarBadge } from '@/services/star-calculator';
+
+const DAY_MS = 86_400_000;
 
 /** List surface (Story 7.1): the active overview vs the recycle bin tab. */
 export type TaskListMode = 'active' | 'bin';
@@ -64,31 +68,48 @@ function SelectionIndicator({ selected }: { selected: boolean }) {
   );
 }
 
+/**
+ * TO DO row (frame 08): title, meta caps (`QUICK WIN · 2 AUG` + context
+ * glyphs), star value at the right with a faint pencil. A live badge (bonus
+ * window / don't-skip offer) tints the whole row gold — `+N` chip before the
+ * value, meta ink goes gold.
+ */
 function TaskRow({
   task,
+  starValue,
+  badge = null,
   selecting,
   selected,
   onPress,
   onLongPress,
 }: {
   task: TaskData;
+  starValue?: number;
+  badge?: StarBadge | null;
   selecting: boolean;
   selected: boolean;
   onPress: () => void;
   onLongPress?: () => void;
 }) {
-  const contexts = parseTaskContexts(task.contexts);
-  const meta = [
-    task.size ? SIZE_LABELS[task.size] : null,
-    ...contexts.map((context) => (CONTEXT_LABELS as Record<string, string>)[context] ?? context),
+  // Tolerant of unknown stored values — only known contexts have a glyph.
+  const contexts = parseTaskContexts(task.contexts).filter(
+    (context): context is TaskContext => context in CONTEXT_ICONS,
+  );
+  const bonus = badge !== null;
+  const metaCaps = [
+    task.size ? SIZE_LABELS[task.size].toUpperCase() : null,
+    // A live-badge row is urgent by construction — relative copy reads the
+    // urgency (`DUE TOMORROW`, frame 08); plain rows keep the short date.
     task.deadline
-      ? task.deadline.toLocaleDateString(undefined, {
-          day: 'numeric',
-          month: 'short',
-          year: 'numeric',
-        })
+      ? bonus
+        ? deadlineCopy(task.deadline, new Date()).toUpperCase()
+        : task.deadline
+            .toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+            .toUpperCase()
       : null,
-  ].filter((part): part is string => part !== null);
+  ]
+    .filter((part): part is string => part !== null)
+    .join(' · ');
 
   return (
     <Pressable
@@ -97,22 +118,56 @@ function TaskRow({
       accessibilityState={selecting ? { selected } : undefined}
       onPress={onPress}
       onLongPress={onLongPress}
-      className="rounded-2xl border border-outline-100 bg-background-0 px-4 py-3.5 active:bg-background-50"
+      className={`rounded-[15px] border px-4 py-3 ${
+        bonus
+          ? 'border-[#EEDDB0] bg-[#FFFCF4] active:bg-tertiary-100'
+          : 'border-outline-100 bg-background-0 active:bg-background-50'
+      }`}
     >
       <HStack className="items-center gap-3">
         {selecting ? <SelectionIndicator selected={selected} /> : null}
-        <VStack className="flex-1 gap-0.5">
-          <Text numberOfLines={1} className="font-body-semibold text-base text-typography-900">
+        <VStack className="flex-1 gap-1">
+          <Text numberOfLines={1} className="font-body-semibold text-[14.5px] text-typography-900">
             {task.title}
           </Text>
-          {meta.length > 0 ? (
-            <Text numberOfLines={1} className="font-body text-sm text-typography-500">
-              {meta.join(' · ')}
-            </Text>
+          {metaCaps || contexts.length > 0 ? (
+            <HStack className="items-center gap-1.5">
+              {contexts.map((context) => (
+                <Icon
+                  key={context}
+                  as={CONTEXT_ICONS[context]}
+                  size="2xs"
+                  className={bonus ? 'text-[#B08F3E]' : 'text-[#B0A594]'}
+                />
+              ))}
+              {metaCaps ? (
+                <Text
+                  numberOfLines={1}
+                  className={`font-mono text-[11.5px] tracking-caps-tight ${
+                    bonus ? 'text-[#B08F3E]' : 'text-typography-400'
+                  }`}
+                >
+                  {metaCaps}
+                </Text>
+              ) : null}
+            </HStack>
           ) : null}
         </VStack>
         {selecting ? null : (
-          <Icon as={ChevronRightIcon} size="md" className="text-typography-400" />
+          <HStack className="flex-none items-center gap-2">
+            {bonus ? (
+              <Box className="rounded-full bg-tertiary-200 px-[7px] py-[2px]">
+                <Text className="font-mono text-[11px] text-tertiary-700">{`+${badge.amount}`}</Text>
+              </Box>
+            ) : null}
+            {starValue !== undefined ? (
+              <HStack className="items-baseline gap-[2px]">
+                <Text className="font-mono text-[13px] text-tertiary-600">{starValue}</Text>
+                <Text className="text-[10px] text-tertiary-500">★</Text>
+              </HStack>
+            ) : null}
+            <Icon as={ChevronRightIcon} size="sm" className="text-typography-200" />
+          </HStack>
         )}
       </HStack>
     </Pressable>
@@ -154,22 +209,22 @@ function DoneRow({
         accessibilityState={selecting ? { selected } : undefined}
         onPress={selecting ? onPress : undefined}
         onLongPress={onLongPress}
-        className="flex-1 rounded-2xl bg-background-50 px-4 py-3"
+        className="flex-1 rounded-[15px] bg-[rgba(44,39,35,0.045)] px-4 py-3"
       >
         <HStack className="items-center gap-3">
           {selecting ? (
             <SelectionIndicator selected={selected} />
           ) : (
-            <Box className="h-6 w-6 items-center justify-center rounded-full bg-success-50">
-              <Icon as={CheckIcon} size="sm" className="text-success-600" />
-            </Box>
+            <Icon as={CheckIcon} size="sm" className="text-success-600" />
           )}
-          <VStack className="flex-1 gap-0.5">
-            <Text numberOfLines={1} className="font-body text-base text-typography-500">
+          <VStack className="flex-1 gap-[2px]">
+            <Text numberOfLines={1} className="font-body text-sm text-typography-400">
               {task.title}
             </Text>
-            <Text className="font-body text-sm text-typography-400">
-              {task.updatedAt.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+            <Text className="font-mono text-[10.5px] uppercase tracking-caps-tight text-typography-300">
+              {task.updatedAt
+                .toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+                .toUpperCase()}
             </Text>
           </VStack>
         </HStack>
@@ -180,9 +235,9 @@ function DoneRow({
           aria-label={`Undo completion: ${task.title}`}
           hitSlop={8}
           onPress={onUndo}
-          className="h-11 items-center justify-center rounded-full bg-background-0 px-4 shadow-segment active:bg-background-100"
+          className="h-7 items-center justify-center rounded-full bg-background-0 px-3 shadow-segment active:bg-background-100"
         >
-          <Text className="font-body-bold text-sm text-primary-600">Undo</Text>
+          <Text className="font-body-semibold text-xs text-primary-600">Undo</Text>
         </Pressable>
       )}
     </HStack>
@@ -216,7 +271,7 @@ function BinRow({
         accessibilityState={selecting ? { selected } : undefined}
         onPress={selecting ? onToggleSelect : undefined}
         onLongPress={onLongPress}
-        className="flex-1 rounded-2xl border border-outline-100 bg-background-0 px-4 py-3.5 active:bg-background-50"
+        className="flex-1 rounded-[15px] border border-outline-100 bg-background-0 px-4 py-3.5 active:bg-background-50"
       >
         <HStack className="items-center gap-3">
           {selecting ? <SelectionIndicator selected={selected} /> : null}
@@ -274,6 +329,9 @@ export function TaskListView({
   onLongPressTask,
   onRestore,
   onUndoComplete,
+  getStarValue,
+  getBadge,
+  now = new Date(),
 }: {
   tasks: TaskData[];
   onTaskPress: (task: TaskData) => void;
@@ -290,9 +348,18 @@ export function TaskListView({
   onRestore?: (task: TaskData) => void;
   /** Done rows only — flip back to To do, returning the completion stars. */
   onUndoComplete?: (task: TaskData) => void;
+  /** v1.5 frame 08 — the row's star value (computed in the route layer). */
+  getStarValue?: (task: TaskData) => number;
+  /** v1.5 frame 08 — live badge → gold bonus-row tint + `+N` chip. */
+  getBadge?: (task: TaskData) => StarBadge | null;
+  /** Injected for the `N THIS WEEK` count (testable). */
+  now?: Date;
 }) {
   const selecting = selectedIds !== null;
   const isSelected = (task: TaskData) => selectedIds?.has(task.id) ?? false;
+  const doneThisWeek = tasks.filter(
+    (task) => task.status === 'completed' && now.getTime() - task.updatedAt.getTime() < 7 * DAY_MS,
+  ).length;
 
   const sections: ListSection[] = (() => {
     if (mode === 'bin') {
@@ -356,6 +423,8 @@ export function TaskListView({
         ) : (
           <TaskRow
             task={item}
+            starValue={getStarValue?.(item)}
+            badge={getBadge?.(item) ?? null}
             selecting={selecting}
             selected={isSelected(item)}
             onPress={() => (selecting ? onToggleSelect?.(item) : onTaskPress(item))}
@@ -365,9 +434,16 @@ export function TaskListView({
       }
       renderSectionHeader={({ section }) =>
         section.title ? (
-          <Text className="pb-1.5 pt-3 font-heading text-lg text-typography-900">
-            {section.title}
-          </Text>
+          <HStack className="items-center justify-between pb-1.5 pt-3">
+            <Text className="font-mono text-[11px] uppercase tracking-caps text-typography-400">
+              {section.title}
+            </Text>
+            {section.key === 'done' ? (
+              <Text className="font-mono text-[11px] uppercase tracking-caps text-typography-300">
+                {`${doneThisWeek} this week`}
+              </Text>
+            ) : null}
+          </HStack>
         ) : null
       }
       onContentSizeChange={handleContentSizeChange}

@@ -29,7 +29,7 @@ appId: com.onedown.mobile
 
 # Toast is honest about the star cost, row is a To do row again, Done section
 # collapses (it was the only completed task)
-- assertVisible: 'Marked as not done — ★10 removed'
+- assertVisible: 'Marked as not done — ★5 removed'
 - extendedWaitUntil:
     visible: 'Open task: Undo me'
     timeout: 5000

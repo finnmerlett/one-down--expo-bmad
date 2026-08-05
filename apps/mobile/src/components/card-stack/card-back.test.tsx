@@ -3,38 +3,32 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import * as cardBackStories from './card-back.stories';
 
-const {
-  FullDetails,
-  Minimal,
-  InProgress,
-  FullyWired,
-  WithReviewFlags,
-  MissingDeadlineOnly,
-  WithHealthPrompt,
-} = composeStories(cardBackStories);
+const { FullDetails, Minimal, WithReviewFlags, MissingDeadlineOnly, WithHealthPrompt } =
+  composeStories(cardBackStories);
 
-describe('CardBack (portable stories)', () => {
-  it('renders all sections with the stored values', async () => {
+describe('CardBack (portable stories, v1.5 frame 06)', () => {
+  it('renders the editing header, fields, and the gold value pill', async () => {
     await render(<FullDetails />);
 
+    expect(screen.getByText('Editing card')).toBeTruthy();
     expect(screen.getByLabelText('Task title').props.value).toBe('Book dentist appointment');
     expect(screen.getByLabelText('Task details').props.value).toBe(
       'Ask about the wisdom tooth while at it',
     );
-    expect(screen.getByLabelText('Task notes').props.value).toBe(
-      'Practice number is in the green folder',
-    );
     // Same formatting call as the component — the assertion must not depend
     // on the test environment's default locale.
     const expectedDeadline = new Date('2026-06-20T09:00:00Z').toLocaleDateString(undefined, {
+      weekday: 'short',
       day: 'numeric',
       month: 'short',
-      year: 'numeric',
     });
     expect(screen.getByText(expectedDeadline)).toBeTruthy();
     expect(screen.getByLabelText('Back to card front')).toBeTruthy();
-    expect(screen.getByText('Start')).toBeTruthy();
-    expect(screen.getByText('Cut loose')).toBeTruthy();
+    // Quick win → 5★ header pill; no Start/Cut loose on the back (v1.5).
+    expect(screen.getByLabelText('Worth 5 stars')).toBeTruthy();
+    expect(screen.getByLabelText('Done editing')).toBeTruthy();
+    expect(screen.queryByText('Start')).toBeNull();
+    expect(screen.queryByText('Cut loose')).toBeNull();
   });
 
   it('shows the empty deadline state', async () => {
@@ -58,7 +52,7 @@ describe('CardBack (portable stories)', () => {
     // Break it down rides the Start path (flush → start → running screen).
     await fireEvent.press(screen.getByLabelText('Break it down'));
     expect(onStart).toHaveBeenCalledTimes(1);
-    // Cut loose from the prompt behaves exactly like the Cut Loose button.
+    // Cut loose from the prompt is the only release path on the back now.
     await fireEvent.press(screen.getByLabelText('Cut loose from prompt'));
     expect(onCutLoose).toHaveBeenCalledTimes(1);
   });
@@ -119,72 +113,19 @@ describe('CardBack (portable stories)', () => {
     expect(onPatch).toHaveBeenCalledWith({ contexts: ['phone'] });
   });
 
-  it('follows an external notes update when the field is not being edited', async () => {
+  it('flushes pending text drafts on Done editing, in order', async () => {
     const onPatch = jest.fn();
-    const screen1 = await render(<FullDetails onPatch={onPatch} />);
+    const onClose = jest.fn();
+    await render(<FullDetails onPatch={onPatch} onClose={onClose} />);
 
-    // Another screen (task running) wrote notes while this card sat hidden
-    // beneath it — the new stored value must win over the mount-time state...
-    const updatedTask = {
-      ...FullDetails.args!.task!,
-      notes: 'Rewritten on the running screen',
-      updatedAt: new Date('2026-06-21T09:00:00Z'),
-    };
-    await screen1.rerender(<FullDetails onPatch={onPatch} task={updatedTask} />);
-    expect(screen.getByLabelText('Task notes').props.value).toBe('Rewritten on the running screen');
+    // Edited but NOT blurred — Done must persist the draft before closing.
+    await fireEvent.changeText(screen.getByLabelText('Task details'), 'Bring the insurance card');
+    await fireEvent.press(screen.getByLabelText('Done editing'));
 
-    // ...and blurring the untouched field must NOT flush anything stale.
-    await fireEvent(screen.getByLabelText('Task notes'), 'blur');
-    expect(onPatch).not.toHaveBeenCalled();
-  });
-
-  it('labels the primary action Continue for an in-progress task', async () => {
-    await render(<InProgress />);
-
-    expect(screen.getByLabelText('Continue task')).toBeTruthy();
-  });
-
-  it('disables Cut loose when onCutLoose is not provided (Story 2.4)', async () => {
-    // FullDetails omits onCutLoose (meta args only wire onStart).
-    await render(<FullDetails />);
-    expect(screen.getByLabelText('Cut loose').props.accessibilityState?.disabled).toBe(true);
-
-    await render(<FullyWired />);
-    expect(screen.getByLabelText('Cut loose').props.accessibilityState?.disabled).toBeFalsy();
-  });
-
-  it('flushes pending text drafts before reporting Cut loose (Story 2.4, AC4)', async () => {
-    const onPatch = jest.fn();
-    const onCutLoose = jest.fn();
-    await render(<FullDetails onPatch={onPatch} onCutLoose={onCutLoose} />);
-
-    // Edited but NOT blurred — released tasks keep their latest notes for
-    // the Epic 7 recycle bin restore.
-    await fireEvent.changeText(screen.getByLabelText('Task notes'), 'Half-written thought');
-    await fireEvent.press(screen.getByLabelText('Cut loose'));
-
-    expect(onPatch).toHaveBeenCalledWith({ notes: 'Half-written thought' });
-    expect(onCutLoose).toHaveBeenCalledTimes(1);
-    // The invariant is the ORDER: persist first, then release.
+    expect(onPatch).toHaveBeenCalledWith({ details: 'Bring the insurance card' });
+    expect(onClose).toHaveBeenCalledTimes(1);
     expect(onPatch.mock.invocationCallOrder[0] ?? Infinity).toBeLessThan(
-      onCutLoose.mock.invocationCallOrder[0] ?? 0,
-    );
-  });
-
-  it('flushes pending text drafts before reporting Start', async () => {
-    const onPatch = jest.fn();
-    const onStart = jest.fn();
-    await render(<FullDetails onPatch={onPatch} onStart={onStart} />);
-
-    // Edited but NOT blurred — Start must persist the draft before leaving.
-    await fireEvent.changeText(screen.getByLabelText('Task notes'), 'Bring the insurance card');
-    await fireEvent.press(screen.getByLabelText('Start task'));
-
-    expect(onPatch).toHaveBeenCalledWith({ notes: 'Bring the insurance card' });
-    expect(onStart).toHaveBeenCalledTimes(1);
-    // The invariant is the ORDER: persist first, then leave.
-    expect(onPatch.mock.invocationCallOrder[0] ?? Infinity).toBeLessThan(
-      onStart.mock.invocationCallOrder[0] ?? 0,
+      onClose.mock.invocationCallOrder[0] ?? 0,
     );
   });
 
@@ -201,15 +142,13 @@ describe('CardBack (portable stories)', () => {
   });
 });
 
-describe('CardBack review mode (Story 6.2)', () => {
-  it('highlights flagged sections and forwards tick confirmations', async () => {
+describe('CardBack F-treatment (v1.5 Row F)', () => {
+  it('tags guessed groups WE GUESSED and forwards the group ticks', async () => {
     const onConfirm = jest.fn();
     await render(<WithReviewFlags onConfirm={onConfirm} />);
 
-    // Contexts + size show the inferred hint; the deadline section carries
-    // the missing-deadline prompt instead (calm copy, warning tones).
-    expect(screen.getAllByText('AI guessed')).toHaveLength(2);
-    expect(screen.getByText('Needs a deadline — when?')).toBeTruthy();
+    // Deadline + requires + size all guessed.
+    expect(screen.getAllByText('We guessed')).toHaveLength(3);
 
     await fireEvent.press(screen.getByLabelText('Confirm size'));
     expect(onConfirm).toHaveBeenCalledWith('size');
@@ -219,16 +158,30 @@ describe('CardBack review mode (Story 6.2)', () => {
     expect(onConfirm).toHaveBeenCalledWith('deadline');
   });
 
-  it('deadline chips patch an 18:00-local date; Clear stays hidden while flagged', async () => {
-    const onPatch = jest.fn();
-    await render(<MissingDeadlineOnly onPatch={onPatch} />);
+  it('Confirm all guesses ticks every pending group at once', async () => {
+    const onConfirm = jest.fn();
+    await render(<WithReviewFlags onConfirm={onConfirm} />);
 
-    await fireEvent.press(screen.getByLabelText('Deadline: Tomorrow'));
-    expect(onPatch).toHaveBeenCalledTimes(1);
-    const patched = (onPatch.mock.calls[0]?.[0] as { deadline: Date }).deadline;
-    expect(patched.getHours()).toBe(18);
+    await fireEvent.press(screen.getByLabelText('Confirm all guesses'));
+    expect(onConfirm).toHaveBeenCalledTimes(3);
+    expect(onConfirm.mock.calls.map((call) => call[0]).sort()).toEqual([
+      'contexts',
+      'deadline',
+      'size',
+    ]);
+  });
 
-    expect(screen.queryByLabelText('Clear deadline')).toBeNull();
+  it('missing deadline renders NOTHING TO GO ON; None answers it', async () => {
+    const onConfirm = jest.fn();
+    await render(<MissingDeadlineOnly onConfirm={onConfirm} />);
+
+    expect(screen.getByText('Nothing to go on')).toBeTruthy();
+    expect(screen.getByText('Missing this detail')).toBeTruthy();
+    // No confirm-all — a missing detail needs an answer, not agreement.
+    expect(screen.queryByLabelText('Confirm all guesses')).toBeNull();
+
+    await fireEvent.press(screen.getByLabelText('No deadline needed'));
+    expect(onConfirm).toHaveBeenCalledWith('missingDeadline');
   });
 
   it('Clear shows for a set, unflagged deadline and patches null', async () => {
@@ -239,11 +192,12 @@ describe('CardBack review mode (Story 6.2)', () => {
     expect(onPatch).toHaveBeenCalledWith({ deadline: null });
   });
 
-  it('renders no review chrome for an unflagged task', async () => {
+  it('renders no blueprint chrome for an unflagged task', async () => {
     await render(<FullDetails />);
 
-    expect(screen.queryByText('AI guessed')).toBeNull();
+    expect(screen.queryByText('We guessed')).toBeNull();
     expect(screen.queryByLabelText('Confirm size')).toBeNull();
+    expect(screen.queryByLabelText('Confirm all guesses')).toBeNull();
   });
 });
 

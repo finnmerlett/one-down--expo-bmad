@@ -1,8 +1,8 @@
-# Story 1.4 — card back: tap-to-flip opens the expanded back (AC1-3), text
-# auto-saves on blur (AC4), context toggles + size persist (AC5-6), back
-# button contracts to the front which reflects the edits (AC7). Edits are
-# verified through the FRONT after closing — proves persistence, not just
-# local state.
+# Story 1.4 → v1.5 D5 — card back "edit in place" (frame 06): the pencil
+# opens the EDITING CARD view (title over a hairline, DETAILS, deadline /
+# requires / size groups), text auto-saves on blur, context toggles + size
+# persist immediately, and `Done editing` (or the hardware back) contracts to
+# the front which reflects the edits. Notes moved to the working screen (D5).
 appId: com.onedown.mobile
 ---
 - runFlow: common/launch-app.yaml
@@ -19,26 +19,27 @@ appId: com.onedown.mobile
 - tapOn: 'Close add task'
 - waitForAnimationToEnd
 
-# Tap the top card -> back view expands (AC1) with all sections (AC2-3)
+# Pencil -> the card back expands with the v1.5 chrome (AC1-3)
 - tapOn: 'Edit task: Edit me task'
 - waitForAnimationToEnd
 - assertVisible: 'Back to card front'
+- assertVisible: 'Editing card'
 - assertVisible: 'No deadline'
-- assertVisible: 'Notes'
-- assertVisible: 'Start'
-- assertVisible: 'Cut loose'
+- assertVisible: 'Details'
+- assertVisible: 'Done editing'
+# Start/Cut loose/notes left the back in v1.5 (working screen owns them)
+- assertNotVisible: 'Start'
+- assertNotVisible: 'Cut loose'
 
-# Inline title edit; focusing the notes field blurs the title -> auto-save (AC4)
+# Inline title edit; auto-save on blur (AC4)
 - tapOn: 'Task title'
 - eraseText
 - inputText: 'Edited task title'
-# Dismiss the keyboard BEFORE tapping the notes field: with the soft keyboard
-# up the field sits underneath it (Maestro's hierarchy doesn't model IME
-# occlusion — the tap would land on the keys and type into the still-focused
-# title). BUT the emulator IME sometimes runs in floating/hardware-key mode
-# with no soft keyboard on screen; there Maestro's hideKeyboard falls back to
-# a BACK key event, which the card-back BackHandler (deliberately — see the
-# end of this flow) treats as "close the card", flushing drafts on unmount.
+# Dismiss the keyboard BEFORE tapping chips: with the soft keyboard up they
+# can sit underneath it (Maestro's hierarchy doesn't model IME occlusion).
+# BUT the emulator IME sometimes runs with no soft keyboard on screen; there
+# Maestro's hideKeyboard falls back to a BACK key event, which the card-back
+# BackHandler treats as "close the card", flushing drafts on unmount.
 # Handle both modes: hideKeyboard, then reopen the card if it closed. The
 # reopen tap's exact label doubles as proof the title edit was saved.
 - hideKeyboard
@@ -49,26 +50,23 @@ appId: com.onedown.mobile
     commands:
       - tapOn: 'Edit task: Edited task title'
       - waitForAnimationToEnd
-- tapOn: 'Task notes'
-- inputText: 'Working note'
-# Same dual-mode keyboard dismissal before the chip taps (they can sit under
-# a real soft keyboard too).
-- hideKeyboard
-- waitForAnimationToEnd
-- runFlow:
-    when:
-      notVisible: 'Back to card front'
-    commands:
-      - tapOn: 'Edit task: Edited task title'
-      - waitForAnimationToEnd
 
-# Context toggle + size persist immediately (AC5, AC6)
+# Context toggle + size persist immediately (AC5, AC6). The groups can sit
+# below the fold on small screens — scroll them into view first.
+- scrollUntilVisible:
+    element:
+      text: 'Context: Home'
+    direction: DOWN
 - tapOn: 'Context: Home'
 - tapOn: 'Size: Quick win'
 
-# Back button -> contracts to the front, which reflects every edit (AC7):
+# Done editing -> contracts to the front, which reflects every edit (AC7):
 # new title in the card label, size tag and context badge visible
-- tapOn: 'Back to card front'
+- scrollUntilVisible:
+    element:
+      text: 'Done editing'
+    direction: DOWN
+- tapOn: 'Done editing'
 - waitForAnimationToEnd
 - extendedWaitUntil:
     visible: 'Task: Edited task title. Worth 5 stars. Card 1 of 1'
@@ -76,12 +74,12 @@ appId: com.onedown.mobile
 - assertVisible: 'Quick win'
 - assertVisible: 'Home'
 
-# Reopen: stored values survived the close (notes flushed on close).
-# Close with the system back gesture this time — it must close the card,
-# not exit the app (review fix: BackHandler in the overlay).
+# Reopen: stored values survived the close. Close with the system back
+# gesture this time — it must close the card, not exit the app (review fix:
+# BackHandler in the overlay).
 - tapOn: 'Edit task: Edited task title'
 - waitForAnimationToEnd
-- assertVisible: 'Working note'
+- assertVisible: 'Editing card'
 - back
 - waitForAnimationToEnd
 - assertVisible: 'Task: Edited task title. Worth 5 stars. Card 1 of 1'

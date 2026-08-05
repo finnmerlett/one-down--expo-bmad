@@ -18,7 +18,6 @@ const meta = {
   args: {
     onPatch: () => {},
     onClose: () => {},
-    onStart: () => {},
   },
 } satisfies Meta<typeof CardBack>;
 
@@ -31,7 +30,6 @@ export const FullDetails: Story = {
       id: 'task-full',
       title: 'Book dentist appointment',
       details: 'Ask about the wisdom tooth while at it',
-      notes: 'Practice number is in the green folder',
       size: 'quick_win',
       contexts: '["home","phone"]',
       deadline: new Date('2026-06-20T09:00:00Z'),
@@ -45,27 +43,8 @@ export const Minimal: Story = {
   },
 };
 
-// Started task — the primary action reads Continue instead of Start (2.1).
-export const InProgress: Story = {
-  args: {
-    task: makeTask({
-      id: 'task-started',
-      title: 'Sort out the garage',
-      status: 'in_progress',
-      notes: 'Shelves are up, boxes next',
-    }),
-  },
-};
-
-/** Story 2.4 — both actions live (Start + Cut loose), as wired on every surface. */
-export const FullyWired: Story = {
-  args: {
-    task: makeTask({ id: 'task-wired', title: 'Cancel gym membership' }),
-    onCutLoose: () => {},
-  },
-};
-
-/** Story 6.2 — all three inferred flags plus the missing-deadline prompt. */
+/** v1.5 F-treatment (frame 06): every group guessed — WE GUESSED tags,
+ *  blue-tinted dashed rows/chips, one navy tick per group, Confirm all. */
 export const WithReviewFlags: Story = {
   args: {
     task: makeTask({
@@ -73,17 +52,18 @@ export const WithReviewFlags: Story = {
       title: 'Call the dentist soon',
       size: 'quick_win',
       contexts: '["phone"]',
+      deadline: new Date('2026-08-02T18:00:00Z'),
       hasCheckNeeded: true,
       reviewFlags: JSON.stringify({
         inferred: ['size', 'contexts', 'deadline'],
-        missingDeadline: true,
       }),
     }),
     onConfirm: () => {},
   },
 };
 
-/** Story 6.2 — only the "Needs a deadline — when?" prompt (no inferred fields). */
+/** NOTHING TO GO ON (frame 06 variant): the grey dashed missing-deadline
+ *  row — a date or `None` settles it. */
 export const MissingDeadlineOnly: Story = {
   args: {
     task: makeTask({

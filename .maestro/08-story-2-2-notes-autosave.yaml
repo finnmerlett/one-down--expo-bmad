@@ -39,7 +39,7 @@ appId: com.onedown.mobile
 - extendedWaitUntil:
     visible: 'Task: Notes survive task. Worth 5 stars. Card 1 of 1'
     timeout: 5000
-- assertVisible: 'Continue'
+- assertVisible: 'In progress'
 - tapOn: 'Task: Notes survive task. Worth 5 stars. Card 1 of 1'
 - waitForAnimationToEnd
 

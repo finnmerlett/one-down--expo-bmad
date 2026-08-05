@@ -23,7 +23,7 @@ appId: com.onedown.mobile
     file: common/add-task.yaml
     env:
       TITLE: 'Other card'
-- assertVisible: 'Task: Skip target. Worth 5 stars. Card 1 of 2'
+- assertVisible: 'Task: Skip target\. Worth 5 stars\..*'
 
 # --- 10 swipes = 5 skips per card (AC2 threshold) ---
 - repeat:
@@ -35,7 +35,7 @@ appId: com.onedown.mobile
       - waitForAnimationToEnd
 
 # Front indicator + a11y label suffix on the flagged top card (AC6)
-- assertVisible: 'Task: Skip target. Worth 5 stars. Card 1 of 2. Skipped a lot'
+- assertVisible: 'Task: Skip target\. Worth 5 stars\..* Skipped a lot'
 
 # --- Card back shows the gentle prompt (AC5) ---
 - tapOn: 'Edit task: Skip target'
@@ -56,8 +56,10 @@ appId: com.onedown.mobile
     timeout: 5000
 - tapOn: 'Back to card front'
 - waitForAnimationToEnd
-# Exact-match label WITHOUT the flag suffix proves the indicator cleared.
-- assertVisible: 'Task: Skip target. Worth 5 stars. Card 1 of 2'
+# The flag suffix is gone (a coin-flip don't-skip offer may still add its
+# own badge segment, so match the prefix and deny the suffix explicitly).
+- assertVisible: 'Task: Skip target\. Worth 5 stars\..*'
+- assertNotVisible: 'Skipped a lot'
 
 # --- Regression leg: the skip count restarted, one new skip must not re-flag ---
 - swipe:
@@ -68,7 +70,8 @@ appId: com.onedown.mobile
     start: 80%, 45%
     end: 5%, 45%
 - waitForAnimationToEnd
-- assertVisible: 'Task: Skip target. Worth 5 stars. Card 1 of 2'
+- assertVisible: 'Task: Skip target\. Worth 5 stars\..*'
+- assertNotVisible: 'Skipped a lot'
 
 - assertNotVisible: 'Unhandled'
 - assertNotVisible: 'error occurred'

@@ -33,20 +33,21 @@ export function CardBackOverlay({
   onStart,
   onCutLoose,
   onConfirm,
-  onHelp,
+  onConfirmAll,
   onKeep,
 }: {
   task: TaskData;
   onPatch: (patch: UpdateTaskPatch) => void;
   onDismiss: () => void;
-  /** Start/Continue → task running screen (Story 2.1). CardBack flushes drafts itself. */
+  /** Health-prompt "Break it down" → running screen (Story 7.2, v1.5: the
+   *  back has no Start button — CardBack flushes drafts itself). */
   onStart?: () => void;
-  /** Cut loose → guilt-free archive (Story 2.4). CardBack flushes drafts itself. */
+  /** Health-prompt "Cut loose" (Story 7.2). CardBack flushes drafts itself. */
   onCutLoose?: () => void;
   /** Tick-confirm a review item (Story 6.2) — passed straight through to CardBack. */
   onConfirm?: (item: ReviewItem) => void;
-  /** Breakdown entry (Story 6.3) — passed straight through to CardBack. */
-  onHelp?: () => void;
+  /** Batch confirm (v1.5 Confirm all guesses) — passed straight through. */
+  onConfirmAll?: (items: ReviewItem[]) => void;
   /** Health-prompt "Keep it" (Story 7.2) — passed straight through to CardBack. */
   onKeep?: () => void;
 }) {
@@ -111,7 +112,7 @@ export function CardBackOverlay({
           onStart={onStart}
           onCutLoose={onCutLoose}
           onConfirm={onConfirm}
-          onHelp={onHelp}
+          onConfirmAll={onConfirmAll}
           onKeep={onKeep}
         />
       </Animated.View>

@@ -16,11 +16,11 @@ appId: com.onedown.mobile
 # Seed via brain dump (6.1 surface; v1.5 home pill, then the screen's textarea)
 - tapOn: 'Brain dump'
 - waitForAnimationToEnd
-- tapOn: 'Brain dump'
+- tapOn: "What's on your mind?"
 - inputText: 'Call the dentist soon. Ponder the universe quietly for a while'
 - tapOn: 'Parse my tasks'
 - extendedWaitUntil:
-    visible: 'Task: (Call the dentist soon|Ponder the universe quietly for a while)\..* Card . of 2'
+    visible: 'Task: (Call the dentist soon|Ponder the universe quietly for a while)\..* Card . of 2.*'
     timeout: 15000
 
 # The review entry only exists on a flagged TOP card — cycle once if the
@@ -41,11 +41,14 @@ appId: com.onedown.mobile
 - assertVisible: 'Task: Call the dentist soon\..* Card 1 of 1'
 - assertNotVisible: 'Task: Ponder the universe quietly for a while\..*'
 
-# Open the card back: flagged sections highlighted with ticks (AC3)
-- tapOn: 'Task: Call the dentist soon\..* Card 1 of 1'
+# Open the card back (v1.5: card tap goes to the working screen — the F
+# treatment lives behind the pencil): WE GUESSED groups + the grey
+# NOTHING TO GO ON deadline row (AC3)
+- tapOn: 'Edit task: Call the dentist soon'
 - waitForAnimationToEnd
-- assertVisible: 'AI guessed'
-- assertVisible: 'Needs a deadline — when?'
+- assertVisible: 'We guessed'
+- assertVisible: 'Nothing to go on'
+- assertVisible: 'Missing this detail'
 - takeScreenshot: .maestro/screenshots/23-story-6-2-review-card-back
 
 # Tick-confirm the inferred contexts and size — ticks disappear (AC4)
@@ -54,10 +57,10 @@ appId: com.onedown.mobile
 - tapOn: 'Confirm size'
 - assertNotVisible: 'Confirm size'
 
-# Supply the missing deadline via a quick chip — the prompt clears (AC6)
-- tapOn: 'Deadline: Tomorrow'
+# Answer the missing deadline with None — the grey row settles (AC6)
+- tapOn: 'No deadline needed'
 - extendedWaitUntil:
-    notVisible: 'Needs a deadline — when?'
+    notVisible: 'Missing this detail'
     timeout: 3000
 
 # Last flag cleared → the card drops out of the review stack (AC4/AC8)
@@ -68,7 +71,7 @@ appId: com.onedown.mobile
 - waitForAnimationToEnd
 
 # Full stack restored, no review marker anywhere (both cards browsable)
-- assertVisible: 'Task: (Call the dentist soon|Ponder the universe quietly for a while)\..* Card . of 2'
+- assertVisible: 'Task: (Call the dentist soon|Ponder the universe quietly for a while)\..* Card . of 2.*'
 - assertNotVisible: 'Needs review'
 
 - assertNotVisible: 'Unhandled'

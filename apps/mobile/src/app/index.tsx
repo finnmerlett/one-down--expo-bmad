@@ -46,6 +46,7 @@ import { undoTaskCutLoose } from '@/services/task-undo';
 import {
   applyTaskPatch,
   confirmReviewItem,
+  confirmReviewItems,
   cutLooseTask,
   keepTask,
   startTask,
@@ -396,6 +397,7 @@ export default function HomeScreen() {
           task={openTask}
           onPatch={(patch) => applyTaskPatch(openTask, patch)}
           onConfirm={(item) => confirmReviewItem(openTask, item)}
+          onConfirmAll={(items) => confirmReviewItems(openTask, items)}
           onKeep={() => keepTask(openTask)}
           onDismiss={() => setOpenTaskId(null)}
           onStart={() => {
@@ -404,13 +406,6 @@ export default function HomeScreen() {
             // under a pushed route and would swallow hardware back there.
             setOpenTaskId(null);
             router.push(`/task-running/${openTask.id}`);
-          }}
-          onHelp={() => {
-            // Same start + unmount-then-push contract as Start; the param
-            // auto-fires the first_steps request on arrival (Story 6.3, AC6).
-            startTask(openTask, 'card_back_overlay');
-            setOpenTaskId(null);
-            router.push(`/task-running/${openTask.id}?breakdown=1`);
           }}
           onCutLoose={() => {
             // Idempotency ref (per task id): the unmount below stops later

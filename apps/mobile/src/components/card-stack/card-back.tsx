@@ -14,9 +14,8 @@ import {
 } from '@one-down/shared';
 
 import { Box } from '@/components/ui/box';
-import { Button, ButtonText } from '@/components/ui/button';
 import { HStack } from '@/components/ui/hstack';
-import { ArrowLeftIcon, CheckIcon, Icon } from '@/components/ui/icon';
+import { ArrowLeftIcon, CalendarDaysIcon, CheckIcon, EditIcon, Icon } from '@/components/ui/icon';
 import { Input, InputField } from '@/components/ui/input';
 import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
@@ -24,6 +23,8 @@ import { Textarea, TextareaInput } from '@/components/ui/textarea';
 import { VStack } from '@/components/ui/vstack';
 
 import { track } from '@/lib/analytics/track';
+import { CONTEXT_ICONS } from '@/components/stack-filters/context-icons';
+import { taskValue } from '@/services/star-calculator';
 import { evaluateTaskHealth } from '@/services/task-health';
 import type { UpdateTaskPatch } from '@/services/tasks-repository';
 import { CONTEXT_LABELS, SIZE_LABELS } from './task-card';
@@ -34,64 +35,53 @@ export interface CardBackHandle {
   flush: () => void;
 }
 
-function SectionLabel({ children }: { children: string }) {
-  return <Text className="font-body-bold text-[13px] text-typography-500">{children}</Text>;
+/** Mono caps section label (v1.5 spec §1). */
+function CapsLabel({ children }: { children: string }) {
+  return (
+    <Text className="font-mono text-[11px] uppercase tracking-caps text-typography-400">
+      {children}
+    </Text>
+  );
 }
 
-/** Deadline chip presets (Story 6.2, AC6): N days ahead at 18:00 local. */
-function deadlineFromNow(daysAhead: number): Date {
-  const date = new Date();
-  date.setDate(date.getDate() + daysAhead);
-  date.setHours(18, 0, 0, 0);
-  return date;
+/** Blueprint-blue `WE GUESSED` tag — blue = "we guessed, you haven't agreed"
+ *  (spec §2); it sits at the right end of a flagged group's label line. */
+function GuessedTag() {
+  return (
+    <Text className="font-mono text-[11px] uppercase tracking-caps text-info-600">We guessed</Text>
+  );
 }
 
-/**
- * Section wrapper with the review treatment (Story 6.2, AC3): flagged
- * sections get an amber highlight (warning tones, never red), an "AI guessed"
- * hint, and — for inferred flags — a confirm tick that clears the flag
- * without changing the value. Unflagged sections render label + content only.
- */
-function ReviewSection({
+/** The one navy tick that confirms a whole guessed group (frame 06). */
+function GroupTick({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      aria-label={label}
+      hitSlop={8}
+      onPress={onPress}
+      className="h-9 w-9 flex-none items-center justify-center rounded-full bg-info-600 active:bg-info-700"
+    >
+      <Icon as={CheckIcon} size="sm" className="text-typography-0" />
+    </Pressable>
+  );
+}
+
+/** Group wrapper: caps label + optional WE GUESSED tag on the label line. */
+function Group({
   label,
-  flagged,
-  hint = 'AI guessed',
-  confirmLabel,
-  onConfirm,
+  guessed = false,
   children,
 }: {
   label: string;
-  flagged: boolean;
-  hint?: string;
-  confirmLabel: string;
-  /** Only inferred flags get the tick; the missing-deadline prompt is answered by editing. */
-  onConfirm?: () => void;
+  guessed?: boolean;
   children: ReactNode;
 }) {
   return (
-    <VStack
-      className={
-        flagged ? 'gap-2 rounded-2xl border border-warning-300 bg-warning-50 p-4' : 'gap-2'
-      }
-    >
+    <VStack className="gap-2">
       <HStack className="items-center justify-between">
-        <VStack className="gap-0.5">
-          <SectionLabel>{label}</SectionLabel>
-          {flagged ? (
-            <Text className="font-body-medium text-xs text-warning-700">{hint}</Text>
-          ) : null}
-        </VStack>
-        {flagged && onConfirm ? (
-          <Pressable
-            accessibilityRole="button"
-            aria-label={confirmLabel}
-            hitSlop={8}
-            onPress={onConfirm}
-            className="h-11 w-11 items-center justify-center rounded-full"
-          >
-            <Icon as={CheckIcon} size="xl" className="text-warning-700" />
-          </Pressable>
-        ) : null}
+        <CapsLabel>{label}</CapsLabel>
+        {guessed ? <GuessedTag /> : null}
       </HStack>
       {children}
     </VStack>
@@ -102,46 +92,64 @@ function Chip({
   label,
   accessibilityLabel,
   selected,
+  guessed = false,
+  icon,
   onPress,
   role = 'button',
 }: {
   label: string;
   accessibilityLabel: string;
   selected: boolean;
+  /** Awaiting agreement — selected chips render blue-tinted + dashed. */
+  guessed?: boolean;
+  icon?: (typeof CONTEXT_ICONS)[TaskContext];
   onPress: () => void;
   /** Context toggles are switches (checked); the size selector is buttons (selected). */
   role?: 'button' | 'switch';
 }) {
+  const chipClass = selected
+    ? guessed
+      ? 'border-[1.5px] border-dashed border-[rgba(30,52,80,0.42)] bg-info-50'
+      : 'border border-primary-300 bg-primary-50'
+    : 'border border-outline-200 bg-background-0';
+  const textClass = selected
+    ? guessed
+      ? 'font-body-semibold text-sm text-info-800'
+      : 'font-body-semibold text-sm text-primary-700'
+    : 'font-body-medium text-sm text-typography-600';
+  const iconClass = selected
+    ? guessed
+      ? 'text-info-700'
+      : 'text-primary-700'
+    : 'text-typography-500';
+
   return (
     <Pressable
       accessibilityRole={role}
       accessibilityState={role === 'switch' ? { checked: selected } : { selected }}
       aria-label={accessibilityLabel}
       onPress={onPress}
-      className={`rounded-full border px-4 py-2 ${
-        selected ? 'border-primary-200 bg-primary-100' : 'border-outline-200 bg-background-0'
-      }`}
+      className={`flex-row items-center gap-[7px] rounded-full px-4 py-2 ${chipClass}`}
     >
-      <Text
-        className={
-          selected
-            ? 'font-body-bold text-sm text-primary-700'
-            : 'font-body-medium text-sm text-typography-600'
-        }
-      >
-        {label}
-      </Text>
+      {icon ? <Icon as={icon} size="sm" className={iconClass} /> : null}
+      <Text className={textClass}>{label}</Text>
     </Pressable>
   );
 }
 
 /**
- * Card back: full task details with inline editing (UX: tap text, edit in
- * place, auto-save on blur — no save button). Text fields hold local drafts
- * and emit a patch only when the value actually changed; toggles and the size
- * selector persist immediately. `flush()` (imperative handle) saves pending
- * drafts when the card is closed with the keyboard still up — blur events are
- * not guaranteed on unmount.
+ * Card back, v1.5 "edit in place" (frame 06 + Row F): `✏ EDITING CARD`
+ * header with the gold `★ N` value pill, Gabarito title over a hairline,
+ * DETAILS, then per-group rows with the F-treatment — a guessed group says
+ * `WE GUESSED` in blueprint blue, its value sits on a blue-tinted dashed row,
+ * and ONE navy tick agrees to the whole group; confirming clears the chrome
+ * to plain paper instantly. A task with nothing to go on gets the grey
+ * `NOTHING TO GO ON` row instead (calendar or None settles it).
+ *
+ * Start/Cut loose no longer live here (working screen owns them); the bottom
+ * is `Confirm all guesses` (only while guesses are pending) + `Done editing`.
+ * Text fields hold local drafts and emit a patch only when the value actually
+ * changed; `flush()` saves pending drafts when the card closes mid-edit.
  */
 export function CardBack({
   task,
@@ -150,7 +158,7 @@ export function CardBack({
   onStart,
   onCutLoose,
   onConfirm,
-  onHelp,
+  onConfirmAll,
   onKeep,
   backLabel = 'Back to card front',
   ref,
@@ -158,14 +166,15 @@ export function CardBack({
   task: TaskData;
   onPatch: (patch: UpdateTaskPatch) => void;
   onClose: () => void;
-  /** Start/Continue → task running screen (Story 2.1). Omitted = disabled. */
+  /** Health-prompt "Break it down" → running screen (Story 7.2). */
   onStart?: () => void;
-  /** Cut loose → guilt-free archive (Story 2.4). Omitted = disabled. */
+  /** Health-prompt "Cut loose" → guilt-free archive (Story 7.2). */
   onCutLoose?: () => void;
   /** Tick-confirm a review item without editing it (Story 6.2). Omitted = no ticks. */
   onConfirm?: (item: ReviewItem) => void;
-  /** "Help me with this" → start + running screen with an auto-fired breakdown (Story 6.3). */
-  onHelp?: () => void;
+  /** Batch confirm for `Confirm all guesses` — MUST apply sequentially (the
+   *  per-item writes race on the same flags JSON). Falls back to onConfirm. */
+  onConfirmAll?: (items: ReviewItem[]) => void;
   /** "Keep it" on the health prompt (Story 7.2) — registers engagement, clearing the flag. */
   onKeep?: () => void;
   /** A11y label for the back button — contextual per surface (overlay vs list detail). */
@@ -181,14 +190,11 @@ export function CardBack({
   // to wipe running-screen notes (review blocker).
   const [titleDraft, setTitleDraft] = useState<string | null>(null);
   const [detailsDraft, setDetailsDraft] = useState<string | null>(null);
-  const [notesDraft, setNotesDraft] = useState<string | null>(null);
   useEffect(() => setTitleDraft(null), [task.title]);
   useEffect(() => setDetailsDraft(null), [task.details]);
-  useEffect(() => setNotesDraft(null), [task.notes]);
 
   const title = titleDraft ?? task.title;
   const details = detailsDraft ?? task.details ?? '';
-  const notes = notesDraft ?? task.notes ?? '';
 
   const flushTitle = () => {
     if (titleDraft === null) return;
@@ -213,22 +219,10 @@ export function CardBack({
     onPatch({ details: next });
   };
 
-  const flushNotes = () => {
-    if (notesDraft === null) return;
-    const trimmed = notesDraft.trim();
-    const next = trimmed ? trimmed : null;
-    if (next === (task.notes ?? null)) {
-      setNotesDraft(null);
-      return;
-    }
-    onPatch({ notes: next });
-  };
-
   useImperativeHandle(ref, () => ({
     flush: () => {
       flushTitle();
       flushDetails();
-      flushNotes();
     },
   }));
 
@@ -245,51 +239,56 @@ export function CardBack({
   };
 
   const selectSize = (size: TaskSize) => {
-    // Tapping the selected size again clears it back to unset.
+    // Tapping the selected size again clears it back to unset. The header
+    // star pill follows on the next render (value = f(size)).
     onPatch({ size: task.size === size ? null : size });
   };
 
-  // In-flight text drafts must persist before leaving for the running screen
-  // — navigation, like overlay dismissal, gives no blur guarantee.
+  // Flush-then-act (Story 2.4, AC4): released/started tasks keep their
+  // latest text — persist drafts BEFORE navigating away (health prompt).
   const handleStart = () => {
     flushTitle();
     flushDetails();
-    flushNotes();
     onStart?.();
   };
 
-  // Flush-then-act (Story 2.4, AC4): released tasks keep their latest text
-  // for the Epic 7 recycle bin restore — persist drafts BEFORE reporting.
   const handleCutLoose = () => {
     flushTitle();
     flushDetails();
-    flushNotes();
     onCutLoose?.();
   };
 
-  // Same flush-then-act contract for the breakdown entry (Story 6.3, AC6):
-  // it navigates to the running screen like Start does.
-  const handleHelp = () => {
+  const handleDone = () => {
     flushTitle();
     flushDetails();
-    flushNotes();
-    onHelp?.();
+    onClose();
   };
-
-  const startLabel = task.status === 'in_progress' ? 'Continue' : 'Start';
 
   const deadlineLabel = task.deadline
     ? task.deadline.toLocaleDateString(undefined, {
+        weekday: 'short',
         day: 'numeric',
         month: 'short',
-        year: 'numeric',
       })
     : 'No deadline';
 
-  // Review flags (Story 6.2): flagged sections get the highlight + tick.
+  // Review flags (Story 6.2 → v1.5 F-treatment): guessed groups carry the
+  // blueprint chrome until agreed or edited.
   const reviewFlags = parseReviewFlags(task.reviewFlags);
   const inferred = reviewFlags?.inferred ?? [];
   const missingDeadline = reviewFlags?.missingDeadline === true;
+  const deadlineGuessed = inferred.includes('deadline');
+  const contextsGuessed = inferred.includes('contexts');
+  const sizeGuessed = inferred.includes('size');
+
+  const confirmAll = () => {
+    if (onConfirmAll) {
+      onConfirmAll([...inferred]);
+      return;
+    }
+    if (!onConfirm) return;
+    for (const item of inferred) onConfirm(item);
+  };
 
   // Task-health prompt (Story 7.2, AC5): recomputed per render — "Keep it"
   // writes engagement, the live query re-renders, the flag (and prompt)
@@ -304,7 +303,6 @@ export function CardBack({
     }
   }, [healthFlag]);
 
-  // Deadline is editable for ALL tasks from 6.2 (chips + native picker).
   const [showPicker, setShowPicker] = useState(false);
   const patchDeadline = (next: Date | null) => {
     // Change-gated like the text fields — no spurious updatedAt bumps.
@@ -312,40 +310,78 @@ export function CardBack({
     onPatch({ deadline: next });
   };
 
+  /** White calendar button (blue hairline on guessed rows). */
+  const calendarButton = (guessed: boolean) => (
+    <Pressable
+      accessibilityRole="button"
+      aria-label="Pick a deadline date"
+      hitSlop={6}
+      onPress={() => setShowPicker(true)}
+      className={`h-9 w-9 flex-none items-center justify-center rounded-[10px] border bg-background-0 ${
+        guessed ? 'border-info-200' : 'border-outline-200'
+      }`}
+    >
+      <Icon
+        as={CalendarDaysIcon}
+        size="sm"
+        className={guessed ? 'text-info-600' : 'text-typography-500'}
+      />
+    </Pressable>
+  );
+
   return (
     <Box className="h-full w-full overflow-hidden rounded-[28px] border border-outline-100 bg-background-0 shadow-soft-card">
-      <HStack className="items-center px-3 pt-3">
+      <HStack className="items-center gap-1 px-3 pt-3">
         <Pressable
           accessibilityRole="button"
           aria-label={backLabel}
           hitSlop={8}
-          onPress={onClose}
+          onPress={handleDone}
           className="h-10 w-10 items-center justify-center rounded-full"
         >
           <Icon as={ArrowLeftIcon} size="lg" className="text-typography-700" />
         </Pressable>
+        <Icon as={EditIcon} size="2xs" className="text-primary-600" />
+        <Text className="font-mono text-[11px] uppercase tracking-caps text-primary-600">
+          Editing card
+        </Text>
+        <Box className="flex-1" />
+        {/* The card's worth, gold pill (no "when done" here — frame 06). */}
+        <HStack
+          accessible
+          accessibilityLabel={`Worth ${taskValue(task)} stars`}
+          className="h-8 items-center gap-1.5 rounded-full border border-tertiary-300 bg-tertiary-100 px-[13px]"
+        >
+          <Text className="text-xs text-tertiary-500">★</Text>
+          <Text className="font-mono text-[13px] leading-none text-tertiary-700">
+            {taskValue(task)}
+          </Text>
+        </HStack>
       </HStack>
       {/* Edge-to-edge Android never resizes for the keyboard (same as the
-          quick-add sheet) — explicit padding keeps the lower fields (notes,
-          contexts) reachable while editing. */}
+          quick-add sheet) — explicit padding keeps the lower fields
+          reachable while editing. */}
       <KeyboardAvoidingView behavior="padding" className="flex-1">
         {/* persistTaps: a toggle tap with the keyboard up must both blur
             (save) and register, not just dismiss the keyboard. */}
         <ScrollView keyboardShouldPersistTaps="handled">
           <VStack className="gap-5 px-6 pb-6 pt-1">
-            <Input size="lg" variant="underlined">
-              <InputField
-                aria-label="Task title"
-                placeholder="What needs doing?"
-                value={title}
-                onChangeText={setTitleDraft}
-                onBlur={flushTitle}
-                className="font-heading text-2xl text-typography-900"
-              />
-            </Input>
+            {/* Gabarito title over a hairline (frame 06). */}
+            <Box className="border-b border-outline-100 pb-3">
+              <Input size="lg" variant="underlined" className="border-b-0">
+                <InputField
+                  aria-label="Task title"
+                  placeholder="What needs doing?"
+                  value={title}
+                  onChangeText={setTitleDraft}
+                  onBlur={flushTitle}
+                  className="font-heading text-[27px] leading-[32px] text-typography-900"
+                />
+              </Input>
+            </Box>
             <VStack className="gap-2">
-              <SectionLabel>Details</SectionLabel>
-              <Textarea size="md">
+              <CapsLabel>Details</CapsLabel>
+              <Textarea size="md" className="rounded-[15px] border-outline-100 bg-background-0">
                 <TextareaInput
                   aria-label="Task details"
                   placeholder="Add details"
@@ -355,58 +391,70 @@ export function CardBack({
                 />
               </Textarea>
             </VStack>
-            <ReviewSection
-              label="Deadline"
-              flagged={inferred.includes('deadline') || missingDeadline}
-              hint={missingDeadline ? 'Needs a deadline — when?' : 'AI guessed'}
-              confirmLabel="Confirm deadline"
-              onConfirm={
-                inferred.includes('deadline') && onConfirm ? () => onConfirm('deadline') : undefined
-              }
-            >
-              <Text className="font-body-semibold text-typography-900">{deadlineLabel}</Text>
-              <HStack className="flex-wrap gap-2">
-                <Chip
-                  label="Today"
-                  accessibilityLabel="Deadline: Today"
-                  selected={false}
-                  onPress={() => patchDeadline(deadlineFromNow(0))}
-                />
-                <Chip
-                  label="Tomorrow"
-                  accessibilityLabel="Deadline: Tomorrow"
-                  selected={false}
-                  onPress={() => patchDeadline(deadlineFromNow(1))}
-                />
-                <Chip
-                  label="Next week"
-                  accessibilityLabel="Deadline: Next week"
-                  selected={false}
-                  onPress={() => patchDeadline(deadlineFromNow(7))}
-                />
-                <Chip
-                  label="Pick a date…"
-                  accessibilityLabel="Pick a deadline date"
-                  selected={false}
-                  onPress={() => setShowPicker(true)}
-                />
-                {task.deadline && !inferred.includes('deadline') && !missingDeadline ? (
-                  <Chip
-                    label="Clear"
-                    accessibilityLabel="Clear deadline"
-                    selected={false}
-                    onPress={() => patchDeadline(null)}
-                  />
-                ) : null}
-              </HStack>
+            <Group label="Deadline" guessed={deadlineGuessed}>
+              {missingDeadline ? (
+                // NOTHING TO GO ON (frame 06 variant): grey dashed row —
+                // pick a date or agree there is none; either settles it.
+                <VStack className="gap-1.5">
+                  <Text className="font-mono text-[11px] uppercase tracking-caps text-typography-300">
+                    Nothing to go on
+                  </Text>
+                  <HStack className="h-[52px] items-center gap-2.5 rounded-[15px] border-[1.5px] border-dashed border-outline-200 px-4">
+                    <Text className="flex-1 font-body-medium text-sm text-typography-400">
+                      Missing this detail
+                    </Text>
+                    {calendarButton(false)}
+                    <Pressable
+                      accessibilityRole="button"
+                      aria-label="No deadline needed"
+                      hitSlop={6}
+                      onPress={() => onConfirm?.('missingDeadline')}
+                      className="h-9 flex-none items-center justify-center rounded-[10px] border border-outline-200 bg-background-0 px-3"
+                    >
+                      <Text className="font-body-semibold text-[13px] text-typography-600">
+                        None
+                      </Text>
+                    </Pressable>
+                  </HStack>
+                </VStack>
+              ) : deadlineGuessed ? (
+                <HStack className="h-[52px] items-center gap-2.5 rounded-[15px] border-[1.5px] border-dashed border-[rgba(30,52,80,0.42)] bg-info-50 px-4">
+                  <Text className="flex-1 font-body-semibold text-[15px] text-info-800">
+                    {deadlineLabel}
+                  </Text>
+                  {calendarButton(true)}
+                  {onConfirm ? (
+                    <GroupTick label="Confirm deadline" onPress={() => onConfirm('deadline')} />
+                  ) : null}
+                </HStack>
+              ) : (
+                <HStack className="h-[52px] items-center gap-2.5 rounded-[15px] border border-outline-100 bg-background-0 px-4">
+                  <Text className="flex-1 font-body-semibold text-[15px] text-typography-900">
+                    {deadlineLabel}
+                  </Text>
+                  {task.deadline ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      aria-label="Clear deadline"
+                      hitSlop={6}
+                      onPress={() => patchDeadline(null)}
+                    >
+                      <Text className="font-body-medium text-[13px] text-typography-400">
+                        Clear
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                  {calendarButton(false)}
+                </HStack>
+              )}
               {showPicker ? (
                 <DateTimePicker
-                  value={task.deadline ?? deadlineFromNow(1)}
+                  value={task.deadline ?? new Date()}
                   mode="date"
                   onChange={(event, picked) => {
                     setShowPicker(false);
                     if (event.type === 'set' && picked) {
-                      // Same 18:00-local convention as the chips.
+                      // 18:00-local convention (Story 6.2).
                       const next = new Date(picked);
                       next.setHours(18, 0, 0, 0);
                       patchDeadline(next);
@@ -414,63 +462,49 @@ export function CardBack({
                   }}
                 />
               ) : null}
-            </ReviewSection>
-            <VStack className="gap-2">
-              <SectionLabel>Notes</SectionLabel>
-              <Textarea size="md">
-                <TextareaInput
-                  aria-label="Task notes"
-                  placeholder="Notes to self"
-                  value={notes}
-                  onChangeText={setNotesDraft}
-                  onBlur={flushNotes}
-                />
-              </Textarea>
-            </VStack>
-            <ReviewSection
-              label="Requires:"
-              flagged={inferred.includes('contexts')}
-              confirmLabel="Confirm contexts"
-              onConfirm={
-                inferred.includes('contexts') && onConfirm ? () => onConfirm('contexts') : undefined
-              }
-            >
-              <HStack className="flex-wrap gap-2">
-                {TASK_CONTEXTS.map((context) => (
-                  <Chip
-                    key={context}
-                    label={CONTEXT_LABELS[context]}
-                    accessibilityLabel={`Context: ${CONTEXT_LABELS[context]}`}
-                    selected={activeContexts.includes(context)}
-                    onPress={() => toggleContext(context)}
-                    role="switch"
-                  />
-                ))}
+            </Group>
+            <Group label="Requires" guessed={contextsGuessed}>
+              <HStack className="items-start gap-2.5">
+                <HStack className="min-w-0 flex-1 flex-wrap gap-2">
+                  {TASK_CONTEXTS.map((context) => (
+                    <Chip
+                      key={context}
+                      label={CONTEXT_LABELS[context]}
+                      accessibilityLabel={`Context: ${CONTEXT_LABELS[context]}`}
+                      selected={activeContexts.includes(context)}
+                      guessed={contextsGuessed}
+                      icon={CONTEXT_ICONS[context]}
+                      onPress={() => toggleContext(context)}
+                      role="switch"
+                    />
+                  ))}
+                </HStack>
+                {contextsGuessed && onConfirm ? (
+                  <GroupTick label="Confirm contexts" onPress={() => onConfirm('contexts')} />
+                ) : null}
               </HStack>
-            </ReviewSection>
-            <ReviewSection
-              label="Size"
-              flagged={inferred.includes('size')}
-              confirmLabel="Confirm size"
-              onConfirm={
-                inferred.includes('size') && onConfirm ? () => onConfirm('size') : undefined
-              }
-            >
-              <HStack className="gap-2">
-                {TASK_SIZES.map((size) => (
-                  <Chip
-                    key={size}
-                    label={SIZE_LABELS[size]}
-                    accessibilityLabel={`Size: ${SIZE_LABELS[size]}`}
-                    selected={task.size === size}
-                    onPress={() => selectSize(size)}
-                  />
-                ))}
+            </Group>
+            <Group label="Size" guessed={sizeGuessed}>
+              <HStack className="items-center gap-2.5">
+                <HStack className="flex-1 gap-2">
+                  {TASK_SIZES.map((size) => (
+                    <Chip
+                      key={size}
+                      label={SIZE_LABELS[size]}
+                      accessibilityLabel={`Size: ${SIZE_LABELS[size]}`}
+                      selected={task.size === size}
+                      guessed={sizeGuessed}
+                      onPress={() => selectSize(size)}
+                    />
+                  ))}
+                </HStack>
+                {sizeGuessed && onConfirm ? (
+                  <GroupTick label="Confirm size" onPress={() => onConfirm('size')} />
+                ) : null}
               </HStack>
-            </ReviewSection>
-            {/* Task-health prompt (Story 7.2): inline and ignorable, above
-                the action row. Cut loose / Break it down reuse the exact
-                flush-then-act handlers of the buttons below. */}
+            </Group>
+            {/* Task-health prompt (Story 7.2): inline and ignorable. Its
+                actions are the only Start/Cut-loose paths left on the back. */}
             {healthFlag ? (
               <TaskHealthPrompt
                 flag={healthFlag}
@@ -506,40 +540,32 @@ export function CardBack({
                 }
               />
             ) : null}
-            {/* Cut loose is deliberately frictionless — no confirm, no warning
-                color (zero-guilt release; the recycle bin restore is Epic 7). */}
-            <HStack className="gap-3 pt-2">
-              <Button
-                size="lg"
-                className="flex-1"
-                isDisabled={!onStart}
-                onPress={handleStart}
-                aria-label={`${startLabel} task`}
+            <VStack className="gap-2.5 pt-2">
+              {/* One tap agrees to every pending guess; the small gold star
+                  is the queue-clear hint (spec §6 / Row E). */}
+              {inferred.length > 0 && onConfirm ? (
+                <Pressable
+                  accessibilityRole="button"
+                  aria-label="Confirm all guesses"
+                  onPress={confirmAll}
+                  className="h-[50px] flex-row items-center justify-center rounded-full bg-info-100 active:bg-info-200"
+                >
+                  <Text className="font-body-semibold text-[15px] text-info-800">
+                    Confirm all guesses
+                  </Text>
+                  <Text className="absolute right-5 text-xs text-tertiary-500">★</Text>
+                </Pressable>
+              ) : null}
+              <Pressable
+                accessibilityRole="button"
+                aria-label="Done editing"
+                onPress={handleDone}
+                className="h-[54px] flex-row items-center justify-center gap-[9px] rounded-full bg-primary-500 shadow-fab active:bg-primary-600"
               >
-                <ButtonText>{startLabel}</ButtonText>
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="flex-1"
-                isDisabled={!onCutLoose}
-                onPress={handleCutLoose}
-                aria-label="Cut loose"
-              >
-                <ButtonText>Cut loose</ButtonText>
-              </Button>
-            </HStack>
-            {/* AI breakdown entry (Story 6.3, AC6): starts the task and lands
-                on the running screen with the request already in flight. */}
-            <Button
-              size="lg"
-              variant="outline"
-              isDisabled={!onHelp}
-              onPress={handleHelp}
-              aria-label="Help me with this"
-            >
-              <ButtonText>Help me with this</ButtonText>
-            </Button>
+                <Icon as={CheckIcon} size="md" className="text-typography-0" />
+                <Text className="font-body-bold text-base text-typography-0">Done editing</Text>
+              </Pressable>
+            </VStack>
           </VStack>
         </ScrollView>
       </KeyboardAvoidingView>

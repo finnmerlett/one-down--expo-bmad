@@ -79,6 +79,28 @@ export function confirmReviewItem(task: TaskData, item: ReviewItem): void {
 }
 
 /**
+ * `Confirm all guesses` (v1.5 D5): confirm items STRICTLY in sequence — each
+ * confirm is a read-modify-write of the same reviewFlags JSON, so firing
+ * them concurrently loses updates (last write resurrects the other flags;
+ * found on-device).
+ */
+export function confirmReviewItems(task: TaskData, items: ReviewItem[]): void {
+  void (async () => {
+    for (const item of items) {
+      const { confirmed, reviewCleared } = await repoConfirmReviewItem(db, task.id, item);
+      if (!confirmed) continue;
+      track('review_item_confirmed', { field: reviewItemField(item), via: 'tick' });
+      if (reviewCleared) {
+        await maybeAwardTriageQueueCleared(db);
+        track('review_completed', {});
+      }
+    }
+  })()
+    // oxlint-disable-next-line no-console
+    .catch((error: unknown) => console.warn('Review confirm-all failed', error));
+}
+
+/**
  * Notes autosave for the running screen (Story 2.2): fire-and-forget write
  * like applyTaskPatch, but `task_edited { field: 'notes' }` is emitted only
  * on the FIRST successful write per saver instance — the while-typing

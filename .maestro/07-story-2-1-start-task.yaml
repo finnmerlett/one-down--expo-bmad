@@ -37,7 +37,7 @@ appId: com.onedown.mobile
 - extendedWaitUntil:
     visible: 'Task: Start me task. Worth 5 stars. Card 1 of 1'
     timeout: 3000
-- assertNotVisible: 'Continue'
+- assertNotVisible: 'In progress'
 
 # Re-enter and add a working note, then leave WITHOUT blurring the field —
 # the note must survive via the beforeRemove flush, not the onBlur save
@@ -49,11 +49,11 @@ appId: com.onedown.mobile
 - waitForAnimationToEnd
 
 # Altering the task from the working screen counts as starting it -> the
-# card front now shows the Continue marker (2026-07-27 semantics)
+# card front now shows the In-progress chip (v1.5 copy)
 - extendedWaitUntil:
     visible: 'Task: Start me task. Worth 5 stars. Card 1 of 1'
     timeout: 3000
-- assertVisible: 'Continue'
+- assertVisible: 'In progress'
 
 # Tap again -> working screen reopens with the note preserved
 - tapOn: 'Task: Start me task. Worth 5 stars. Card 1 of 1'
@@ -64,32 +64,18 @@ appId: com.onedown.mobile
 - back
 - waitForAnimationToEnd
 - assertVisible: 'Task: Start me task. Worth 5 stars. Card 1 of 1'
-- assertVisible: 'Continue'
+- assertVisible: 'In progress'
 
-# Second surface: task list → detail (card back). The detail screen stays
-# mounted under the working screen — after editing notes there, the card
-# back must show the NEW note and re-entering must not wipe it (review
-# blocker regression).
+# Second surface: task list → detail (v1.5: the detail is the EDITING CARD
+# view — no notes, no Continue button; doing lives on the working screen).
 - tapOn: 'Open task list'
 - waitForAnimationToEnd
 - tapOn: 'Open task: Start me task'
 - waitForAnimationToEnd
-- assertVisible: 'Halfway through the pile'
-- tapOn: 'Continue task'
-- waitForAnimationToEnd
-- tapOn: 'Task notes'
-- eraseText
-- inputText: 'Sweeping the floor now'
-- tapOn: 'Pause and go back'
-- waitForAnimationToEnd
-- assertVisible: 'Sweeping the floor now'
-- tapOn: 'Continue task'
-- waitForAnimationToEnd
-- assertVisible: 'Sweeping the floor now'
+- assertVisible: 'Editing card'
+- assertVisible: 'Done editing'
 
-# Unwind to home: working → detail → list → home
-- back
-- waitForAnimationToEnd
+# Unwind to home: detail → list → home
 - back
 - waitForAnimationToEnd
 - back

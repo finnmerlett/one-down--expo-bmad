@@ -78,17 +78,15 @@ describe('TaskListView (portable stories)', () => {
     expect(screen.getByText('Water the plants')).toBeTruthy();
   });
 
-  it('shows size, contexts, and deadline as row metadata', async () => {
+  it('shows size and deadline as letterspaced caps metadata (v1.5 frame 08)', async () => {
     await render(<NoDoneTasks />);
 
     // Same formatting call as the component — locale-independent assertion.
-    const expectedDeadline = new Date('2026-06-20T09:00:00Z').toLocaleDateString(undefined, {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-    expect(screen.getByText(`Quick win · Home · Phone · ${expectedDeadline}`)).toBeTruthy();
-    expect(screen.getByText('Big time')).toBeTruthy();
+    const expectedDeadline = new Date('2026-06-20T09:00:00Z')
+      .toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+      .toUpperCase();
+    expect(screen.getByText(`QUICK WIN · ${expectedDeadline}`)).toBeTruthy();
+    expect(screen.getByText('BIG TIME')).toBeTruthy();
   });
 
   it('reports the pressed task', async () => {

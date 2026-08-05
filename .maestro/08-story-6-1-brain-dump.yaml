@@ -27,8 +27,9 @@ appId: com.onedown.mobile
 # 'clean' → home context (AC2/AC4/AC6)
 - tapOn: 'Brain dump'
 - waitForAnimationToEnd
-# Second 'Brain dump' tap targets the textarea (same a11y label) to focus it
-- tapOn: 'Brain dump'
+# Focus the textarea by its placeholder — 'Brain dump' is ambiguous on this
+# screen (heading + textarea share the label; Maestro would tap the heading)
+- tapOn: "What's on your mind?"
 - inputText: 'Call the dentist tomorrow. Clean out the garage'
 - tapOn: 'Parse my tasks'
 
@@ -37,7 +38,7 @@ appId: com.onedown.mobile
 # whichever parsed task curation surfaced), so we only assert that a parsed
 # card is on top of a 2-card stack.
 - extendedWaitUntil:
-    visible: 'Task: (Call the dentist tomorrow|Clean out the garage)\..* Card . of 2'
+    visible: 'Task: (Call the dentist tomorrow|Clean out the garage)\..* Card . of 2.*'
     timeout: 15000
 - takeScreenshot: .maestro/screenshots/08-story-6-1-brain-dump-stack
 
