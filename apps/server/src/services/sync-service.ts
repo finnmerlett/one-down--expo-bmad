@@ -53,7 +53,11 @@ export async function pushTasks(
         continue;
       }
 
-      const syncedAt = new Date();
+      // DB clock, not new Date(): the pull cursor is handed out from
+      // Postgres now(), so stamping writes from the app-server clock lets
+      // skew hide rows from the next pull (and flaked the since-boundary
+      // test). One clock for both sides; now() is fixed per transaction.
+      const syncedAt = sql`now()`;
       if (!own) {
         // userId ALWAYS from the authenticated ctx — never a client value.
         await tx.insert(tasks).values({ ...row, userId, syncedAt });
