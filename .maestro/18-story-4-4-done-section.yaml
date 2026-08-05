@@ -133,10 +133,12 @@ appId: com.onedown.mobile
 - assertNotVisible: 'Completed tasks will land here.'
 - takeScreenshot: .claude/run-notes/screenshots/4-4-done-section
 
-# Home is intact afterwards
+# Home is intact afterwards. Delta racked up skips while we cycled past it,
+# so a coin-flip don't-skip offer may have added a badge segment — match the
+# prefix only.
 - tapOn: 'Back to home'
 - waitForAnimationToEnd
-- assertVisible: 'Task: Delta task. Worth 5 stars. Card 1 of 1'
+- assertVisible: 'Task: Delta task\. Worth 5 stars\. Card 1 of 1.*'
 
 - assertNotVisible: 'Unhandled'
 - assertNotVisible: 'error occurred'

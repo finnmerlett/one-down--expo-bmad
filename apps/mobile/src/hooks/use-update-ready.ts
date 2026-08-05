@@ -16,13 +16,19 @@ import { Updates } from '@/lib/expo-updates-safe';
  */
 const FOREGROUND_CHECK_MIN_MS = 60_000;
 
+// Local e2e/emulator builds bake EXPO_PUBLIC_OTA_UI=off (apps/mobile/.env)
+// so the banner can't pop mid-flow and shift the layout under Maestro. The
+// native cold-launch check may still download in the background; this only
+// keeps the UI quiet. Never set in the EAS env — the phone needs the banner.
+const OTA_UI_DISABLED = process.env.EXPO_PUBLIC_OTA_UI === 'off';
+
 export function useUpdateReady(): boolean {
   const { isUpdatePending } = Updates.useUpdates();
   const lastCheckRef = useRef(0);
 
   useEffect(() => {
     // Dev builds have the update engine disabled — nothing to poll.
-    if (__DEV__ || !Updates.isEnabled) return;
+    if (OTA_UI_DISABLED || __DEV__ || !Updates.isEnabled) return;
     const check = async () => {
       if (Date.now() - lastCheckRef.current < FOREGROUND_CHECK_MIN_MS) return;
       lastCheckRef.current = Date.now();
@@ -40,5 +46,5 @@ export function useUpdateReady(): boolean {
     return () => subscription.remove();
   }, []);
 
-  return isUpdatePending;
+  return OTA_UI_DISABLED ? false : isUpdatePending;
 }

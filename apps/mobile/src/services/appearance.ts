@@ -21,7 +21,14 @@ const APPEARANCE_KEY = 'appearance_mode';
 export const DEFAULT_APPEARANCE: AppearanceMode = 'light';
 
 export async function getAppearance(db: PreferencesDb): Promise<AppearanceMode> {
-  const stored = await getPreference<AppearanceMode>(db, APPEARANCE_KEY);
+  let stored: AppearanceMode | null = null;
+  try {
+    stored = await getPreference<AppearanceMode>(db, APPEARANCE_KEY);
+  } catch (error) {
+    // First launch races the migrator: the preferences table may not exist
+    // yet, which just means nothing is stored. Anything else still throws.
+    if (!String(error).includes('no such table')) throw error;
+  }
   return stored && (APPEARANCE_MODES as readonly string[]).includes(stored)
     ? stored
     : DEFAULT_APPEARANCE;

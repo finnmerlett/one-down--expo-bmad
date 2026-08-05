@@ -57,9 +57,22 @@ appId: com.onedown.mobile
 - extendedWaitUntil:
     visible: 'Queue clear'
     timeout: 5000
-- tapOn: 'Back to the deck'
 - waitForAnimationToEnd
-- assertVisible: '+5 today'
+- tapOn: 'Back to the deck'
+# The tap can land the frame the completion view mounts and get dropped —
+# press again if we are still on the triage screen.
+- runFlow:
+    when:
+      visible: 'Back to the deck'
+    commands:
+      - waitForAnimationToEnd
+      - tapOn: 'Back to the deck'
+- waitForAnimationToEnd
+# The star counter exposes ONE accessible label (total + today, cf. flows
+# 16/17) — the visible '+5 today' chip is not reachable through it.
+- extendedWaitUntil:
+    visible: '5 stars, 5 earned today'
+    timeout: 5000
 - assertNotVisible: 'Needs review'
 
 - assertNotVisible: 'Unhandled'
