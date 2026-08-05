@@ -56,7 +56,6 @@ import { promoteQuickWin } from '@/services/welcome-back';
 import { useAppStore } from '@/stores/app-store';
 import { useContextBarStore } from '@/stores/context-bar-store';
 import { useQuickAddStore } from '@/stores/quick-add-store';
-import { useReviewModeStore } from '@/stores/review-mode-store';
 import { useStackFiltersStore } from '@/stores/stack-filters-store';
 
 export default function HomeScreen() {
@@ -139,18 +138,16 @@ export default function HomeScreen() {
     }, [welcomeBackPending, curated.length, setWelcomeBackPending]),
   );
 
-  // Review mode (Story 6.2): UNFILTERED flagged cards — the review pass must
-  // cover every AI guess, whatever context/mode filters happen to be active.
-  const isReviewing = useReviewModeStore((state) => state.isReviewing);
-  const enterReview = useReviewModeStore((state) => state.enter);
-  const exitReview = useReviewModeStore((state) => state.exit);
+  // Check queue (v1.5 D6b): the blueprint Triage screen replaces Story 6.2's
+  // review MODE — the count is UNFILTERED (every AI guess, whatever filters
+  // are active), and both entries (card marker + dashed bottom button) route
+  // to /check-queue.
   const reviewCards = useMemo(
     () => curateTasks(tasks, {}, { now: new Date(), seed }).filter((task) => task.hasCheckNeeded),
     [tasks, seed],
   );
   const handleReviewPress = () => {
-    enterReview();
-    track('review_mode_entered', { card_count: reviewCards.length });
+    router.push('/check-queue');
   };
 
   // Micro-task nudge (Story 6.4, FR39): the stack reports its top card; the
@@ -187,7 +184,6 @@ export default function HomeScreen() {
     }
   }, [micro, topTask, router]);
   const showNudge =
-    !isReviewing &&
     topTask !== null &&
     topTask.status === 'pending' &&
     topTask.skipCount >= MICRO_TASK_SKIP_THRESHOLD;
@@ -273,52 +269,18 @@ export default function HomeScreen() {
         <HStack className="h-4 items-center justify-end px-2">
           <ConnectionStatus />
         </HStack>
-        {isReviewing ? null : (
-          <VStack className="px-[22px]">
-            <ContextBar
-              activeContexts={activeContexts}
-              attentionContexts={attention}
-              onExpand={expandBar}
-            />
-            <Box className="mt-[9px]">
-              <SizeSwitcher mode={mode} onSetMode={handleSetMode} />
-            </Box>
-          </VStack>
-        )}
-      </VStack>
-      {isReviewing ? (
-        // Review mode (Story 6.2): flagged cards only, banner above the stack.
-        reviewCards.length === 0 ? (
-          <EmptyState
-            title="Nothing left to review"
-            body="Every AI guess has been checked."
-            actionLabel="Exit review"
-            onAction={exitReview}
+        <VStack className="px-[22px]">
+          <ContextBar
+            activeContexts={activeContexts}
+            attentionContexts={attention}
+            onExpand={expandBar}
           />
-        ) : (
-          <>
-            <HStack className="items-center justify-between px-4 pt-1">
-              <Text className="font-body-medium text-sm text-typography-700">
-                {`Reviewing ${reviewCards.length} ${reviewCards.length === 1 ? 'task' : 'tasks'}`}
-              </Text>
-              <Button size="sm" variant="outline" aria-label="Exit review" onPress={exitReview}>
-                <ButtonText>Exit review</ButtonText>
-              </Button>
-            </HStack>
-            {/* Review mode keeps tap = open the card back: the whole point
-                of this stack is confirming AI guesses, i.e. editing. */}
-            <CardStack
-              tasks={reviewCards}
-              getStarValue={getStarValue}
-              getBadge={getBadge}
-              getTopOfDeck={getTopOfDeck}
-              onCardPress={(task) => setOpenTaskId(task.id)}
-              onEditPress={(task) => setOpenTaskId(task.id)}
-              onReviewPress={handleReviewPress}
-            />
-          </>
-        )
-      ) : tasks.length === 0 ? (
+          <Box className="mt-[9px]">
+            <SizeSwitcher mode={mode} onSetMode={handleSetMode} />
+          </Box>
+        </VStack>
+      </VStack>
+      {tasks.length === 0 ? (
         // New-user empty state (AC2). Epic 6 swaps this CTA to brain dump.
         <EmptyState
           title="No tasks yet"
@@ -371,7 +333,7 @@ export default function HomeScreen() {
       {/* Expanded "Right now" sheet (frame 01): scrim over the content, the
           sheet floating where the bar sits. The standing actions below stay
           live (they carry the triage entry in this state). */}
-      {barExpanded && !isReviewing && !overlayUp ? (
+      {barExpanded && !overlayUp ? (
         <Box className="absolute inset-0">
           <Pressable
             accessibilityRole="button"

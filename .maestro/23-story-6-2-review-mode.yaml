@@ -1,8 +1,8 @@
-# Story 6.2 — review mode: brain-dumped tasks with AI-inferred fields carry
-# an info marker (AC1), tapping it filters the stack to flagged cards with a
-# banner (AC2), the card back highlights each flagged item with a confirm
-# tick (AC3/AC4), supplying the missing deadline clears its prompt (AC6), and
-# clearing the last flag drops the card out of review (AC4/AC8).
+# Story 6.2 → v1.5 D6b — the check queue: brain-dumped tasks with AI guesses
+# carry the info marker (AC1); 'Needs review' opens the blueprint Triage
+# screen (review MODE is retired); the flagged card shows WE GUESSED groups
+# and the NOTHING TO GO ON deadline gap; None + Save and next confirms it as
+# shown; emptying the queue pays the +5 (once per local day).
 # Fake-provider contract for the dump below (fake-provider.ts):
 #   'Call the dentist soon'  → phone context + quick_win (≤5 words) inferred,
 #                              'soon' → timeSensitive with no date → missingDeadline
@@ -13,14 +13,12 @@ appId: com.onedown.mobile
 ---
 - runFlow: common/launch-app.yaml
 
-# Seed via brain dump (6.1 surface; v1.5 home pill, then the screen's textarea)
+# Seed via brain dump (6.1 surface + D6a gate)
 - tapOn: 'Brain dump'
 - waitForAnimationToEnd
 - tapOn: "What's on your mind?"
 - inputText: 'Call the dentist soon. Ponder the universe quietly for a while'
 - tapOn: 'Parse my tasks'
-
-# v1.5 D6 gate: approve the parse on the check screen first.
 - extendedWaitUntil:
     visible: 'Check these 2'
     timeout: 15000
@@ -41,43 +39,27 @@ appId: com.onedown.mobile
       - waitForAnimationToEnd
 - assertVisible: 'Needs review'
 
-# Enter review mode: banner + only the flagged card remains (AC2)
+# Enter the queue: blueprint Triage screen with the one flagged card (D6b)
 - tapOn: 'Needs review'
-- assertVisible: 'Reviewing 1 task'
-- assertVisible: 'Task: Call the dentist soon\..* Card 1 of 1'
-- assertNotVisible: 'Task: Ponder the universe quietly for a while\..*'
-
-# Open the card back (v1.5: card tap goes to the working screen — the F
-# treatment lives behind the pencil): WE GUESSED groups + the grey
-# NOTHING TO GO ON deadline row (AC3)
-- tapOn: 'Edit task: Call the dentist soon'
 - waitForAnimationToEnd
+- assertVisible: 'Triage'
+- assertVisible: '1 / 1'
 - assertVisible: 'We guessed'
 - assertVisible: 'Nothing to go on'
-- assertVisible: 'Missing this detail'
-- takeScreenshot: .maestro/screenshots/23-story-6-2-review-card-back
+- takeScreenshot: .maestro/screenshots/23-story-6-2-triage-blueprint
 
-# Tick-confirm the inferred contexts and size — ticks disappear (AC4)
-- tapOn: 'Confirm contexts'
-- assertNotVisible: 'Confirm contexts'
-- tapOn: 'Confirm size'
-- assertNotVisible: 'Confirm size'
-
-# Answer the missing deadline with None — the grey row settles (AC6)
+# Answer the deadline gap with None, then save the card AS SHOWN — the
+# remaining guesses (size, contexts) confirm in one go (AC4/AC6)
 - tapOn: 'No deadline needed'
+- tapOn: 'Save and next'
+
+# Last card saved → the queue-clear state; +5 landed (once/day, Row E)
 - extendedWaitUntil:
-    notVisible: 'Missing this detail'
-    timeout: 3000
-
-# Last flag cleared → the card drops out of the review stack (AC4/AC8)
-- tapOn: 'Back to card front'
+    visible: 'Queue clear'
+    timeout: 5000
+- tapOn: 'Back to the deck'
 - waitForAnimationToEnd
-- assertVisible: 'Nothing left to review'
-- tapOn: 'Exit review'
-- waitForAnimationToEnd
-
-# Full stack restored, no review marker anywhere (both cards browsable)
-- assertVisible: 'Task: (Call the dentist soon|Ponder the universe quietly for a while)\..* Card . of 2.*'
+- assertVisible: '+5 today'
 - assertNotVisible: 'Needs review'
 
 - assertNotVisible: 'Unhandled'

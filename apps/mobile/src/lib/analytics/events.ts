@@ -228,6 +228,12 @@ export type AnalyticsEventMap = EnforceFlatProps<{
     reason: 'deadline_passed' | 'stale' | 'avoided';
     action: 'keep' | 'cut_loose' | 'later';
   };
+  /** v1.5 D6b — the blueprint check queue opened (replaces review mode). */
+  triage_queue_opened: { queue_count: number };
+  /** v1.5 D6b — Save and next committed a card (counts only). */
+  triage_card_saved: { edited_fields: number; confirmed_count: number };
+  /** v1.5 D6b — Skip this one requeued a card. */
+  triage_card_skipped: Record<string, never>;
 }>;
 
 export type AnalyticsEventName = keyof AnalyticsEventMap;
