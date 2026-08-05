@@ -16,9 +16,9 @@ appId: com.onedown.mobile
     file: common/add-task.yaml
     env:
       TITLE: 'Release from running'
-- tapOn: 'Task: Release from running. Worth 10 stars. Card 1 of 1'
+- tapOn: 'Task: Release from running. Worth 5 stars. Card 1 of 1'
 - waitForAnimationToEnd
-- tapOn: 'Cut loose'
+- tapOn: 'Cut it loose'
 # Assert the toast fast — it auto-dismisses after ~2 s
 - assertVisible: 'Released'
 - assertVisible: '+3 stars'

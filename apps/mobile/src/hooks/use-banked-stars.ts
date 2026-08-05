@@ -1,5 +1,6 @@
-import { and, eq, inArray } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
+import { useMemo } from 'react';
 
 import type { TaskSize } from '@one-down/shared';
 import { subtasks, tasks } from '@one-down/shared/schema-local';
@@ -14,27 +15,40 @@ import { bankedForCount } from '@/services/star-calculator';
  * task completes (or is cut loose) its banked stars leave this figure — the
  * conversion folds them into the completion payout.
  *
+ * TWO live queries joined in JS, not one SQL join: drizzle's expo-sqlite
+ * useLiveQuery re-fires on changes to the query's PRIMARY table only, so a
+ * joined query missed the task status flip at completion time and the banked
+ * figure stuck (found on-device, D3). Separate queries subscribe to both
+ * tables.
+ *
  * Route-screen-only hook (expo-sqlite can't run under jest — same constraint
  * as useTasks/useStarTotals).
  */
 export function useBankedStars(): number {
-  const { data } = useLiveQuery(
-    db
-      .select({ taskId: subtasks.taskId, size: tasks.size })
-      .from(subtasks)
-      .innerJoin(tasks, eq(subtasks.taskId, tasks.id))
-      .where(and(eq(subtasks.completed, true), inArray(tasks.status, ['pending', 'in_progress']))),
+  const { data: completedSteps } = useLiveQuery(
+    db.select({ taskId: subtasks.taskId }).from(subtasks).where(eq(subtasks.completed, true)),
   );
-  if (!data || data.length === 0) return 0;
-  const byTask = new Map<string, { size: TaskSize | null; count: number }>();
-  for (const row of data) {
-    const entry = byTask.get(row.taskId) ?? { size: row.size, count: 0 };
-    entry.count += 1;
-    byTask.set(row.taskId, entry);
-  }
-  let banked = 0;
-  for (const entry of byTask.values()) {
-    banked += bankedForCount({ size: entry.size }, entry.count);
-  }
-  return banked;
+  const { data: activeTasks } = useLiveQuery(
+    db
+      .select({ id: tasks.id, size: tasks.size })
+      .from(tasks)
+      .where(inArray(tasks.status, ['pending', 'in_progress'])),
+  );
+
+  return useMemo(() => {
+    if (!completedSteps?.length || !activeTasks?.length) return 0;
+    const sizeById = new Map<string, TaskSize | null>(
+      activeTasks.map((task) => [task.id, task.size]),
+    );
+    const countByTask = new Map<string, number>();
+    for (const step of completedSteps) {
+      if (!sizeById.has(step.taskId)) continue;
+      countByTask.set(step.taskId, (countByTask.get(step.taskId) ?? 0) + 1);
+    }
+    let banked = 0;
+    for (const [taskId, count] of countByTask) {
+      banked += bankedForCount({ size: sizeById.get(taskId) ?? null }, count);
+    }
+    return banked;
+  }, [completedSteps, activeTasks]);
 }

@@ -10,14 +10,17 @@ import {
 } from '@/components/task-running/task-running-view';
 import { Box } from '@/components/ui/box';
 import { HStack } from '@/components/ui/hstack';
-import { ArrowLeftIcon, EditIcon, Icon } from '@/components/ui/icon';
+import { ArrowLeftIcon, EditIcon, Icon, StarIcon } from '@/components/ui/icon';
 import { Pressable } from '@/components/ui/pressable';
+import { Text } from '@/components/ui/text';
 import { useToast } from '@/components/ui/toast';
 import { useBreakdown } from '@/hooks/use-breakdown';
+import { useStarTotals } from '@/hooks/use-star-totals';
 import { useSubtasks } from '@/hooks/use-subtasks';
 import { useTasks } from '@/hooks/use-tasks';
 import { db } from '@/lib/local-db';
 import { awardCompletionStars, awardCutLooseStars } from '@/services/star-awards';
+import { bankedForCount, taskValue } from '@/services/star-calculator';
 import { removeSubtask, toggleSubtask } from '@/services/subtask-actions';
 import { completeTask, createNotesAutosaver, cutLooseTask, startTask } from '@/services/task-edits';
 import { undoTaskCompletion, undoTaskCutLoose } from '@/services/task-undo';
@@ -39,6 +42,7 @@ export default function TaskRunningScreen() {
   const navigation = useNavigation();
   const toast = useToast();
   const tasks = useTasks();
+  const starTotals = useStarTotals();
   const task = tasks.find((candidate) => candidate.id === id) ?? null;
 
   const viewRef = useRef<TaskRunningViewHandle>(null);
@@ -106,6 +110,10 @@ export default function TaskRunningScreen() {
       showRewardToast(toast, {
         title: 'One down!',
         stars: breakdown.total,
+        // Running total AFTER the award (`+15 · 80 TOTAL`, spec §5) — the
+        // pre-award total is whatever the live counter last showed.
+        total: starTotals.total + breakdown.total,
+        celebrate: true,
         onUndo: () => void undoTaskCompletion(db, task),
       });
     });
@@ -134,9 +142,15 @@ export default function TaskRunningScreen() {
     return null;
   }
 
+  // The star bucket (v1.5 spec §5): the header states the WHOLE prize up
+  // front, with the banked half beside it — steps pay out of the bucket, so
+  // breaking a task down never inflates its worth.
+  const prize = taskValue(task);
+  const banked = bankedForCount(task, subtasks.filter((subtask) => subtask.completed).length);
+
   return (
     <SafeAreaView edges={['top', 'left', 'right', 'bottom']} className="flex-1 bg-background-100">
-      <HStack className="items-center px-3 py-2">
+      <HStack className="items-center gap-2 px-3 py-1">
         <Pressable
           accessibilityRole="button"
           aria-label="Pause and go back"
@@ -146,6 +160,25 @@ export default function TaskRunningScreen() {
         >
           <Icon as={ArrowLeftIcon} size="xl" className="text-typography-900" />
         </Pressable>
+        <Box className="flex-1" />
+        <HStack
+          accessible
+          accessibilityLabel={`Worth ${prize} stars when done${banked > 0 ? `, ${banked} banked` : ''}`}
+          className="items-center gap-[9px]"
+        >
+          <HStack className="h-8 items-center gap-1.5 rounded-full border border-tertiary-300 bg-tertiary-100 px-[13px]">
+            <Text className="text-xs text-tertiary-500">★</Text>
+            <Text className="font-mono text-[13px] leading-none text-tertiary-700">{prize}</Text>
+            <Text className="font-body-semibold text-[12.5px] text-tertiary-700">when done</Text>
+          </HStack>
+          {banked > 0 ? (
+            <HStack className="items-center gap-1">
+              <Icon as={StarIcon} size="2xs" className="text-tertiary-500" />
+              <Text className="font-mono text-[13px] leading-none text-tertiary-700">{banked}</Text>
+              <Text className="font-body-semibold text-[12.5px] text-tertiary-700">banked</Text>
+            </HStack>
+          ) : null}
+        </HStack>
         <Box className="flex-1" />
         {/* Edit entry (2026-07-27): full editing lives on the task detail —
             this screen is for DOING, so it only ever patches notes. */}

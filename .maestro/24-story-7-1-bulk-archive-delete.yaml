@@ -25,11 +25,11 @@ appId: com.onedown.mobile
     env:
       TITLE: 'Archive me B'
 # Start + complete A so it has earned stars (2.1/2.3 flows).
-- tapOn: 'Task: Archive me A. Worth 10 stars. Card 1 of 2'
+- tapOn: 'Task: Archive me A. Worth 5 stars. Card 1 of 2'
 - waitForAnimationToEnd
 - tapOn: 'Mark as complete'
 - extendedWaitUntil:
-    visible: 'Task: Archive me B. Worth 10 stars. Card 1 of 1'
+    visible: 'Task: Archive me B. Worth 5 stars. Card 1 of 1'
     timeout: 5000
 
 # --- Multi-select on the active tab (AC1) ---

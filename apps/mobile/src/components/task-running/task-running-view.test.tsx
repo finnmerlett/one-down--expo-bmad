@@ -37,7 +37,7 @@ describe('TaskRunningView (portable stories)', () => {
     expect(screen.getByLabelText('Help me with this').props.accessibilityState?.disabled).toBe(
       true,
     );
-    expect(screen.getByLabelText('Cut loose').props.accessibilityState?.disabled).toBe(true);
+    expect(screen.getByLabelText('Cut it loose').props.accessibilityState?.disabled).toBe(true);
   });
 
   it('enables Done when onDone is provided (Story 2.3)', async () => {
@@ -51,7 +51,7 @@ describe('TaskRunningView (portable stories)', () => {
   it('enables Cut loose when onCutLoose is provided (Story 2.4)', async () => {
     await render(<WithDetailsAndNotes onCutLoose={() => {}} />);
 
-    expect(screen.getByLabelText('Cut loose').props.accessibilityState?.disabled).toBeFalsy();
+    expect(screen.getByLabelText('Cut it loose').props.accessibilityState?.disabled).toBeFalsy();
   });
 
   it('flushes the notes draft BEFORE reporting Cut loose (Story 2.4, AC4)', async () => {
@@ -62,7 +62,7 @@ describe('TaskRunningView (portable stories)', () => {
     // Keyboard still up, debounce not yet fired — released tasks keep their
     // latest notes for the Epic 7 recycle bin restore.
     await fireEvent.changeText(screen.getByLabelText('Task notes'), 'Keep this for later');
-    await fireEvent.press(screen.getByLabelText('Cut loose'));
+    await fireEvent.press(screen.getByLabelText('Cut it loose'));
 
     expect(onPatch).toHaveBeenCalledWith({ notes: 'Keep this for later' });
     expect(onCutLoose).toHaveBeenCalledTimes(1);

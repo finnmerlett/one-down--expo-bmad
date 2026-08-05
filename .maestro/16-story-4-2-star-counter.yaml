@@ -15,14 +15,14 @@ appId: com.onedown.mobile
     file: common/add-task.yaml
     env:
       TITLE: 'Counter task'
-- tapOn: 'Task: Counter task. Worth 10 stars. Card 1 of 1'
+- tapOn: 'Task: Counter task. Worth 5 stars. Card 1 of 1'
 - waitForAnimationToEnd
 - tapOn: 'Mark as complete'
 - waitForAnimationToEnd
 
 # Back on home the counter live-updated — total AND today together (AC1/AC2)
 - extendedWaitUntil:
-    visible: '10 stars, 10 earned today'
+    visible: '5 stars, 5 earned today'
     timeout: 5000
 - takeScreenshot: .claude/run-notes/screenshots/4-2-star-counter
 

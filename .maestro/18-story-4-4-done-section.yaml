@@ -69,7 +69,7 @@ appId: com.onedown.mobile
 # Home is intact afterwards
 - tapOn: 'Back to home'
 - waitForAnimationToEnd
-- assertVisible: 'Task: Delta task. Worth 10 stars. Card 1 of 1'
+- assertVisible: 'Task: Delta task. Worth 5 stars. Card 1 of 1'
 
 - assertNotVisible: 'Unhandled'
 - assertNotVisible: 'error occurred'

@@ -71,7 +71,7 @@ appId: com.onedown.mobile
 - tapOn: 'Back to card front'
 - waitForAnimationToEnd
 - extendedWaitUntil:
-    visible: 'Task: Edited task title. Worth 10 stars. Card 1 of 1'
+    visible: 'Task: Edited task title. Worth 5 stars. Card 1 of 1'
     timeout: 3000
 - assertVisible: 'Quick win'
 - assertVisible: 'Home'
@@ -84,7 +84,7 @@ appId: com.onedown.mobile
 - assertVisible: 'Working note'
 - back
 - waitForAnimationToEnd
-- assertVisible: 'Task: Edited task title. Worth 10 stars. Card 1 of 1'
+- assertVisible: 'Task: Edited task title. Worth 5 stars. Card 1 of 1'
 
 - assertNotVisible: 'Unhandled'
 - assertNotVisible: 'error occurred'

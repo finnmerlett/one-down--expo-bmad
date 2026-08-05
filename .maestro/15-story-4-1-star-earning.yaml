@@ -11,12 +11,12 @@ appId: com.onedown.mobile
     file: common/add-task.yaml
     env:
       TITLE: 'Earn stars task'
-- tapOn: 'Task: Earn stars task. Worth 10 stars. Card 1 of 1'
+- tapOn: 'Task: Earn stars task. Worth 5 stars. Card 1 of 1'
 - waitForAnimationToEnd
 # Assert the toast fast — it auto-dismisses after ~2 s
 - tapOn: 'Mark as complete'
 - assertVisible: 'One down!'
-- assertVisible: '+10 stars'
+- assertVisible: '+5 · 5 TOTAL'
 - takeScreenshot: .claude/run-notes/screenshots/4-1-star-toast
 
 # --- Leg 2: cut-loose award (flat, smaller than completion) ---
@@ -24,9 +24,9 @@ appId: com.onedown.mobile
     file: common/add-task.yaml
     env:
       TITLE: 'Let go task'
-- tapOn: 'Task: Let go task. Worth 10 stars. Card 1 of 1'
+- tapOn: 'Task: Let go task. Worth 5 stars. Card 1 of 1'
 - waitForAnimationToEnd
-- tapOn: 'Cut loose'
+- tapOn: 'Cut it loose'
 - assertVisible: 'Released'
 - assertVisible: '+3 stars'
 

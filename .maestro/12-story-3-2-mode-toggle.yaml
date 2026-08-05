@@ -39,18 +39,18 @@ appId: com.onedown.mobile
 
 # AC2: Quick wins mode leaves only the quick-win task
 - tapOn: 'Mode: Quick wins'
-- assertVisible: 'Task: Tiny chore. Worth 10 stars. Card 1 of 1'
+- assertVisible: 'Task: Tiny chore. Worth 5 stars. Card 1 of 1'
 - takeScreenshot: .claude/run-notes/screenshots/3-2-quick-wins-mode
 
 # AC3: Big time mode swaps to the big task
 - tapOn: 'Mode: Big time'
-- assertVisible: 'Task: Giant project. Worth 15 stars. Card 1 of 1'
+- assertVisible: 'Task: Giant project. Worth 20 stars. Card 1 of 1'
 
 # AC4: the 'Mode: All' segment clears the mode — both sizes return
 # (v1.5: re-pressing an active mode no longer deactivates it; 'Mode: All'
 # is the explicit clear. The momentum rule puts the quick win back on top.)
 - tapOn: 'Mode: All'
-- assertVisible: 'Task: Tiny chore. Worth 10 stars. Card 1 of 2'
+- assertVisible: 'Task: Tiny chore. Worth 5 stars. Card 1 of 2'
 
 # AC5 combined: isolate Tiny chore via Quick wins mode, tag it Home, then
 # filter Home + Quick wins -> only the task matching BOTH remains
@@ -65,7 +65,7 @@ appId: com.onedown.mobile
 - tapOn: 'Filter context: Home'
 - tapOn: 'Done choosing contexts'
 - waitForAnimationToEnd
-- assertVisible: 'Task: Tiny chore. Worth 10 stars. Card 1 of 1'
+- assertVisible: 'Task: Tiny chore. Worth 5 stars. Card 1 of 1'
 
 - assertNotVisible: 'Unhandled'
 - assertNotVisible: 'error occurred'

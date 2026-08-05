@@ -27,18 +27,18 @@ appId: com.onedown.mobile
       TITLE: 'Next in line'
 
 # Open the top card's back, start the task, land on the running screen
-- tapOn: 'Task: Finish me first. Worth 10 stars. Card 1 of 2'
+- tapOn: 'Task: Finish me first. Worth 5 stars. Card 1 of 2'
 - waitForAnimationToEnd
 
 # Complete it — assert the toast fast (it auto-dismisses after ~2 s)
 - tapOn: 'Mark as complete'
 - assertVisible: 'One down!'
-- assertVisible: '+10 stars'
+- assertVisible: '+5 · 5 TOTAL'
 - takeScreenshot: .claude/run-notes/screenshots/2-3-completion-toast
 
 # The running screen closed and the stack promoted the next card (AC3)
 - extendedWaitUntil:
-    visible: 'Task: Next in line. Worth 10 stars. Card 1 of 1'
+    visible: 'Task: Next in line. Worth 5 stars. Card 1 of 1'
     timeout: 5000
 - assertNotVisible: 'Finish me first'
 

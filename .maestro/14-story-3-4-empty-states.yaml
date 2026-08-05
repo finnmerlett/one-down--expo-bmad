@@ -53,7 +53,7 @@ appId: com.onedown.mobile
 # AC1: "Show all tasks" clears all filters atomically — the stack reappears
 - tapOn: 'Show all tasks'
 - waitForAnimationToEnd
-- assertVisible: 'Task: Solo task. Worth 10 stars. Card 1 of 1'
+- assertVisible: 'Task: Solo task. Worth 5 stars. Card 1 of 1'
 
 - assertNotVisible: 'Unhandled'
 - assertNotVisible: 'error occurred'

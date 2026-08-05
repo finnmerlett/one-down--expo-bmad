@@ -44,7 +44,7 @@ appId: com.onedown.mobile
 - tapOn: 'Filter context: Home'
 - tapOn: 'Done choosing contexts'
 - waitForAnimationToEnd
-- assertVisible: 'Task: Water plants. Worth 10 stars. Card 1 of 1'
+- assertVisible: 'Task: Water plants. Worth 5 stars. Card 1 of 1'
 - takeScreenshot: .claude/run-notes/screenshots/3-1-context-filtered
 
 # AC3 multi-select: adding Phone brings both back (quick win on top)
@@ -52,7 +52,7 @@ appId: com.onedown.mobile
 - tapOn: 'Filter context: Phone'
 - tapOn: 'Done choosing contexts'
 - waitForAnimationToEnd
-- assertVisible: 'Task: Water plants. Worth 10 stars. Card 1 of 2'
+- assertVisible: 'Task: Water plants. Worth 5 stars. Card 1 of 2'
 
 # Un-tap Home -> only the Phone-tagged task remains
 - tapOn: 'Right now.*'
@@ -65,7 +65,7 @@ appId: com.onedown.mobile
     enabled: false
 - tapOn: 'Done choosing contexts'
 - waitForAnimationToEnd
-- assertVisible: 'Task: Email plumber. Worth 10 stars. Card 1 of 1'
+- assertVisible: 'Task: Email plumber. Worth 5 stars. Card 1 of 1'
 
 # AC5: the selection persists across a restart (plain relaunch, NO clearState)
 # (v1.5: the Right-now sheet auto-expands on relaunch with existing tasks)
@@ -73,7 +73,7 @@ appId: com.onedown.mobile
 - launchApp
 - runFlow: common/dismiss-context-sheet.yaml
 - extendedWaitUntil:
-    visible: 'Task: Email plumber. Worth 10 stars. Card 1 of 1'
+    visible: 'Task: Email plumber. Worth 5 stars. Card 1 of 1'
     timeout: 5000
 
 - assertNotVisible: 'Unhandled'

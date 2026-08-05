@@ -37,7 +37,7 @@ appId: com.onedown.mobile
 
 # AC2: the big task's star value rose to 15 (size bonus) — deterministic
 # despite the random session seed (no deadlines -> no urgency bonus)
-- assertVisible: 'Task: Huge task. Worth 15 stars. Card 2 of 2'
+- assertVisible: 'Task: Huge task. Worth 20 stars. Card 2 of 2'
 - takeScreenshot: .claude/run-notes/screenshots/3-3-star-value-chip
 
 # AC1a momentum: wrap around — the quick win is card 1, top of the mix
@@ -45,7 +45,7 @@ appId: com.onedown.mobile
     start: 80%, 45%
     end: 5%, 45%
 - waitForAnimationToEnd
-- assertVisible: 'Task: Tiny task. Worth 10 stars. Card 1 of 2'
+- assertVisible: 'Task: Tiny task. Worth 5 stars. Card 1 of 2'
 
 - assertNotVisible: 'Unhandled'
 - assertNotVisible: 'error occurred'

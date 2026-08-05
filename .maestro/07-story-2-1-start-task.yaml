@@ -21,7 +21,7 @@ appId: com.onedown.mobile
 - waitForAnimationToEnd
 
 # Tap the card -> working screen directly (2026-07-27 UX)
-- tapOn: 'Task: Start me task. Worth 10 stars. Card 1 of 1'
+- tapOn: 'Task: Start me task. Worth 5 stars. Card 1 of 1'
 - waitForAnimationToEnd
 
 # Working screen: title, notes area, action row
@@ -29,19 +29,19 @@ appId: com.onedown.mobile
 - assertVisible: 'Notes'
 - assertVisible: 'Mark as complete'
 - assertVisible: 'Help me with this'
-- assertVisible: 'Cut loose'
+- assertVisible: 'Cut it loose'
 
 # Just looking is NOT starting: leave untouched -> no Continue marker
 - tapOn: 'Pause and go back'
 - waitForAnimationToEnd
 - extendedWaitUntil:
-    visible: 'Task: Start me task. Worth 10 stars. Card 1 of 1'
+    visible: 'Task: Start me task. Worth 5 stars. Card 1 of 1'
     timeout: 3000
 - assertNotVisible: 'Continue'
 
 # Re-enter and add a working note, then leave WITHOUT blurring the field —
 # the note must survive via the beforeRemove flush, not the onBlur save
-- tapOn: 'Task: Start me task. Worth 10 stars. Card 1 of 1'
+- tapOn: 'Task: Start me task. Worth 5 stars. Card 1 of 1'
 - waitForAnimationToEnd
 - tapOn: 'Task notes'
 - inputText: 'Halfway through the pile'
@@ -51,19 +51,19 @@ appId: com.onedown.mobile
 # Altering the task from the working screen counts as starting it -> the
 # card front now shows the Continue marker (2026-07-27 semantics)
 - extendedWaitUntil:
-    visible: 'Task: Start me task. Worth 10 stars. Card 1 of 1'
+    visible: 'Task: Start me task. Worth 5 stars. Card 1 of 1'
     timeout: 3000
 - assertVisible: 'Continue'
 
 # Tap again -> working screen reopens with the note preserved
-- tapOn: 'Task: Start me task. Worth 10 stars. Card 1 of 1'
+- tapOn: 'Task: Start me task. Worth 5 stars. Card 1 of 1'
 - waitForAnimationToEnd
 - assertVisible: 'Halfway through the pile'
 
 # Hardware back also leaves cleanly — home stack intact, still marked
 - back
 - waitForAnimationToEnd
-- assertVisible: 'Task: Start me task. Worth 10 stars. Card 1 of 1'
+- assertVisible: 'Task: Start me task. Worth 5 stars. Card 1 of 1'
 - assertVisible: 'Continue'
 
 # Second surface: task list → detail (card back). The detail screen stays

@@ -55,7 +55,7 @@ appId: com.onedown.mobile
 - tapOn: 'Go to main deck'
 - waitForAnimationToEnd
 # "Big one" is newest but the top card is the quick win.
-- assertVisible: 'Task: Quick one. Worth 10 stars. Card 1 of 2'
+- assertVisible: 'Task: Quick one. Worth 5 stars. Card 1 of 2'
 
 - assertNotVisible: 'Unhandled'
 - assertNotVisible: 'error occurred'

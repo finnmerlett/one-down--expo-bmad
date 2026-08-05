@@ -14,7 +14,7 @@ appId: com.onedown.mobile
       TITLE: 'Notes survive task'
 
 # Open the card back and start the task
-- tapOn: 'Task: Notes survive task. Worth 10 stars. Card 1 of 1'
+- tapOn: 'Task: Notes survive task. Worth 5 stars. Card 1 of 1'
 - waitForAnimationToEnd
 
 # Type notes and DO NOT blur, DO NOT navigate — just idle past the debounce.
@@ -37,10 +37,10 @@ appId: com.onedown.mobile
 
 # Card front shows the Continue marker; reopen the back and continue
 - extendedWaitUntil:
-    visible: 'Task: Notes survive task. Worth 10 stars. Card 1 of 1'
+    visible: 'Task: Notes survive task. Worth 5 stars. Card 1 of 1'
     timeout: 5000
 - assertVisible: 'Continue'
-- tapOn: 'Task: Notes survive task. Worth 10 stars. Card 1 of 1'
+- tapOn: 'Task: Notes survive task. Worth 5 stars. Card 1 of 1'
 - waitForAnimationToEnd
 
 # The never-blurred note survived process death (AC1) and re-opening shows

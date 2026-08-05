@@ -27,14 +27,14 @@ appId: com.onedown.mobile
     file: common/add-task.yaml
     env:
       TITLE: 'Stack task alpha'
-- assertVisible: 'Task: Stack task beta. Worth 10 stars. Card 1 of 2'
+- assertVisible: 'Task: Stack task beta. Worth 5 stars. Card 1 of 2'
 
 # Swipe left past the dismiss threshold -> alpha becomes top
 - swipe:
     start: 80%, 45%
     end: 5%, 45%
 - waitForAnimationToEnd
-- assertVisible: 'Task: Stack task alpha. Worth 10 stars. Card 2 of 2'
+- assertVisible: 'Task: Stack task alpha. Worth 5 stars. Card 2 of 2'
 
 # AC7: adding a task mid-browse must NOT reset the position — gamma joins the
 # deck, but alpha stays the top card (its index depends on the session seed)
@@ -42,7 +42,7 @@ appId: com.onedown.mobile
     file: common/add-task.yaml
     env:
       TITLE: 'Stack task gamma'
-- assertVisible: 'Task: Stack task alpha. Worth 10 stars. Card [23] of 3'
+- assertVisible: 'Task: Stack task alpha. Worth 5 stars. Card [23] of 3'
 
 # Wrap-around: three swipes cycle the whole 3-card deck back to alpha
 # (no dead end past the last card)
@@ -58,14 +58,14 @@ appId: com.onedown.mobile
     start: 80%, 45%
     end: 5%, 45%
 - waitForAnimationToEnd
-- assertVisible: 'Task: Stack task alpha. Worth 10 stars. Card [23] of 3'
+- assertVisible: 'Task: Stack task alpha. Worth 5 stars. Card [23] of 3'
 
 # Below-threshold drag snaps back: top card unchanged
 - swipe:
     start: 58%, 45%
     end: 51%, 45%
 - waitForAnimationToEnd
-- assertVisible: 'Task: Stack task alpha. Worth 10 stars. Card [23] of 3'
+- assertVisible: 'Task: Stack task alpha. Worth 5 stars. Card [23] of 3'
 
 - assertNotVisible: 'Unhandled'
 - assertNotVisible: 'error occurred'

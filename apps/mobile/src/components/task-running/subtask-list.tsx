@@ -1,28 +1,26 @@
 import { useState } from 'react';
 
-import type { SubtaskData } from '@one-down/shared';
+import { sizeKeyOf, STAR_WEIGHTS, type SubtaskData, type TaskSize } from '@one-down/shared';
 
-import { Box } from '@/components/ui/box';
 import { Button, ButtonText } from '@/components/ui/button';
-import { HStack } from '@/components/ui/hstack';
-import { CheckIcon, Icon, TrashIcon } from '@/components/ui/icon';
-import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
 import { Textarea, TextareaInput } from '@/components/ui/textarea';
 import { VStack } from '@/components/ui/vstack';
 
+import { StepRow, type StepGrade } from './step-row';
+
 /**
- * Live subtask list on the task running screen (Story 6.3, AC4).
- * Presentational: rows expose checkbox semantics (`Subtask: <title>` +
- * checked state — Maestro selects on both) and a delete button. Completing
- * is reversible; completed rows strike through and fade, never disappear.
+ * The step list on the working screen (v1.5 spec §5): `STEPS` caps label,
+ * rows graded done → now → later (only one row ever looks live — the first
+ * uncompleted), done rows carrying their banked hollow stars. A11y rows keep
+ * the 6.3 checkbox contract.
  *
- * Story 6.4: when AI subtasks exist and `onRefine` is wired, a "Refine"
- * button expands an inline feedback input — empty feedback can't submit
- * (AC1). The draft is ephemeral input state; submitting collapses it.
+ * Story 6.4's Refine affordance survives below the list until D4 replaces it
+ * with the Change these / Get more steps action row.
  */
 export function SubtaskList({
   subtasks,
+  taskSize = null,
   onToggle,
   onDelete,
   onRefine,
@@ -30,6 +28,8 @@ export function SubtaskList({
   initialRefineOpen = false,
 }: {
   subtasks: SubtaskData[];
+  /** Parent task size — sets how many hollow stars a done row shows. */
+  taskSize?: TaskSize | null;
   onToggle?: (subtask: SubtaskData) => void;
   onDelete?: (subtask: SubtaskData) => void;
   /** Submit refine feedback (Story 6.4). Omitted = no Refine button. */
@@ -45,6 +45,17 @@ export function SubtaskList({
   if (subtasks.length === 0) return null;
 
   const showRefine = onRefine !== undefined && subtasks.some((subtask) => subtask.source === 'ai');
+  const nowId = subtasks.find((subtask) => !subtask.completed)?.id;
+  const sizeKey = sizeKeyOf(taskSize);
+  // Hollow stars per done row (1 quick win / 2 big time) — rows past the
+  // banking cap show none, matching what they actually banked.
+  const bankPerStep = STAR_WEIGHTS.stepBank[sizeKey];
+  const bankCap = STAR_WEIGHTS.stepBankCap[sizeKey];
+
+  const gradeOf = (subtask: SubtaskData): StepGrade =>
+    subtask.completed ? 'done' : subtask.id === nowId ? 'now' : 'later';
+
+  let doneSeen = 0;
 
   const handleSendFeedback = () => {
     const trimmed = feedback.trim();
@@ -55,49 +66,26 @@ export function SubtaskList({
   };
 
   return (
-    <VStack className="gap-1">
-      <Text className="font-body-bold text-[13px] text-typography-500">Steps</Text>
-      {subtasks.map((subtask) => (
-        <HStack key={subtask.id} className="items-center gap-1">
-          <Pressable
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: subtask.completed }}
-            aria-label={`Subtask: ${subtask.title}`}
-            onPress={() => onToggle?.(subtask)}
-            className="min-h-11 flex-1 flex-row items-center gap-3"
-          >
-            <Box
-              className={`h-6 w-6 items-center justify-center rounded-lg border-2 ${
-                subtask.completed
-                  ? 'border-success-600 bg-success-600'
-                  : 'border-outline-300 bg-background-0'
-              }`}
-            >
-              {subtask.completed ? (
-                <Icon as={CheckIcon} size="sm" className="text-typography-0" />
-              ) : null}
-            </Box>
-            <Text
-              className={
-                subtask.completed
-                  ? 'flex-1 font-body text-base text-typography-400 line-through'
-                  : 'flex-1 font-body-medium text-base text-typography-900'
-              }
-            >
-              {subtask.title}
-            </Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            aria-label={`Delete subtask: ${subtask.title}`}
-            hitSlop={8}
-            onPress={() => onDelete?.(subtask)}
-            className="h-11 w-11 items-center justify-center rounded-full"
-          >
-            <Icon as={TrashIcon} size="md" className="text-typography-400" />
-          </Pressable>
-        </HStack>
-      ))}
+    <VStack className="gap-2.5">
+      <Text className="font-mono text-[11px] uppercase tracking-caps text-typography-400">
+        Steps
+      </Text>
+      <VStack className="gap-2">
+        {subtasks.map((subtask) => {
+          const grade = gradeOf(subtask);
+          const banked = grade === 'done' ? (++doneSeen <= bankCap ? bankPerStep : 0) : 0;
+          return (
+            <StepRow
+              key={subtask.id}
+              subtask={subtask}
+              grade={grade}
+              bankedStars={banked}
+              onToggle={onToggle}
+              onDelete={onDelete}
+            />
+          );
+        })}
+      </VStack>
       {showRefine && !refineOpen ? (
         <Button
           size="sm"
@@ -111,7 +99,7 @@ export function SubtaskList({
       ) : null}
       {showRefine && refineOpen ? (
         <VStack className="gap-2 pt-1">
-          <Textarea size="sm" isDisabled={refineDisabled}>
+          <Textarea size="sm" isDisabled={refineDisabled} className="rounded-[15px]">
             <TextareaInput
               aria-label="Breakdown feedback"
               placeholder="Why does this miss the mark?"

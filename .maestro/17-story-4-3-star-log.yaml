@@ -19,7 +19,7 @@ appId: com.onedown.mobile
     file: common/add-task.yaml
     env:
       TITLE: 'Log me task'
-- tapOn: 'Task: Log me task. Worth 10 stars. Card 1 of 1'
+- tapOn: 'Task: Log me task. Worth 5 stars. Card 1 of 1'
 - waitForAnimationToEnd
 - tapOn: 'Mark as complete'
 - waitForAnimationToEnd
@@ -31,12 +31,12 @@ appId: com.onedown.mobile
     timeout: 7000
 # The log shows the transaction: action label, title snapshot, amount (AC2)
 - extendedWaitUntil:
-    visible: '10 stars, 10 earned today'
+    visible: '5 stars, 5 earned today'
     timeout: 5000
-- tapOn: '10 stars, 10 earned today'
+- tapOn: '5 stars, 5 earned today'
 - waitForAnimationToEnd
 - assertVisible: 'Completed · Log me task'
-- assertVisible: '+10'
+- assertVisible: '+5'
 
 # Today filter keeps a just-earned entry visible (AC3)
 - tapOn: 'Today'
