@@ -1,6 +1,7 @@
 import { TASK_CONTEXTS, type TaskContext } from '@one-down/shared';
 
 import { CONTEXT_LABELS } from '@/components/card-stack/task-card';
+import { Box } from '@/components/ui/box';
 import { HStack } from '@/components/ui/hstack';
 import { Icon } from '@/components/ui/icon';
 import { Pressable } from '@/components/ui/pressable';
@@ -20,12 +21,18 @@ const INK = '#2C2723';
  */
 export function ContextBar({
   activeContexts,
+  attentionContexts,
   onExpand,
 }: {
   activeContexts: TaskContext[];
+  /** E7 dots: contexts hiding a live bonus or an overdue card. Folded away,
+   *  the dot rides on Change so the signal is never buried. */
+  attentionContexts?: ReadonlySet<TaskContext>;
   onExpand: () => void;
 }) {
   const anySelected = activeContexts.length > 0;
+  const hiddenAttention =
+    anySelected && [...(attentionContexts ?? [])].some((c) => !activeContexts.includes(c));
   const shown = anySelected ? activeContexts : [...TASK_CONTEXTS];
   const summary = anySelected
     ? `contexts: ${activeContexts.map((c) => CONTEXT_LABELS[c]).join(', ')}`
@@ -55,6 +62,9 @@ export function ContextBar({
       </HStack>
       <HStack className="h-8 flex-none items-center rounded-[10px] bg-primary-100 px-2.5">
         <Text className="font-body-bold text-xs text-primary-600">Change</Text>
+        {hiddenAttention ? (
+          <Box className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border-2 border-background-0 bg-primary-500" />
+        ) : null}
       </HStack>
     </Pressable>
   );

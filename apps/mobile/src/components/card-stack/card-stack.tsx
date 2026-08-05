@@ -14,6 +14,7 @@ import type { TaskData } from '@one-down/shared';
 
 import { Box } from '@/components/ui/box';
 import { Pressable } from '@/components/ui/pressable';
+import type { StarBadge } from '@/services/star-calculator';
 import { evaluateTaskHealth } from '@/services/task-health';
 import { HEALTH_LABELS, TaskCard } from './task-card';
 
@@ -58,6 +59,8 @@ const CORNER_SIZE = 64;
 function SwipeableTopCard({
   task,
   starValue,
+  badge,
+  topOfDeck,
   accessibilityLabel,
   onDismiss,
   onPress,
@@ -66,6 +69,8 @@ function SwipeableTopCard({
 }: {
   task: TaskData;
   starValue: number;
+  badge: StarBadge | null;
+  topOfDeck: boolean;
   accessibilityLabel: string;
   onDismiss: () => void;
   onPress: () => void;
@@ -154,7 +159,7 @@ function SwipeableTopCard({
         accessibilityLabel={accessibilityLabel}
       >
         <View className="h-full w-full rounded-[22px] bg-background-0">
-          <TaskCard task={task} starValue={starValue} />
+          <TaskCard task={task} starValue={starValue} badge={badge} topOfDeck={topOfDeck} />
         </View>
       </Animated.View>
     </GestureDetector>
@@ -174,10 +179,14 @@ function SwipeableTopCard({
 function StackedCard({
   task,
   starValue,
+  badge,
+  topOfDeck,
   depth,
 }: {
   task: TaskData;
   starValue: number;
+  badge: StarBadge | null;
+  topOfDeck: boolean;
   depth: number;
 }) {
   const progress = useSharedValue(depth + 1);
@@ -213,7 +222,9 @@ function StackedCard({
     <Animated.View pointerEvents="none" style={[CARD_FRAME, frameStyle]}>
       <View className="h-full w-full rounded-[22px] border border-outline-50 bg-background-50">
         <Animated.View style={[FILL, contentStyle]}>
-          {depth <= 1 ? <TaskCard task={task} starValue={starValue} /> : null}
+          {depth <= 1 ? (
+            <TaskCard task={task} starValue={starValue} badge={badge} topOfDeck={topOfDeck} />
+          ) : null}
         </Animated.View>
       </View>
     </Animated.View>
@@ -235,6 +246,8 @@ function StackedCard({
 export function CardStack({
   tasks,
   getStarValue,
+  getBadge,
+  getTopOfDeck,
   onCardPress,
   onEditPress,
   onReviewPress,
@@ -242,9 +255,12 @@ export function CardStack({
   onTopChange,
 }: {
   tasks: TaskData[];
-  /** Star preview per task (Story 3.3) — home closes over the full browsable
-   *  list, so relative urgency ranks against ALL active tasks. */
+  /** Star value per task (v1.5: the card's size value). */
   getStarValue: (task: TaskData) => number;
+  /** Live badge per task (bonus window / don't-skip offer), if any. */
+  getBadge?: (task: TaskData) => StarBadge | null;
+  /** Whether the task sits in the 2-day top-of-deck window. */
+  getTopOfDeck?: (task: TaskData) => boolean;
   onCardPress?: (task: TaskData) => void;
   /** Pencil-icon tap on the top card → edit surface (2026-07-27: card tap now opens the working screen instead). */
   onEditPress?: (task: TaskData) => void;
@@ -328,6 +344,13 @@ export function CardStack({
     return flag ? `. ${HEALTH_LABELS[flag]}` : '';
   };
 
+  // Live badge in the label too — the card is an accessible container, so
+  // the band's `+N` must be announced (spec §2: value + badge never fold).
+  const badgeSuffix = (task: TaskData) => {
+    const badge = getBadge?.(task) ?? null;
+    return badge ? `. Plus ${badge.amount} bonus right now` : '';
+  };
+
   return (
     // Playing-card deck (owner feedback 2026-07-27, round 2): the card keeps
     // real playing-card proportions (2.5:3.5 → 280×392) with breathing room
@@ -348,7 +371,9 @@ export function CardStack({
                 // Star value in the label: the top card is an accessible
                 // container (inner text hidden from TalkBack/Maestro), so the
                 // preview must be announced here.
-                accessibilityLabel={`Task: ${task.title}. Worth ${getStarValue(task)} stars. Card ${topIndex + 1} of ${tasks.length}${healthSuffix(task)}`}
+                accessibilityLabel={`Task: ${task.title}. Worth ${getStarValue(task)} stars. Card ${topIndex + 1} of ${tasks.length}${badgeSuffix(task)}${healthSuffix(task)}`}
+                badge={getBadge?.(task) ?? null}
+                topOfDeck={getTopOfDeck?.(task) ?? false}
                 onDismiss={advance}
                 onPress={() => onCardPress?.(task)}
                 onEdit={onEditPress ? () => onEditPress(task) : undefined}
@@ -357,7 +382,14 @@ export function CardStack({
                 }
               />
             ) : (
-              <StackedCard key={task.id} task={task} starValue={getStarValue(task)} depth={depth} />
+              <StackedCard
+                key={task.id}
+                task={task}
+                starValue={getStarValue(task)}
+                badge={getBadge?.(task) ?? null}
+                topOfDeck={getTopOfDeck?.(task) ?? false}
+                depth={depth}
+              />
             ),
           )}
         {/* Corner entries: transparent tap targets OVER the top card's

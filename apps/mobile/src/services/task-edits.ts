@@ -2,7 +2,7 @@ import type { ReviewItem, TaskData } from '@one-down/shared';
 
 import { track } from '@/lib/analytics/track';
 import { db } from '@/lib/local-db';
-import { awardReviewConfirmStars } from '@/services/star-awards';
+import { maybeAwardTriageQueueCleared } from '@/services/star-awards';
 import {
   confirmReviewItem as repoConfirmReviewItem,
   markTaskEngaged,
@@ -47,7 +47,9 @@ export function applyTaskPatch(task: TaskData, patch: UpdateTaskPatch): void {
         track('review_item_confirmed', { field: reviewItemField(item), via: 'edit' });
       }
       if (reviewCleared) {
-        await awardReviewConfirmStars(db, task);
+        // v1.5 economy: per-card confirms pay nothing — the queue-clear
+        // award self-gates on the queue being empty + once per day.
+        await maybeAwardTriageQueueCleared(db);
         track('review_completed', {});
       }
     })
@@ -67,7 +69,8 @@ export function confirmReviewItem(task: TaskData, item: ReviewItem): void {
       if (!confirmed) return;
       track('review_item_confirmed', { field: reviewItemField(item), via: 'tick' });
       if (reviewCleared) {
-        await awardReviewConfirmStars(db, task);
+        // Same queue-clear gate as applyTaskPatch (v1.5 economy).
+        await maybeAwardTriageQueueCleared(db);
         track('review_completed', {});
       }
     })

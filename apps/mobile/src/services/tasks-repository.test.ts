@@ -405,15 +405,16 @@ describe('tasks-repository (integration, real migration SQL)', () => {
   describe('migration 0008 backfill (Story 7.2)', () => {
     it('pre-existing rows get last_engaged_at = updated_at', async () => {
       // Apply everything BEFORE 0008, insert a legacy row, then run 0008.
+      // Located by content, not position — later migrations (0009+) exist.
       const allMigrations = loadLocalMigrationsSql();
-      const legacyDb = createTestDb(allMigrations.slice(0, -1));
+      const backfillIndex = allMigrations.findIndex((sql) => sql.includes('last_engaged_at'));
+      expect(backfillIndex).toBeGreaterThan(0);
+      const legacyDb = createTestDb(allMigrations.slice(0, backfillIndex));
       legacyDb.sqlite.exec(
         "INSERT INTO tasks (id, title, created_at, updated_at) VALUES ('legacy-1', 'Old row', 1000, 2000)",
       );
 
-      const lastMigration = allMigrations[allMigrations.length - 1];
-      expect(lastMigration).toContain('last_engaged_at');
-      legacyDb.sqlite.exec(lastMigration ?? '');
+      legacyDb.sqlite.exec(allMigrations[backfillIndex] ?? '');
 
       const [row] = await legacyDb.db.select().from(tasks).where(eq(tasks.id, 'legacy-1'));
       expect(row?.lastEngagedAt.getTime()).toBe(2000);

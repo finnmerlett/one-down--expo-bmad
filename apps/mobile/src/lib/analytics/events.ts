@@ -37,7 +37,7 @@ export type AnalyticsEventMap = EnforceFlatProps<{
   mode_toggled: { mode: TaskSize | 'all'; now_active: boolean };
   /** Story 3.4 — all filters reset atomically (a semantic mutation, not individual toggles). */
   stack_filters_cleared: { via: 'empty_state' };
-  /** Story 4.1 — a star transaction was recorded (amounts only, never task text). */
+  /** Story 4.1 / v1.5 D2 — a star transaction was recorded (amounts only, never task text). */
   stars_awarded: {
     action:
       | 'task_completed'
@@ -48,11 +48,15 @@ export type AnalyticsEventMap = EnforceFlatProps<{
       | 'archive_retraction'
       | 'completion_undone';
     amount: number;
-    base: number;
-    urgency_bonus: number;
-    size_bonus: number;
-    early_bonus: number; // all zero except amount/base for cut_loose
+    /** v1.5 breakdown: card value / live-badge bonus / banked stars converted. */
+    value: number;
+    bonus: number;
+    banked_converted: number;
   };
+  /** v1.5 D2 — a don't-skip offer appeared on a card (amounts only). */
+  offer_started: { amount: number; trigger: 'avoidance' | 'age' };
+  /** v1.5 D2 — a live offer eroded one ladder step on a committed pass. */
+  offer_eroded: { from: number; to: number };
   /** Story 8.1 — a notification preference changed (new SETTING value only, never task content). */
   notification_pref_changed: { pref: 'deadline_urgency' | 'challenges'; value: string };
   /** Story 8.1 — the system notification permission request resolved. */

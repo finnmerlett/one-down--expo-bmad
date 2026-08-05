@@ -33,12 +33,14 @@ import { useAbsenceCheck } from '@/hooks/use-absence-check';
 import { useBankedStars } from '@/hooks/use-banked-stars';
 import { useMicroTask } from '@/hooks/use-micro-task';
 import { useStarTotals } from '@/hooks/use-star-totals';
+import { useTaskOffers } from '@/hooks/use-task-offers';
 import { useTasks } from '@/hooks/use-tasks';
 import { track } from '@/lib/analytics/track';
 import { db } from '@/lib/local-db';
-import { availableContexts, curateTasks } from '@/services/curation';
+import { attentionContexts, availableContexts, curateTasks } from '@/services/curation';
 import { awardCutLooseStars } from '@/services/star-awards';
-import { potentialStars } from '@/services/star-calculator';
+import { isTopOfDeck, liveBadge, potentialStars } from '@/services/star-calculator';
+import { erodeOffer, maybeStartOffer } from '@/services/star-offers';
 import { recordTaskSkipped } from '@/services/task-activity';
 import { undoTaskCutLoose } from '@/services/task-undo';
 import {
@@ -65,6 +67,7 @@ export default function HomeScreen() {
   const tasks = useTasks();
   const starTotals = useStarTotals();
   const bankedStars = useBankedStars();
+  const offers = useTaskOffers();
 
   // Card-back state lives HERE, not in the stack — stack cards remount on
   // depth promotion, which would wipe any card-local flip state. The open
@@ -94,7 +97,7 @@ export default function HomeScreen() {
   // when the first task lands (brand-new-user seeding would hit that).
   const mountedAtRef = useRef(Date.now());
   useEffect(() => {
-    if (Date.now() - mountedAtRef.current > 1500) {
+    if (Date.now() - mountedAtRef.current > 4000) {
       consumeAutoOpen();
       return;
     }
@@ -153,12 +156,35 @@ export default function HomeScreen() {
   // quiet chip appears under it once that PENDING task has been skipped past
   // the threshold. Never in review mode (its stack is a different cycle).
   const [topTaskId, setTopTaskId] = useState<string | null>(null);
-  const handleTopChange = useCallback((task: TaskData) => setTopTaskId(task.id), []);
+  const handleTopChange = useCallback((task: TaskData) => {
+    setTopTaskId(task.id);
+    // The deck bids for avoided/aged cards when they come round (Row E):
+    // self-gated + coin-flipped inside; fire-and-forget like task edits.
+    void maybeStartOffer(db, task);
+  }, []);
   const topTask = useMemo(() => {
     const tracked = topTaskId ? curated.find((task) => task.id === topTaskId) : undefined;
     return tracked ?? curated[0] ?? null;
   }, [curated, topTaskId]);
   const micro = useMicroTask(topTask);
+  // E9: tapping the nudge costs no decisions — fetch the smallest step, add
+  // it, and open the working screen with it showing. The pending ref rides
+  // through the request's proposal state.
+  const nudgeGoRef = useRef(false);
+  const handleNudgeGo = useCallback(() => {
+    nudgeGoRef.current = true;
+    micro.request();
+  }, [micro]);
+  useEffect(() => {
+    if (!nudgeGoRef.current) return;
+    if (micro.state === 'proposal' && topTask) {
+      nudgeGoRef.current = false;
+      micro.accept();
+      router.push(`/task-running/${topTask.id}`);
+    } else if (micro.state === 'error') {
+      nudgeGoRef.current = false;
+    }
+  }, [micro, topTask, router]);
   const showNudge =
     !isReviewing &&
     topTask !== null &&
@@ -166,16 +192,24 @@ export default function HomeScreen() {
     topTask.skipCount >= MICRO_TASK_SKIP_THRESHOLD;
   const available = useMemo(() => availableContexts(tasks, mode), [tasks, mode]);
 
-  // Star preview closes over the UNFILTERED browsable list — relative
-  // urgency ranks against ALL active tasks (matches 4.1's award input),
-  // not just the filtered stack.
-  const getStarValue = useMemo(() => {
-    const browsable = tasks.filter(
-      (task) => task.status === 'pending' || task.status === 'in_progress',
-    );
-    const now = new Date();
-    return (task: TaskData) => potentialStars(task, browsable, now);
-  }, [tasks]);
+  // v1.5 economy: the card shows its size value; badges render separately
+  // (gold band) and never fold into the number (spec §2).
+  const getStarValue = useCallback((task: TaskData) => potentialStars(task), []);
+  const getBadge = useCallback(
+    (task: TaskData) => liveBadge(task, offers.get(task.id), new Date()),
+    [offers],
+  );
+  const getTopOfDeck = useCallback(
+    (task: TaskData) => getBadge(task) === null && isTopOfDeck(task, new Date()),
+    [getBadge],
+  );
+  const attention = useMemo(() => attentionContexts(tasks, offers, new Date()), [tasks, offers]);
+
+  // Committed pass: count the skip (6.4) and erode any live offer (Row E).
+  const handleSwipe = useCallback((task: TaskData) => {
+    recordTaskSkipped(task);
+    void erodeOffer(db, task.id, task);
+  }, []);
 
   const handleSubmit = async (input: CreateTaskInput) => {
     const task = await createTask(db, input);
@@ -240,7 +274,11 @@ export default function HomeScreen() {
         </HStack>
         {isReviewing ? null : (
           <VStack className="px-[22px]">
-            <ContextBar activeContexts={activeContexts} onExpand={expandBar} />
+            <ContextBar
+              activeContexts={activeContexts}
+              attentionContexts={attention}
+              onExpand={expandBar}
+            />
             <Box className="mt-[9px]">
               <SizeSwitcher mode={mode} onSetMode={handleSetMode} />
             </Box>
@@ -271,6 +309,8 @@ export default function HomeScreen() {
             <CardStack
               tasks={reviewCards}
               getStarValue={getStarValue}
+              getBadge={getBadge}
+              getTopOfDeck={getTopOfDeck}
               onCardPress={(task) => setOpenTaskId(task.id)}
               onEditPress={(task) => setOpenTaskId(task.id)}
               onReviewPress={handleReviewPress}
@@ -311,24 +351,19 @@ export default function HomeScreen() {
           <CardStack
             tasks={curated}
             getStarValue={getStarValue}
+            getBadge={getBadge}
+            getTopOfDeck={getTopOfDeck}
             // Tap = go DO it (2026-07-27): straight to the working screen,
             // without starting the task — the working screen flips status on
             // the first meaningful action. Editing moved to the pencil.
             onCardPress={(task) => router.push(`/task-running/${task.id}`)}
             onEditPress={(task) => setOpenTaskId(task.id)}
             onReviewPress={handleReviewPress}
-            onSwipe={recordTaskSkipped}
+            onSwipe={handleSwipe}
             onTopChange={handleTopChange}
           />
           {showNudge ? (
-            <MicroTaskNudge
-              state={micro.state}
-              step={micro.step}
-              onRequest={micro.request}
-              onAdd={micro.accept}
-              onDismiss={micro.dismiss}
-              onRetry={micro.retry}
-            />
+            <MicroTaskNudge state={micro.state} onGo={handleNudgeGo} onRetry={handleNudgeGo} />
           ) : null}
         </>
       )}
@@ -347,6 +382,7 @@ export default function HomeScreen() {
             <ContextSheet
               activeContexts={activeContexts}
               availableContexts={available}
+              attentionContexts={attention}
               mode={mode}
               onToggleContext={handleToggleContext}
               onSetMode={handleSetMode}

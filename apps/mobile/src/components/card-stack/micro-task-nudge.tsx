@@ -1,39 +1,31 @@
 import { ActivityIndicator } from 'react-native';
+import { ArrowRight } from 'lucide-react-native';
 
 import { Button, ButtonText } from '@/components/ui/button';
 import { HStack } from '@/components/ui/hstack';
+import { Icon } from '@/components/ui/icon';
+import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 
 /**
- * Calm micro-task nudge under the card stack (Story 6.4, FR39): a quiet chip
- * for a card the user keeps skipping — no badge, no red, never blocks the
- * card. Presentational; home owns the controller (use-micro-task).
+ * The nudge under the deck (v1.5 frame E9): a card that keeps coming back
+ * round gets one quiet offer — the first, smallest step — floating between
+ * the deck and the standing actions in clay-on-paper weight so it never
+ * competes with Brain dump. Tapping it costs no decisions: home fetches the
+ * step, writes it, and opens the working screen with it showing.
+ * Presentational; home owns the controller (use-micro-task).
  */
 export function MicroTaskNudge({
   state,
-  step,
-  onRequest,
-  onAdd,
-  onDismiss,
+  onGo,
   onRetry,
 }: {
   state: 'idle' | 'loading' | 'proposal' | 'error';
-  step: string | null;
-  onRequest: () => void;
-  onAdd: () => void;
-  onDismiss: () => void;
+  /** Fetch the smallest step, add it, and open the working screen. */
+  onGo: () => void;
   onRetry: () => void;
 }) {
-  if (state === 'loading') {
-    return (
-      <HStack className="items-center justify-center gap-2 px-6 pb-3">
-        <ActivityIndicator accessibilityLabel="Finding a tiny first step" />
-        <Text className="text-sm text-typography-600">Finding a tiny first step...</Text>
-      </HStack>
-    );
-  }
-
   if (state === 'error') {
     return (
       <HStack className="items-center justify-center gap-3 px-6 pb-3">
@@ -45,31 +37,28 @@ export function MicroTaskNudge({
     );
   }
 
-  if (state === 'proposal' && step) {
-    return (
-      <VStack className="mx-6 mb-3 gap-2 rounded-2xl border border-outline-100 bg-background-50 p-4">
-        <Text className="font-body-semibold text-sm text-typography-900">{step}</Text>
-        <HStack className="gap-2">
-          <Button size="sm" aria-label="Add it" onPress={onAdd}>
-            <ButtonText>Add it</ButtonText>
-          </Button>
-          <Button size="sm" variant="link" aria-label="No thanks" onPress={onDismiss}>
-            <ButtonText>No thanks</ButtonText>
-          </Button>
-        </HStack>
-      </VStack>
-    );
-  }
+  const busy = state === 'loading' || state === 'proposal';
 
-  // Idle chip. The tappable affordance is its own labeled button — the
-  // question copy stays a plain Text node (visible to Maestro/TalkBack,
-  // which an accessible container would swallow).
   return (
-    <HStack className="items-center justify-center gap-2 px-6 pb-3">
-      <Text className="text-sm text-typography-600">Stuck on this?</Text>
-      <Button size="sm" variant="outline" aria-label="Get a tiny first step" onPress={onRequest}>
-        <ButtonText>Get a tiny first step</ButtonText>
-      </Button>
-    </HStack>
+    <VStack className="mx-[30px] -mt-4 mb-[14px] gap-[9px] rounded-[18px] border border-outline-100 bg-background-0 px-3.5 py-3 shadow-float">
+      <Text className="font-body text-[13px] leading-[19px] text-typography-600">
+        This one keeps coming back round.
+      </Text>
+      <Pressable
+        accessibilityRole="button"
+        aria-label="Show me the smallest step"
+        disabled={busy}
+        onPress={onGo}
+        className="h-9 flex-row items-center gap-2 self-start rounded-[12px] bg-primary-100 px-3.5 active:bg-primary-50 disabled:opacity-70"
+      >
+        {busy ? (
+          <ActivityIndicator size="small" accessibilityLabel="Finding a tiny first step" />
+        ) : null}
+        <Text className="font-body-bold text-[13px] text-primary-600">
+          Show me the smallest step
+        </Text>
+        {busy ? null : <Icon as={ArrowRight} size="2xs" className="text-primary-600" />}
+      </Pressable>
+    </VStack>
   );
 }

@@ -2,18 +2,31 @@ import { and, eq, inArray, sql } from 'drizzle-orm';
 import { randomUUID } from 'expo-crypto';
 
 import { STAR_WEIGHTS, type StarAction, type SubtaskData, type TaskData } from '@one-down/shared';
-import { starActivityLog, tasks } from '@one-down/shared/schema-local';
+import { starActivityLog, subtasks, taskOffers, tasks } from '@one-down/shared/schema-local';
 
 import { track } from '@/lib/analytics/track';
-import { calculateCompletionStars, type StarBreakdown } from '@/services/star-calculator';
+import {
+  bankedForCount,
+  calculateCompletionStars,
+  type StarBreakdown,
+} from '@/services/star-calculator';
 import type { TasksDb } from '@/services/tasks-repository';
 
 /**
- * Star award persistence (Story 4.1) — writes signed transactions to the
- * local `star_activity_log` ledger. db injected like tasks-repository so
- * integration tests run the real schema. Persistence failures never block
- * the task action (AC7): warn, still return the amount for the toast.
+ * Star award persistence — writes signed transactions to the local
+ * `star_activity_log` ledger. v1.5 economy (spec §3): steps BANK hollow
+ * stars out of the card's value (1 quick win / 2 big time, capped so the
+ * indicator fills exactly at the value); completing converts the lot — the
+ * completion row is the remainder (value + live badge − banked, floored 0).
+ *
+ * db injected like tasks-repository so integration tests run the real
+ * schema. Persistence failures never block the task action (4.1 AC7): warn,
+ * still return the amount for the toast.
  */
+
+function zeroBreakdown(total: number): StarBreakdown {
+  return { value: total, bonus: 0, banked: 0, total };
+}
 
 async function insertAward(
   db: TasksDb,
@@ -34,33 +47,51 @@ async function insertAward(
   track('stars_awarded', {
     action: entry.action,
     amount: breakdown.total,
-    base: breakdown.base,
-    urgency_bonus: breakdown.urgencyBonus,
-    size_bonus: breakdown.sizeBonus,
-    early_bonus: breakdown.earlyBonus,
+    value: breakdown.value,
+    bonus: breakdown.bonus,
+    banked_converted: breakdown.banked,
   });
 }
 
+/** Net stars already banked on a task's steps — the signed sum of its
+ *  subtask ledger rows. Ledger-based (not recomputed from current subtasks)
+ *  so the conversion repays exactly what was actually paid out, whatever
+ *  economy or caps were live when the rows were written. */
+export async function bankedNetForTask(db: TasksDb, taskId: string): Promise<number> {
+  const rows = await db
+    .select({ net: sql<number>`coalesce(sum(${starActivityLog.amount}), 0)` })
+    .from(starActivityLog)
+    .where(
+      and(
+        eq(starActivityLog.taskId, taskId),
+        inArray(starActivityLog.action, ['subtask_completed', 'subtask_deleted']),
+      ),
+    );
+  return rows[0]?.net ?? 0;
+}
+
 /**
- * Award stars for completing a task (FR43–46): selects the active set itself
- * (relative urgency ranks against the user's whole backlog), runs the pure
- * calculator, persists the transaction, and returns the breakdown for the
- * completion toast.
+ * Award stars for completing a task — the v1.5 conversion: value + live
+ * badge − already-banked, floored at 0. Reads the banked net and any live
+ * offer itself, persists the transaction, clears the consumed offer, and
+ * returns the breakdown for the completion toast.
  */
 export async function awardCompletionStars(
   db: TasksDb,
   task: TaskData,
   now = new Date(),
 ): Promise<StarBreakdown> {
-  // The calculator dedupes `task` by id, so it counts whether or not the
-  // completion write has already landed when this select runs.
-  const activeTasks = await db
-    .select()
-    .from(tasks)
-    .where(inArray(tasks.status, ['pending', 'in_progress']))
+  let banked = 0;
+  let offerAmount = 0;
+  try {
+    banked = await bankedNetForTask(db, task.id);
+    const [offer] = await db.select().from(taskOffers).where(eq(taskOffers.taskId, task.id));
+    offerAmount = offer?.amount ?? 0;
+  } catch (error) {
     // oxlint-disable-next-line no-console
-    .catch((error: unknown): TaskData[] => (console.warn('Star award select failed', error), []));
-  const breakdown = calculateCompletionStars(task, activeTasks, now);
+    console.warn('Star award context read failed', error);
+  }
+  const breakdown = calculateCompletionStars(task, { bankedStars: banked, offerAmount, now });
   try {
     await insertAward(
       db,
@@ -68,6 +99,8 @@ export async function awardCompletionStars(
       breakdown,
       now,
     );
+    // A consumed offer never lingers (it would block new offers globally).
+    await db.delete(taskOffers).where(eq(taskOffers.taskId, task.id));
   } catch (error) {
     // oxlint-disable-next-line no-console
     console.warn('Star award insert failed', error);
@@ -76,32 +109,34 @@ export async function awardCompletionStars(
 }
 
 /**
- * Signed subtask transaction (Story 6.3, AC5). Completing earns the small
- * `subtaskCompleted` weight; unticking reverses it (negative
- * `subtask_completed` row); deleting a COMPLETED subtask reverses via a
- * negative `subtask_deleted` row. The ledger is append-only — reversals are
- * new signed rows, never edits. Title snapshot = the subtask's own title
- * (display only, never analytics — NFR-S3).
+ * Banking delta for a subtask state change (tick, untick, delete-completed).
+ * Order-free accounting: banked(task) ≡ bankedForCount(completedCount), so
+ * every change writes the signed DIFFERENCE between the new and old counts —
+ * caps fall out naturally (a step past the cap writes a 0-delta = no row).
+ * `direction` is +1 for a tick, −1 for an untick/removal of a completed step.
+ * The ledger stays append-only — reversals are new signed rows, never edits.
  */
 export async function awardSubtaskStars(
   db: TasksDb,
-  subtask: SubtaskData,
+  task: Pick<TaskData, 'id' | 'size'>,
+  subtask: Pick<SubtaskData, 'title'>,
   action: 'subtask_completed' | 'subtask_deleted',
   direction: 1 | -1,
 ): Promise<number> {
-  const amount = direction * STAR_WEIGHTS.subtaskCompleted;
-  const breakdown: StarBreakdown = {
-    base: amount,
-    urgencyBonus: 0,
-    sizeBonus: 0,
-    earlyBonus: 0,
-    total: amount,
-  };
+  let amount = 0;
   try {
+    const [row] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(subtasks)
+      .where(and(eq(subtasks.taskId, task.id), eq(subtasks.completed, true)));
+    const countAfter = row?.count ?? 0;
+    const countBefore = countAfter - direction;
+    amount = bankedForCount(task, countAfter) - bankedForCount(task, countBefore);
+    if (amount === 0) return 0;
     await insertAward(
       db,
-      { taskId: subtask.taskId, taskTitle: subtask.title, action },
-      breakdown,
+      { taskId: task.id, taskTitle: subtask.title, action },
+      { ...zeroBreakdown(amount) },
       new Date(),
     );
   } catch (error) {
@@ -112,32 +147,44 @@ export async function awardSubtaskStars(
 }
 
 /**
- * Award the flat review-confirmation amount (Story 6.2, AC7; owner-revised
- * 2026-07-27) — one small star when a card's LAST review flag clears (tick
- * or edit-confirm), not per item. Callers gate on `reviewCleared`, which the
- * repository reports exactly once by construction.
+ * v1.5 triage pay (Row E): confirming cards pays nothing per card —
+ * emptying the queue pays `triageQueueCleared`, at most once per local day.
+ * Callers invoke this after any confirm; it self-gates on (a) the queue
+ * actually being empty and (b) no queue-clear award yet today. Returns the
+ * amount awarded (0 = gated).
  */
-export async function awardReviewConfirmStars(db: TasksDb, task: TaskData): Promise<number> {
-  const amount = STAR_WEIGHTS.triageConfirmed;
-  const breakdown: StarBreakdown = {
-    base: amount,
-    urgencyBonus: 0,
-    sizeBonus: 0,
-    earlyBonus: 0,
-    total: amount,
-  };
+export async function maybeAwardTriageQueueCleared(db: TasksDb, now = new Date()): Promise<number> {
   try {
+    const [pending] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(tasks)
+      .where(
+        and(eq(tasks.hasCheckNeeded, true), inArray(tasks.status, ['pending', 'in_progress'])),
+      );
+    if ((pending?.count ?? 0) > 0) return 0;
+
+    const dayStart = new Date(now);
+    dayStart.setHours(0, 0, 0, 0);
+    const todays = await db
+      .select({ id: starActivityLog.id, createdAt: starActivityLog.createdAt })
+      .from(starActivityLog)
+      .where(eq(starActivityLog.action, 'triage_confirmed'));
+    if (todays.some((row) => row.createdAt.getTime() >= dayStart.getTime())) return 0;
+
+    const amount = STAR_WEIGHTS.triageQueueCleared;
     await insertAward(
       db,
-      { taskId: task.id, taskTitle: task.title, action: 'triage_confirmed' },
-      breakdown,
-      new Date(),
+      // Queue-level award — no single task owns it; title is display copy.
+      { taskId: '', taskTitle: 'Cleared the queue', action: 'triage_confirmed' },
+      zeroBreakdown(amount),
+      now,
     );
+    return amount;
   } catch (error) {
     // oxlint-disable-next-line no-console
     console.warn('Star award insert failed', error);
+    return 0;
   }
-  return amount;
 }
 
 /**
@@ -175,18 +222,11 @@ export async function retractTaskStars(
   amount: number,
 ): Promise<void> {
   if (amount <= 0) return;
-  const breakdown: StarBreakdown = {
-    base: -amount,
-    urgencyBonus: 0,
-    sizeBonus: 0,
-    earlyBonus: 0,
-    total: -amount,
-  };
   try {
     await insertAward(
       db,
       { taskId: task.id, taskTitle: task.title, action: 'archive_retraction' },
-      breakdown,
+      zeroBreakdown(-amount),
       new Date(),
     );
   } catch (error) {
@@ -201,7 +241,8 @@ export async function retractTaskStars(
  * row(s) instead of writing a negative `completion_undone` row, so an undone
  * completion leaves no trace in the activity log. This is a deliberate,
  * owner-requested exception to the append-only ledger rule — scoped to
- * completion awards only.
+ * completion awards only. Banked step rows are untouched — undoing the
+ * completion restores the banked state exactly (ambiguity #6).
  *
  * Mechanics: the outstanding completion credit is the signed sum of
  * `task_completed` + `completion_undone` rows (legacy negative rows from the
@@ -245,17 +286,10 @@ export async function removeCompletionAward(
       await db.delete(starActivityLog).where(inArray(starActivityLog.id, toDelete));
     }
     if (remaining > 0) {
-      const breakdown: StarBreakdown = {
-        base: -remaining,
-        urgencyBonus: 0,
-        sizeBonus: 0,
-        earlyBonus: 0,
-        total: -remaining,
-      };
       await insertAward(
         db,
         { taskId: task.id, taskTitle: task.title, action: 'completion_undone' },
-        breakdown,
+        zeroBreakdown(-remaining),
         new Date(),
       );
     }
@@ -304,20 +338,15 @@ export async function removeCutLooseAward(
  */
 export async function awardCutLooseStars(db: TasksDb, task: TaskData): Promise<number> {
   const amount = STAR_WEIGHTS.cutLoose;
-  const breakdown: StarBreakdown = {
-    base: amount,
-    urgencyBonus: 0,
-    sizeBonus: 0,
-    earlyBonus: 0,
-    total: amount,
-  };
   try {
     await insertAward(
       db,
       { taskId: task.id, taskTitle: task.title, action: 'task_cut_loose' },
-      breakdown,
+      zeroBreakdown(amount),
       new Date(),
     );
+    // A released card's offer dies with it.
+    await db.delete(taskOffers).where(eq(taskOffers.taskId, task.id));
   } catch (error) {
     // oxlint-disable-next-line no-console
     console.warn('Star award insert failed', error);

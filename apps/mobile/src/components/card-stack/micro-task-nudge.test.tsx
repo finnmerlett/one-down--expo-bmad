@@ -3,41 +3,33 @@ import { render, screen, userEvent } from '@testing-library/react-native';
 
 import * as stories from './micro-task-nudge.stories';
 
-const { Idle, Loading, Proposal, ErrorState } = composeStories(stories);
+const { Idle, Loading, ErrorState } = composeStories(stories);
 
-describe('MicroTaskNudge (portable stories)', () => {
-  it('idle chip shows the calm copy and requests on tap', async () => {
-    const onRequest = jest.fn();
+describe('MicroTaskNudge (portable stories — v1.5 E9)', () => {
+  it('one-tap go reaches the handler', async () => {
+    const onGo = jest.fn();
     const user = userEvent.setup();
-    await render(<Idle onRequest={onRequest} />);
+    await render(<Idle onGo={onGo} />);
 
-    expect(screen.getByText('Stuck on this?')).toBeTruthy();
-    await user.press(screen.getByLabelText('Get a tiny first step'));
-    expect(onRequest).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('This one keeps coming back round.')).toBeTruthy();
+    await user.press(screen.getByLabelText('Show me the smallest step'));
+    expect(onGo).toHaveBeenCalledTimes(1);
   });
 
-  it('proposal shows the step with Add it / No thanks', async () => {
-    const onAdd = jest.fn();
-    const onDismiss = jest.fn();
+  it('busy state disables the chip (no double-fetch)', async () => {
+    const onGo = jest.fn();
     const user = userEvent.setup();
-    await render(<Proposal onAdd={onAdd} onDismiss={onDismiss} />);
+    await render(<Loading onGo={onGo} />);
 
-    expect(
-      screen.getByText('Do just the very first minute of "Ring the council office"'),
-    ).toBeTruthy();
-    await user.press(screen.getByLabelText('Add it'));
-    expect(onAdd).toHaveBeenCalledTimes(1);
-    await user.press(screen.getByLabelText('No thanks'));
-    expect(onDismiss).toHaveBeenCalledTimes(1);
+    await user.press(screen.getByLabelText('Show me the smallest step'));
+    expect(onGo).not.toHaveBeenCalled();
   });
 
-  it('loading and error render their inline states', async () => {
-    await render(<Loading />);
-    expect(screen.getByText('Finding a tiny first step...')).toBeTruthy();
-
+  it('error state offers a retry', async () => {
     const onRetry = jest.fn();
     const user = userEvent.setup();
     await render(<ErrorState onRetry={onRetry} />);
+
     await user.press(screen.getByLabelText('Retry tiny step'));
     expect(onRetry).toHaveBeenCalledTimes(1);
   });

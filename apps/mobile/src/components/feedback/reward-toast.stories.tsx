@@ -26,7 +26,7 @@ export const Completion: Story = {
   args: {
     nativeID: 'toast-completion',
     title: 'One down!',
-    stars: STAR_WEIGHTS.completionBase,
+    stars: STAR_WEIGHTS.taskValue.quick_win,
   },
 };
 

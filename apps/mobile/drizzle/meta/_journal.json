@@ -64,6 +64,13 @@
       "when": 1784897216450,
       "tag": "0008_productive_zodiak",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1785905116067,
+      "tag": "0009_sturdy_red_skull",
+      "breakpoints": true
     }
   ]
 }

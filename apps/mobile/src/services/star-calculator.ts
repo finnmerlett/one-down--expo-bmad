@@ -1,103 +1,146 @@
-import { STAR_WEIGHTS, type TaskData } from '@one-down/shared';
+import { BONUS_WINDOW, sizeKeyOf, STAR_WEIGHTS, type TaskData } from '@one-down/shared';
 
 /**
- * Star reward calculator (Stories 3.3 + 4.1) — pure, no React. All tuning
- * lives in the shared `STAR_WEIGHTS` constants (centralized, OTA-updatable
- * later). `calculateCompletionStars` = the `potentialStars` components PLUS
- * the early-completion bonus, sharing `relativeUrgencyBonus` — one formula,
- * so the card-front preview never drifts from the awarded amount.
+ * Star reward calculator, v1.5 economy (spec §3 / design Row E) — pure, no
+ * React. Size alone sets a card's value; badges (deadline bonus window,
+ * don't-skip offer) ride on top of it and never stack — the larger wins.
+ * All tuning lives in the shared STAR_WEIGHTS / BONUS_WINDOW constants.
  */
-
-/**
- * FR44 rank-based urgency bonus: among the deadline-bearing tasks in
- * `[task, ...activeTasks]` (deduped by id; callers pass the active =
- * pending/in_progress set), the soonest deadline earns the full
- * `urgencyBonusMax`, later deadlines a proportionally smaller share.
- * Deadline-free peers don't dilute the pool; a task without a deadline
- * earns 0.
- *
- * Deliberately relative (rank-based), NOT absolute proximity — rewards rank
- * against the user's own backlog. The curation service's `deadlineUrgency`
- * is the absolute-proximity counterpart for ORDERING; do not unify them.
- */
-export function relativeUrgencyBonus(task: TaskData, activeTasks: TaskData[]): number {
-  if (!task.deadline) return 0;
-  const taskDeadline = task.deadline.getTime();
-
-  const seen = new Set<string>([task.id]);
-  let poolSize = 1; // deadline-bearing tasks, including this one
-  let sooner = 0; // pool members with a strictly earlier deadline
-  for (const other of activeTasks) {
-    if (seen.has(other.id)) continue;
-    seen.add(other.id);
-    if (!other.deadline) continue;
-    poolSize++;
-    if (other.deadline.getTime() < taskDeadline) sooner++;
-  }
-
-  return Math.round((STAR_WEIGHTS.urgencyBonusMax * (poolSize - sooner)) / poolSize);
-}
-
-/**
- * Star value shown on the card front (FR11): what completing this task is
- * worth. Equals Story 4.1's award MINUS the early-completion bonus (which is
- * unknowable until the moment of completion). `_now` is reserved for
- * signature parity with 4.1's `calculateCompletionStars`.
- */
-export function potentialStars(task: TaskData, activeTasks: TaskData[], _now: Date): number {
-  return (
-    STAR_WEIGHTS.completionBase +
-    relativeUrgencyBonus(task, activeTasks) +
-    (task.size ? STAR_WEIGHTS.sizeBonus[task.size] : 0)
-  );
-}
 
 const DAY_MS = 86_400_000;
 
-/**
- * FR46 early-completion bonus: `earlyBonusPerDay` per FULL day between `now`
- * and the deadline, capped at `earlyBonusMax`. No deadline, or completing
- * after the deadline → 0 — no punishment, just no bonus (never negative
- * framing).
- */
-export function earlyCompletionBonus(task: TaskData, now: Date): number {
-  if (!task.deadline) return 0;
-  const remainingMs = task.deadline.getTime() - now.getTime();
-  if (remainingMs < 0) return 0;
-  return Math.min(
-    Math.floor(remainingMs / DAY_MS) * STAR_WEIGHTS.earlyBonusPerDay,
-    STAR_WEIGHTS.earlyBonusMax,
-  );
+/** The card's whole value (white pill, working-screen bucket): ★5 quick win,
+ *  ★20 big time; unsized rides at quick-win value until sized. */
+export function taskValue(task: Pick<TaskData, 'size'>): number {
+  return STAR_WEIGHTS.taskValue[sizeKeyOf(task.size)];
 }
 
-/** Itemized completion award (Story 4.1) — persisted total, toast copy source. */
+/** A live badge on a card — the band leads with `+amount` and its reason. */
+export interface StarBadge {
+  kind: 'window' | 'offer';
+  amount: number;
+  /** Caps copy after the amount chip: `BONUS UNTIL WED` / `TO START IT NOW`. */
+  reason: string;
+}
+
+const WEEKDAY = new Intl.DateTimeFormat(undefined, { weekday: 'short' });
+
+/**
+ * Deadline bonus window (Row E "why the window opens early"): aiming to land
+ * work three days early, the window opens 4 days out and runs 2 — gone from
+ * 2 days out (placement takes over). Short notice (created <4 days before
+ * the deadline) opens immediately and still gets the full length, capped at
+ * the deadline. Derived entirely from deadline+createdAt — a fresh deadline
+ * gets a fresh window (ambiguity #8).
+ */
+export function bonusWindow(
+  task: Pick<TaskData, 'size' | 'deadline' | 'createdAt'>,
+  now: Date,
+): StarBadge | null {
+  if (!task.deadline) return null;
+  const deadline = task.deadline.getTime();
+  const normalOpen = deadline - BONUS_WINDOW.opensDaysBeforeDeadline * DAY_MS;
+  // Short notice: the window starts at creation. Normal: 4 days out.
+  const start = Math.max(normalOpen, task.createdAt.getTime());
+  const close = Math.min(start + BONUS_WINDOW.lengthDays * DAY_MS, deadline);
+  const t = now.getTime();
+  if (t < start || t >= close) return null;
+  return {
+    kind: 'window',
+    amount: STAR_WEIGHTS.bonusBadge[sizeKeyOf(task.size)],
+    reason: `BONUS UNTIL ${WEEKDAY.format(new Date(close)).toUpperCase()}`,
+  };
+}
+
+/** From 2 days out the badge is gone and the card is dealt first instead
+ *  (clay TOP OF THE DECK band; still subject to filters — dots mark it when
+ *  a filter hides it). Overdue cards keep the placement. */
+export function isTopOfDeck(task: Pick<TaskData, 'deadline'>, now: Date): boolean {
+  if (!task.deadline) return false;
+  return task.deadline.getTime() - now.getTime() <= BONUS_WINDOW.topOfDeckDays * DAY_MS;
+}
+
+/**
+ * The single live badge for a card: deadline window vs don't-skip offer —
+ * two reasons never stack, the larger badge wins (spec §2). `offerAmount`
+ * comes from the local task_offers table (0/undefined = none).
+ */
+export function liveBadge(
+  task: Pick<TaskData, 'size' | 'deadline' | 'createdAt'>,
+  offerAmount: number | undefined,
+  now: Date,
+): StarBadge | null {
+  const window = bonusWindow(task, now);
+  const offer: StarBadge | null =
+    offerAmount && offerAmount > 0
+      ? { kind: 'offer', amount: offerAmount, reason: 'TO START IT NOW' }
+      : null;
+  if (window && offer) return window.amount >= offer.amount ? window : offer;
+  return window ?? offer;
+}
+
+/**
+ * Star value shown on the card front / working-screen bucket (FR11): the
+ * card's timeless value. Badges are displayed separately (band + chip) and
+ * never fold into this number. Signature keeps the old (task, activeTasks,
+ * now) shape so call sites stay stable; the extra args are unused in the
+ * v1.5 model.
+ */
+export function potentialStars(
+  task: Pick<TaskData, 'size'>,
+  _activeTasks?: readonly TaskData[],
+  _now?: Date,
+): number {
+  return taskValue(task);
+}
+
+/** Itemized completion award — persisted total, toast copy source. */
 export interface StarBreakdown {
-  base: number;
-  urgencyBonus: number;
-  sizeBonus: number;
-  earlyBonus: number;
+  /** The card's size value. */
+  value: number;
+  /** Live badge amount at the moment of completion (window/offer). */
+  bonus: number;
+  /** Hollow stars already banked on this task's steps (paid out earlier). */
+  banked: number;
+  /** value + bonus − banked, floored at 0 (over-banked is never punished). */
   total: number;
 }
 
 /**
- * The full completion award (FR43–46): completion base + relative-urgency
- * bonus + size bonus + early-completion bonus. A task with no size and no
- * deadline earns exactly the base amount (AC6 — deterministic).
+ * The completion conversion (Row E "banking"): completing converts the lot —
+ * the task pays its whole value plus any live badge, MINUS what the steps
+ * already banked, so a task's total always equals value + badge. Floors at
+ * 0: banking past the value (possible on legacy data) is never clawed back.
  */
 export function calculateCompletionStars(
-  task: TaskData,
-  activeTasks: TaskData[],
-  now: Date,
+  task: Pick<TaskData, 'size' | 'deadline' | 'createdAt'>,
+  options: { bankedStars: number; offerAmount?: number; now?: Date },
 ): StarBreakdown {
-  const base = STAR_WEIGHTS.completionBase;
-  const urgencyBonus = relativeUrgencyBonus(task, activeTasks);
-  const sizeBonus = task.size ? STAR_WEIGHTS.sizeBonus[task.size] : 0;
-  const earlyBonus = earlyCompletionBonus(task, now);
+  const now = options.now ?? new Date();
+  const value = taskValue(task);
+  const badge = liveBadge(task, options.offerAmount, now);
+  const bonus = badge?.amount ?? 0;
+  const banked = Math.max(0, options.bankedStars);
   return {
-    base,
-    urgencyBonus,
-    sizeBonus,
-    earlyBonus,
-    total: base + urgencyBonus + sizeBonus + earlyBonus,
+    value,
+    bonus,
+    banked,
+    total: Math.max(0, value + bonus - banked),
   };
+}
+
+/** Hollow stars a single completed step banks on this task (1 quick win /
+ *  2 big time), given how many completed steps precede it in the count —
+ *  steps beyond the banking cap bank nothing. */
+export function stepBankAmount(task: Pick<TaskData, 'size'>, completedCountAfter: number): number {
+  const key = sizeKeyOf(task.size);
+  if (completedCountAfter > STAR_WEIGHTS.stepBankCap[key]) return 0;
+  return STAR_WEIGHTS.stepBank[key];
+}
+
+/** Total banked for `completedCount` completed steps (cap applied) — the
+ *  order-free accounting both the award delta and the banked counter use. */
+export function bankedForCount(task: Pick<TaskData, 'size'>, completedCount: number): number {
+  const key = sizeKeyOf(task.size);
+  return Math.min(completedCount, STAR_WEIGHTS.stepBankCap[key]) * STAR_WEIGHTS.stepBank[key];
 }

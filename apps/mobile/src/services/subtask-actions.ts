@@ -1,4 +1,7 @@
-import type { BreakdownMode, SubtaskData } from '@one-down/shared';
+import { eq } from 'drizzle-orm';
+
+import type { BreakdownMode, SubtaskData, TaskData } from '@one-down/shared';
+import { tasks } from '@one-down/shared/schema-local';
 
 import { track } from '@/lib/analytics/track';
 import { db } from '@/lib/local-db';
@@ -14,17 +17,30 @@ import {
 // module-scoped db writes survive screen unmounts; stars/analytics only after
 // the write actually changed something.
 
+// Banking needs the parent task's size (v1.5: 1★/step quick win, 2★ big
+// time, capped) — read it fresh so a size edit mid-session banks correctly.
+async function parentTask(taskId: string): Promise<Pick<TaskData, 'id' | 'size'> | null> {
+  const [row] = await db
+    .select({ id: tasks.id, size: tasks.size })
+    .from(tasks)
+    .where(eq(tasks.id, taskId));
+  return row ?? null;
+}
+
 /**
  * Tick/untick a subtask (AC4/AC5). The repository's changed-guard makes the
- * star award/reversal exactly-once per real state change — a stale double tap
- * awards nothing.
+ * banking delta exactly-once per real state change — a stale double tap
+ * banks nothing.
  */
 export function toggleSubtask(subtask: SubtaskData): void {
   const next = !subtask.completed;
   void setSubtaskCompleted(db, subtask.id, next)
     .then(async (changed) => {
       if (!changed) return;
-      await awardSubtaskStars(db, subtask, 'subtask_completed', next ? 1 : -1);
+      const task = await parentTask(subtask.taskId);
+      if (task) {
+        await awardSubtaskStars(db, task, subtask, 'subtask_completed', next ? 1 : -1);
+      }
       track('subtask_completed', { source: subtask.source, reversed: !next });
     })
     // oxlint-disable-next-line no-console
@@ -32,15 +48,18 @@ export function toggleSubtask(subtask: SubtaskData): void {
 }
 
 /**
- * Delete a subtask (AC4/AC5): a COMPLETED one reverses its earned star; an
- * incomplete one awards/reverses nothing.
+ * Delete a subtask (AC4/AC5): a COMPLETED one un-banks its stars via the
+ * delta accounting; an incomplete one banks/reverses nothing.
  */
 export function removeSubtask(subtask: SubtaskData): void {
   void deleteSubtask(db, subtask.id)
     .then(async (deleted) => {
       if (!deleted) return;
       if (deleted.completed) {
-        await awardSubtaskStars(db, subtask, 'subtask_deleted', -1);
+        const task = await parentTask(subtask.taskId);
+        if (task) {
+          await awardSubtaskStars(db, task, subtask, 'subtask_deleted', -1);
+        }
       }
       track('subtask_deleted', { was_completed: deleted.completed });
     })

@@ -10,7 +10,7 @@ describe('RewardToast (portable stories)', () => {
     await render(<Completion />);
 
     expect(screen.getByText('One down!')).toBeTruthy();
-    expect(screen.getByText('+10 stars')).toBeTruthy();
+    expect(screen.getByText('+5 stars')).toBeTruthy();
   });
 
   it('shows the cut-loose acknowledgment copy (Story 2.4)', async () => {

@@ -32,8 +32,8 @@ export function makeTask(overrides: Partial<TaskData> = {}): TaskData {
 const meta = {
   title: 'card-stack/TaskCard',
   component: TaskCard,
-  // Baseline star preview: completionBase with no bonuses (Story 3.3).
-  args: { starValue: 10 },
+  // v1.5 baseline: the card's size value (unsized rides at quick-win 5).
+  args: { starValue: 5 },
   decorators: [
     // Same 330dp frame the deck gives the card in production (2026-07-27
     // compact-card feedback) — stories should show real proportions.
@@ -73,27 +73,61 @@ export const InProgress: Story = {
       status: 'in_progress',
       size: 'big_time',
     }),
-    starValue: 15,
+    starValue: 20,
   },
 };
 
-// Story 3.3 star-preview states: bigger/more urgent tasks are worth more.
+// v1.5: size alone sets the value — big time is ★20.
 export const BigTimeValue: Story = {
   args: {
     task: makeTask({ id: 'task-4', title: 'Redecorate the hallway', size: 'big_time' }),
-    starValue: 15,
+    starValue: 20,
   },
 };
 
-export const NearDeadlineValue: Story = {
+/** v1.5 frame 04/E2 — the gold bonus band: badge + reason left, the card's
+ *  real value in a white pill right, gold rail below. */
+export const BonusWindow: Story = {
   args: {
     task: makeTask({
       id: 'task-5',
-      title: 'File the tax return',
+      title: 'Book dentist appointment',
+      details: 'A five minute call — the practice opens at 9.',
       size: 'quick_win',
-      deadline: new Date('2026-06-02T09:00:00Z'),
+      contexts: '["phone"]',
+      deadline: new Date(Date.now() + 24 * 60 * 60 * 1000),
     }),
-    starValue: 15,
+    starValue: 5,
+    badge: { kind: 'window', amount: 3, reason: 'BONUS UNTIL WED' },
+  },
+};
+
+/** v1.5 frame E4 — the don't-skip offer wears the same gold band. */
+export const DontSkipOffer: Story = {
+  args: {
+    task: makeTask({
+      id: 'task-offer',
+      title: 'Chase the deposit back',
+      details: 'They have had six weeks and one polite email.',
+      size: 'quick_win',
+    }),
+    starValue: 5,
+    badge: { kind: 'offer', amount: 3, reason: 'TO START IT NOW' },
+  },
+};
+
+/** v1.5 frame E3 — inside two days: no badge, primary TOP OF THE DECK band. */
+export const TopOfDeck: Story = {
+  args: {
+    task: makeTask({
+      id: 'task-top',
+      title: 'Book the boiler service',
+      details: 'Last done in March. They want a morning slot.',
+      size: 'big_time',
+      deadline: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+    }),
+    starValue: 20,
+    topOfDeck: true,
   },
 };
 

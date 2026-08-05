@@ -7,3 +7,4 @@ export { syncMeta, type SyncMetaRow } from './sync-meta';
 export { tasks, type NewTaskRow, type TaskRow } from './tasks';
 export { starActivityLog, type NewStarActivityRow, type StarActivityRow } from './star-activity';
 export { subtasks, type NewSubtaskRow, type SubtaskRow } from './subtasks';
+export { taskOffers, type NewTaskOfferRow, type TaskOfferRow } from './task-offers';

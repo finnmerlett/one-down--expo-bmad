@@ -23,11 +23,14 @@ function ContextTile({
   context,
   active,
   available,
+  attention,
   onToggle,
 }: {
   context: TaskContext;
   active: boolean;
   available: boolean;
+  /** E7: this UNSELECTED context hides a live bonus or an overdue card. */
+  attention: boolean;
   onToggle: (context: TaskContext) => void;
 }) {
   // UX rule (AC4, carried from 3.1): an empty context stays enabled while ON
@@ -64,6 +67,9 @@ function ContextTile({
       >
         {CONTEXT_LABELS[context]}
       </Text>
+      {attention && !active ? (
+        <Box className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border-2 border-background-0 bg-primary-500" />
+      ) : null}
     </Pressable>
   );
 }
@@ -77,6 +83,7 @@ function ContextTile({
 export function ContextSheet({
   activeContexts,
   availableContexts,
+  attentionContexts,
   mode,
   onToggleContext,
   onSetMode,
@@ -84,6 +91,8 @@ export function ContextSheet({
 }: {
   activeContexts: TaskContext[];
   availableContexts: ReadonlySet<TaskContext>;
+  /** E7 dots: contexts hiding a live bonus or an overdue card. */
+  attentionContexts?: ReadonlySet<TaskContext>;
   mode: TaskSize | null;
   onToggleContext: (context: TaskContext) => void;
   onSetMode: (mode: TaskSize | null) => void;
@@ -121,6 +130,7 @@ export function ContextSheet({
             context={context}
             active={activeContexts.includes(context)}
             available={availableContexts.has(context)}
+            attention={attentionContexts?.has(context) ?? false}
             onToggle={onToggleContext}
           />
         ))}

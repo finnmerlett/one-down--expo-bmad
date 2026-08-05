@@ -14,8 +14,8 @@ describe('TaskCard (portable stories)', () => {
     expect(screen.getByText('Book dentist appointment')).toBeTruthy();
     // Bottom rail carries size as mono caps + the due line (spec §4).
     expect(screen.getByText('QUICK WIN')).toBeTruthy();
-    // Star preview (Story 3.3) — every card front shows its potential value.
-    expect(screen.getByText('10')).toBeTruthy();
+    // Star value (v1.5) — every card front shows its size value.
+    expect(screen.getByText('5')).toBeTruthy();
   });
 
   it('renders without a size caps line when size is unset', async () => {
@@ -35,7 +35,7 @@ describe('CardStack (portable stories)', () => {
     // Label announces the star preview (Story 3.3) — the top card is an
     // accessible container, so TalkBack/Maestro only see this string.
     expect(
-      screen.getByLabelText('Task: Water the plants. Worth 10 stars. Card 1 of 3'),
+      screen.getByLabelText('Task: Water the plants. Worth 5 stars. Card 1 of 3'),
     ).toBeTruthy();
     // Depth-1 renders content (it is the next task, ready before the front
     // card leaves); depth-2+ are blank card-stock backs (spec §4).
@@ -47,7 +47,7 @@ describe('CardStack (portable stories)', () => {
     await render(<SingleTask />);
 
     expect(screen.getAllByText('The only task')).toHaveLength(1);
-    expect(screen.getByLabelText('Task: The only task. Worth 10 stars. Card 1 of 1')).toBeTruthy();
+    expect(screen.getByLabelText('Task: The only task. Worth 5 stars. Card 1 of 1')).toBeTruthy();
   });
 });
 

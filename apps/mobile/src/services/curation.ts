@@ -6,6 +6,8 @@ import {
   type TaskSize,
 } from '@one-down/shared';
 
+import { isTopOfDeck, liveBadge } from '@/services/star-calculator';
+
 function isBrowsable(task: TaskData): boolean {
   return task.status === 'pending' || task.status === 'in_progress';
 }
@@ -116,6 +118,32 @@ export function urgentContexts(tasks: TaskData[], now: Date): Set<TaskContext> {
   return urgent;
 }
 
+/**
+ * v1.5 E7 dots: contexts of browsable tasks that carry a live badge (bonus
+ * window / don't-skip offer) or sit in the top-of-deck window (incl.
+ * overdue) — "the ones hiding a live bonus or an overdue card". The home
+ * screen shows a dot on UNSELECTED context tiles in this set (and on the
+ * collapsed bar's Change chip when any apply) so the signal is never buried.
+ */
+export function attentionContexts(
+  tasks: TaskData[],
+  offers: ReadonlyMap<string, number>,
+  now: Date,
+): Set<TaskContext> {
+  const attention = new Set<TaskContext>();
+  for (const task of tasks) {
+    if (!isBrowsable(task)) continue;
+    const hot = isTopOfDeck(task, now) || liveBadge(task, offers.get(task.id), now) !== null;
+    if (!hot) continue;
+    for (const context of parseTaskContexts(task.contexts)) {
+      if ((TASK_CONTEXTS as readonly string[]).includes(context)) {
+        attention.add(context as TaskContext);
+      }
+    }
+  }
+  return attention;
+}
+
 // STRICT size match (owner decision 2026-07-27, reversing the 3.2 call):
 // a mode filter shows ONLY tasks that declare that size — unsized tasks are
 // reachable with the filter off, and Epic 6 AI sizing keeps unsized rare.
@@ -214,5 +242,19 @@ export function curateTasks(
     if (quickWin) ordered.unshift(quickWin);
   }
 
-  return varietyPass(ordered);
+  const varied = varietyPass(ordered);
+
+  // v1.5 placement takeover (Row E "from two days out, placement takes
+  // over"): cards inside the top-of-deck window are dealt FIRST, whatever
+  // the scoring said — soonest deadline first. Runs LAST so neither the
+  // momentum pass nor the variety pass can demote a card that is about to
+  // be late. Still subject to the filters above (the context-bar dots mark
+  // urgent cards a filter is hiding).
+  const urgent = varied.filter((task) => isTopOfDeck(task, now));
+  if (urgent.length > 0) {
+    urgent.sort((a, b) => (a.deadline?.getTime() ?? 0) - (b.deadline?.getTime() ?? 0));
+    const rest = varied.filter((task) => !isTopOfDeck(task, now));
+    return [...urgent, ...rest];
+  }
+  return varied;
 }
