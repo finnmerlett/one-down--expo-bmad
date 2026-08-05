@@ -124,6 +124,19 @@ export type AnalyticsEventMap = EnforceFlatProps<{
   };
   /** Story 6.1 — parse failed; the inline error offers retry / quick add. */
   brain_dump_failed: { reason: 'network' | 'server_error' };
+  /** v1.5 D6 — the gate: tasks were actually saved from the check screen. */
+  brain_dump_tasks_added: { task_count: number; not_added_count: number };
+  /** v1.5 D6 — Change these submitted on the check screen (length only). */
+  brain_dump_change_submitted: { feedback_chars: number };
+  /** v1.5 D6 — the re-parse landed (counts only). */
+  brain_dump_reparsed: {
+    task_count: number;
+    unclaimed_count: number;
+    duration_ms: number;
+    provider: 'gemini' | 'fake';
+  };
+  /** v1.5 D6 — an unclaimed line was promoted into a task box. */
+  brain_dump_line_promoted: { provider: 'gemini' | 'fake' };
   /** Story 6.2 — the info icon was tapped and the stack filtered to flagged cards. */
   review_mode_entered: { card_count: number };
   /** Story 6.2 — one review item confirmed (tick or edit-confirm; field name only). */

@@ -86,6 +86,7 @@ describe('ai.parseBrainDump (fake mode)', () => {
         contexts: ['phone'],
         deadline: sixPmLocal(1),
         timeSensitive: true,
+        evidence: ['Call the dentist tomorrow'],
       },
       {
         title: 'Clean out the garage',
@@ -94,8 +95,11 @@ describe('ai.parseBrainDump (fake mode)', () => {
         contexts: ['home'],
         deadline: null,
         timeSensitive: false,
+        evidence: ['Clean out the garage'],
       },
     ]);
+    // D6 gate contract: nothing vague in this dump.
+    expect(result.data.json.unclaimed).toEqual([]);
   });
 
   it('rejects empty text with BAD_REQUEST', async () => {

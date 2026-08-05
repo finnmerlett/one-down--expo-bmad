@@ -16,6 +16,9 @@ export interface ParsedTaskDraft {
   deadline: string | null;
   /** Urgency was implied even though no concrete date could be inferred. */
   timeSensitive: boolean;
+  /** v1.5 D6 — verbatim dump fragments this task was built from (the check
+   *  screen's indented quotes). Empty = nothing quotable. */
+  evidence: string[];
 }
 
 /** Which backend produced a parse — 'fake' is the deterministic no-key local mode. */
@@ -24,6 +27,16 @@ export type AiProviderName = 'gemini' | 'fake';
 /** Response DTO of the `ai.parseBrainDump` tRPC mutation. */
 export interface BrainDumpResult {
   tasks: ParsedTaskDraft[];
+  /** v1.5 D6 — dump fragments the parse could not confidently claim; the
+   *  check screen renders them as promotable dashed rows. */
+  unclaimed: string[];
+  provider: AiProviderName;
+}
+
+/** Response DTO of the `ai.promoteDumpLine` tRPC mutation (v1.5 D6): one
+ *  unclaimed line written into a proper task draft. */
+export interface PromoteLineResult {
+  task: ParsedTaskDraft;
   provider: AiProviderName;
 }
 

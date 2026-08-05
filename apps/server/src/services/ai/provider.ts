@@ -16,6 +16,20 @@ export interface TaskPromptContext {
   notes: string | null;
 }
 
+/** Provider-level input for a brain-dump parse (v1.5 D6): `feedback` set =
+ *  re-parse the SAME dump with the user's correction applied. */
+export interface ParseBrainDumpInput {
+  text: string;
+  feedback?: string | undefined;
+}
+
+/** Provider-level result of a parse — the router adds the provider name. */
+export interface ParseBrainDumpOutput {
+  tasks: ParsedTaskDraft[];
+  /** Dump fragments the model could not confidently claim as any task. */
+  unclaimed: string[];
+}
+
 /** Provider-level input for a task breakdown (Story 6.3). */
 export interface BreakdownTaskInput extends TaskPromptContext {
   mode: BreakdownMode;
@@ -55,7 +69,9 @@ export interface MoreStepsOutput {
  * both providers stay drop-in interchangeable.
  */
 export interface AiProvider {
-  parseBrainDump(text: string): Promise<ParsedTaskDraft[]>;
+  parseBrainDump(input: ParseBrainDumpInput): Promise<ParseBrainDumpOutput>;
+  /** Write ONE unclaimed dump line into a proper task draft (v1.5 D6). */
+  promoteDumpLine(line: string): Promise<ParsedTaskDraft>;
   /** Break a task into concrete steps — 3 starters or a full 5–8 step list. */
   breakdownTask(input: BreakdownTaskInput): Promise<string[]>;
   /**

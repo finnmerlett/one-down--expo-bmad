@@ -5,7 +5,8 @@ import { MAX_PARSED_TASKS } from '@one-down/shared';
 import { createFakeProvider } from './fake-provider';
 
 const provider = createFakeProvider();
-const parse = (text: string) => provider.parseBrainDump(text);
+// Most tests below predate the D6 gate — they assert on the claimed tasks.
+const parse = async (text: string) => (await provider.parseBrainDump({ text })).tasks;
 
 /** Mirror of the provider's deadline rule — today/tomorrow at 18:00 local. */
 function sixPmLocal(daysFromNow: number): string {
@@ -309,5 +310,36 @@ describe('fake provider determinism', () => {
     expect(first).toHaveLength(4);
     // details is never inferred by the fake provider
     expect(first.every((draft) => draft.details === null)).toBe(true);
+  });
+});
+
+describe('fake provider D6 gate contract (evidence / unclaimed / re-parse / promote)', () => {
+  it("quotes the source segment as each draft's evidence", async () => {
+    const drafts = await parse('Call mum.\nBuy milk');
+    expect(drafts.map((draft) => draft.evidence)).toEqual([['Call mum'], ['Buy milk']]);
+  });
+
+  it("sends 'maybe' segments to unclaimed instead of inventing tasks", async () => {
+    const result = await provider.parseBrainDump({
+      text: 'Call mum.\nmaybe something about the loft',
+    });
+    expect(result.tasks.map((draft) => draft.title)).toEqual(['Call mum']);
+    expect(result.unclaimed).toEqual(['maybe something about the loft']);
+  });
+
+  it('a re-parse with feedback claims every segment (counts move)', async () => {
+    const result = await provider.parseBrainDump({
+      text: 'Call mum.\nmaybe something about the loft',
+      feedback: 'The loft one is a real task',
+    });
+    expect(result.tasks).toHaveLength(2);
+    expect(result.unclaimed).toEqual([]);
+    expect(result.tasks[1]?.title).toBe('Maybe something about the loft');
+  });
+
+  it('promoteDumpLine writes one line into a draft with itself as evidence', async () => {
+    const draft = await provider.promoteDumpLine('  maybe something about the loft ');
+    expect(draft.title).toBe('Maybe something about the loft');
+    expect(draft.evidence).toEqual(['maybe something about the loft']);
   });
 });

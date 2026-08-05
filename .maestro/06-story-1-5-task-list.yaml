@@ -45,7 +45,8 @@ appId: com.onedown.mobile
 - tapOn: 'Open task: First listed task'
 - waitForAnimationToEnd
 - assertVisible: 'Back to task list'
-- assertVisible: 'Notes'
+- assertVisible: 'Editing card'
+- assertVisible: 'Details'
 
 # Inline edit; the back button flushes the in-flight title, and the list
 # reflects the change (auto-save reuse from 1.4)

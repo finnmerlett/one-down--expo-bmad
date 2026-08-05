@@ -33,27 +33,94 @@ appId: com.onedown.mobile
 - tapOn: 'Back to home'
 - waitForAnimationToEnd
 
-# Complete Alpha, Beta, Gamma through the list detail (deterministic — no
-# dependence on the seed-jittered stack order)
+# Complete Alpha, Beta, Gamma IN ORDER from the deck (v1.5 D5: the list
+# detail is edit-only). Conditional swipes bring each card to the top no
+# matter how the seed-jittered curation ordered the stack.
+- runFlow:
+    when:
+      notVisible: 'Task: Alpha task\..*'
+    commands:
+      - swipe:
+          start: 80%, 45%
+          end: 5%, 45%
+      - waitForAnimationToEnd
+- runFlow:
+    when:
+      notVisible: 'Task: Alpha task\..*'
+    commands:
+      - swipe:
+          start: 80%, 45%
+          end: 5%, 45%
+      - waitForAnimationToEnd
+- runFlow:
+    when:
+      notVisible: 'Task: Alpha task\..*'
+    commands:
+      - swipe:
+          start: 80%, 45%
+          end: 5%, 45%
+      - waitForAnimationToEnd
+- tapOn: 'Task: Alpha task\..*'
+- waitForAnimationToEnd
+- tapOn: 'Mark as complete'
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      notVisible: 'Task: Beta task\..*'
+    commands:
+      - swipe:
+          start: 80%, 45%
+          end: 5%, 45%
+      - waitForAnimationToEnd
+- runFlow:
+    when:
+      notVisible: 'Task: Beta task\..*'
+    commands:
+      - swipe:
+          start: 80%, 45%
+          end: 5%, 45%
+      - waitForAnimationToEnd
+- runFlow:
+    when:
+      notVisible: 'Task: Beta task\..*'
+    commands:
+      - swipe:
+          start: 80%, 45%
+          end: 5%, 45%
+      - waitForAnimationToEnd
+- tapOn: 'Task: Beta task\..*'
+- waitForAnimationToEnd
+- tapOn: 'Mark as complete'
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      notVisible: 'Task: Gamma task\..*'
+    commands:
+      - swipe:
+          start: 80%, 45%
+          end: 5%, 45%
+      - waitForAnimationToEnd
+- runFlow:
+    when:
+      notVisible: 'Task: Gamma task\..*'
+    commands:
+      - swipe:
+          start: 80%, 45%
+          end: 5%, 45%
+      - waitForAnimationToEnd
+- runFlow:
+    when:
+      notVisible: 'Task: Gamma task\..*'
+    commands:
+      - swipe:
+          start: 80%, 45%
+          end: 5%, 45%
+      - waitForAnimationToEnd
+- tapOn: 'Task: Gamma task\..*'
+- waitForAnimationToEnd
+- tapOn: 'Mark as complete'
+- waitForAnimationToEnd
 - tapOn: 'Open task list'
-- waitForAnimationToEnd
-- tapOn: 'Open task: Alpha task'
-- waitForAnimationToEnd
-- tapOn: 'Start task'
-- waitForAnimationToEnd
-- tapOn: 'Mark as complete'
-- waitForAnimationToEnd
-- tapOn: 'Open task: Beta task'
-- waitForAnimationToEnd
-- tapOn: 'Start task'
-- waitForAnimationToEnd
-- tapOn: 'Mark as complete'
-- waitForAnimationToEnd
-- tapOn: 'Open task: Gamma task'
-- waitForAnimationToEnd
-- tapOn: 'Start task'
-- waitForAnimationToEnd
-- tapOn: 'Mark as complete'
 - waitForAnimationToEnd
 
 # Done section on top: latest completion (Gamma) peeks above "To do" after

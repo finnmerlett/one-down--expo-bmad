@@ -71,8 +71,8 @@ appId: com.onedown.mobile
 - extendedWaitUntil:
     visible: 'Task: Edited task title. Worth 5 stars. Card 1 of 1'
     timeout: 3000
-- assertVisible: 'Quick win'
-- assertVisible: 'Home'
+# v1.5 face: size renders as bottom-rail caps; contexts are GLYPHS (no text)
+- assertVisible: 'QUICK WIN'
 
 # Reopen: stored values survived the close. Close with the system back
 # gesture this time — it must close the card, not exit the app (review fix:

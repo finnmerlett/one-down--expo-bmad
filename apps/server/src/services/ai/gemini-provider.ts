@@ -19,6 +19,8 @@ import { z } from 'zod';
 import { truncateChars } from '../../lib/text';
 import type {
   AiProvider,
+  ParseBrainDumpInput,
+  ParseBrainDumpOutput,
   BreakdownTaskInput,
   MoreStepsInput,
   MoreStepsOutput,
@@ -31,44 +33,60 @@ import type {
 // NFR-S3: nothing in this module may log or embed the user's dump text or
 // parsed titles in errors — failures carry generic messages only.
 
-const responseSchema: Schema = {
-  type: Type.ARRAY,
-  items: {
-    type: Type.OBJECT,
-    properties: {
-      title: {
-        type: Type.STRING,
-        description: 'Short imperative task title extracted from the text.',
-      },
-      details: {
-        type: Type.STRING,
-        nullable: true,
-        description: 'Extra detail from the text that belongs to this task, if any.',
-      },
-      size: {
-        type: Type.STRING,
-        format: 'enum',
-        enum: [...TASK_SIZES],
-        nullable: true,
-        description: 'Task size — ONLY when clearly implied, otherwise null.',
-      },
-      contexts: {
-        type: Type.ARRAY,
-        items: { type: Type.STRING, format: 'enum', enum: [...TASK_CONTEXTS] },
-        description: 'Contexts required to do the task — ONLY when clearly implied.',
-      },
-      deadline: {
-        type: Type.STRING,
-        nullable: true,
-        description: 'ISO 8601 date-time deadline — ONLY when a date is clearly implied.',
-      },
-      timeSensitive: {
-        type: Type.BOOLEAN,
-        description: 'True when urgency is implied but no concrete date is given.',
-      },
+const parsedTaskSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    title: {
+      type: Type.STRING,
+      description: 'Short imperative task title extracted from the text.',
     },
-    required: ['title'],
+    details: {
+      type: Type.STRING,
+      nullable: true,
+      description: 'Extra detail from the text that belongs to this task, if any.',
+    },
+    size: {
+      type: Type.STRING,
+      format: 'enum',
+      enum: [...TASK_SIZES],
+      nullable: true,
+      description: 'Task size — ONLY when clearly implied, otherwise null.',
+    },
+    contexts: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING, format: 'enum', enum: [...TASK_CONTEXTS] },
+      description: 'Contexts required to do the task — ONLY when clearly implied.',
+    },
+    deadline: {
+      type: Type.STRING,
+      nullable: true,
+      description: 'ISO 8601 date-time deadline — ONLY when a date is clearly implied.',
+    },
+    timeSensitive: {
+      type: Type.BOOLEAN,
+      description: 'True when urgency is implied but no concrete date is given.',
+    },
+    evidence: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description:
+        'VERBATIM fragments of the dump this task was built from (quotes, not paraphrases).',
+    },
   },
+  required: ['title'],
+};
+
+const responseSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    tasks: { type: Type.ARRAY, items: parsedTaskSchema },
+    unclaimed: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description: 'VERBATIM dump fragments that are too vague or incomplete to become a task yet.',
+    },
+  },
+  required: ['tasks'],
 };
 
 function buildSystemInstruction(): string {
@@ -77,6 +95,9 @@ function buildSystemInstruction(): string {
     'Rules:',
     '- Split the text into DISTINCT tasks; merge duplicate mentions of the same task.',
     '- Keep titles short and action-oriented; put remaining relevant text in details.',
+    '- For each task, copy the VERBATIM dump fragments it came from into `evidence` (the user checks your work against these quotes).',
+    "- A fragment too vague or incomplete to act on goes in top-level `unclaimed` VERBATIM — never invent a task for it. Every meaningful fragment of the dump must appear in exactly one place: some task's evidence or `unclaimed`.",
+    '- If user feedback on a previous parse is provided, re-parse the WHOLE dump applying it: tasks may merge, split, be reworded, or claim previously-unclaimed fragments.',
     '- Infer size, contexts, or deadline ONLY when you are confident the text clearly implies them; otherwise use null (or an empty contexts array). When unsure, leave the field null.',
     '- size: "quick_win" = a few minutes of effort, "big_time" = a substantial block of focused work.',
     '- deadline: resolve relative dates (today, tomorrow, Friday) against the current date-time below; format as ISO 8601 with timezone.',
@@ -124,46 +145,71 @@ function coerceDeadline(value: unknown): string | null {
   return Number.isNaN(timestamp) ? null : new Date(timestamp).toISOString();
 }
 
+function coerceEvidence(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is string => typeof item === 'string')
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0)
+    .slice(0, 6);
+}
+
+function draftFromRecord(record: Record<string, unknown>): ParsedTaskDraft | null {
+  const title = typeof record.title === 'string' ? record.title.trim() : '';
+  if (title.length === 0) return null;
+  return {
+    title,
+    details: coerceDetails(record.details),
+    size: coerceSize(record.size),
+    contexts: coerceContexts(record.contexts),
+    deadline: coerceDeadline(record.deadline),
+    timeSensitive: record.timeSensitive === true,
+    evidence: coerceEvidence(record.evidence),
+  };
+}
+
 /**
- * Map a decoded model response to validated drafts. Pure — unit-tested with
- * canned JSON, no network. Tolerant per item (unknown contexts dropped, bad
- * sizes/dates coerced to null, non-objects and empty titles skipped), strict
- * about the top-level shape, clamped to MAX_PARSED_TASKS.
+ * Map a decoded model response to a validated parse (v1.5 D6 shape:
+ * `{ tasks, unclaimed }`; a bare array is tolerated as tasks-only). Pure —
+ * unit-tested with canned JSON, no network. Tolerant per item (unknown
+ * contexts dropped, bad sizes/dates coerced to null, non-objects and empty
+ * titles skipped), strict about the top-level shape, clamped to
+ * MAX_PARSED_TASKS.
  */
-export function mapModelResponse(raw: unknown): ParsedTaskDraft[] {
-  const parsed = rawArraySchema.safeParse(raw);
+export function mapModelResponse(raw: unknown): ParseBrainDumpOutput {
+  const rawTasks = Array.isArray(raw)
+    ? raw
+    : typeof raw === 'object' && raw !== null && Array.isArray((raw as { tasks?: unknown }).tasks)
+      ? ((raw as { tasks: unknown[] }).tasks satisfies unknown[])
+      : null;
+  if (rawTasks === null) {
+    throw new Error('AI model response was not a JSON parse object');
+  }
+  const parsed = rawArraySchema.safeParse(rawTasks);
   if (!parsed.success) {
-    throw new Error('AI model response was not a JSON array of tasks');
+    throw new Error('AI model response was not a JSON parse object');
   }
 
   const drafts: ParsedTaskDraft[] = [];
   for (const item of parsed.data) {
     if (drafts.length >= MAX_PARSED_TASKS) break;
     if (typeof item !== 'object' || item === null || Array.isArray(item)) continue;
-
-    const record = item as Record<string, unknown>;
-    const title = typeof record.title === 'string' ? record.title.trim() : '';
-    if (title.length === 0) continue;
-
-    drafts.push({
-      title,
-      details: coerceDetails(record.details),
-      size: coerceSize(record.size),
-      contexts: coerceContexts(record.contexts),
-      deadline: coerceDeadline(record.deadline),
-      timeSensitive: record.timeSensitive === true,
-    });
+    const draft = draftFromRecord(item as Record<string, unknown>);
+    if (draft) drafts.push(draft);
   }
-  return drafts;
+
+  const rawUnclaimed =
+    typeof raw === 'object' && raw !== null ? (raw as { unclaimed?: unknown }).unclaimed : [];
+  return { tasks: drafts, unclaimed: coerceEvidence(rawUnclaimed) };
 }
 
 /**
- * Decode the raw model body into drafts. A bare JSON.parse SyntaxError embeds
- * a snippet of the source (user-derived text) in its message, which tRPC and
- * the server's onError pino hook would propagate to logs and the client — so
- * parse failures are replaced with a generic error (NFR-S3).
+ * Decode the raw model body into a parse. A bare JSON.parse SyntaxError
+ * embeds a snippet of the source (user-derived text) in its message, which
+ * tRPC and the server's onError pino hook would propagate to logs and the
+ * client — so parse failures are replaced with a generic error (NFR-S3).
  */
-export function decodeModelResponse(body: string): ParsedTaskDraft[] {
+export function decodeModelResponse(body: string): ParseBrainDumpOutput {
   let raw: unknown;
   try {
     raw = JSON.parse(body) as unknown;
@@ -503,10 +549,13 @@ export function createGeminiProvider(apiKey: string): AiProvider {
   const ai = new GoogleGenAI({ apiKey, httpOptions: { timeout: GEMINI_TIMEOUT_MS } });
 
   return {
-    async parseBrainDump(text: string): Promise<ParsedTaskDraft[]> {
+    async parseBrainDump({ text, feedback }: ParseBrainDumpInput): Promise<ParseBrainDumpOutput> {
+      const contents = feedback
+        ? `Brain dump:\n${text}\n\nUser feedback on the previous parse (re-parse the whole dump applying it):\n${feedback}`
+        : text;
       const response = await ai.models.generateContent({
         model: GEMINI_MODEL,
-        contents: text,
+        contents,
         config: {
           systemInstruction: buildSystemInstruction(),
           responseMimeType: 'application/json',
@@ -521,6 +570,31 @@ export function createGeminiProvider(apiKey: string): AiProvider {
         throw new Error('AI model returned an empty response');
       }
       return decodeModelResponse(body);
+    },
+
+    async promoteDumpLine(line: string): Promise<ParsedTaskDraft> {
+      const response = await ai.models.generateContent({
+        model: GEMINI_MODEL,
+        contents: `Write this single brain-dump fragment into one actionable task:\n${line}`,
+        config: {
+          systemInstruction: buildSystemInstruction(),
+          responseMimeType: 'application/json',
+          responseSchema,
+          thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
+        },
+      });
+
+      const body = response.text;
+      if (!body) {
+        throw new Error('AI model returned an empty response');
+      }
+      const { tasks } = decodeModelResponse(body);
+      const task = tasks[0];
+      if (!task) {
+        throw new Error('AI model returned no task for the promoted line');
+      }
+      // The fragment itself is always quotable evidence.
+      return { ...task, evidence: task.evidence.length > 0 ? task.evidence : [line.trim()] };
     },
 
     async breakdownTask(input: BreakdownTaskInput): Promise<string[]> {

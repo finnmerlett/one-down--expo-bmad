@@ -30,10 +30,31 @@ appId: com.onedown.mobile
 # Focus the textarea by its placeholder — 'Brain dump' is ambiguous on this
 # screen (heading + textarea share the label; Maestro would tap the heading)
 - tapOn: "What's on your mind?"
-- inputText: 'Call the dentist tomorrow. Clean out the garage'
+- inputText: 'Call the dentist tomorrow. Clean out the garage. maybe fix the shed'
 - tapOn: 'Parse my tasks'
 
-# Parse + local creation + pop home. Card labels are matched by PREFIX regex
+# v1.5 D6 GATE (07f): nothing saves yet — the check stage lists 2 task boxes
+# with their evidence quotes and one unclaimed 'maybe' line.
+- extendedWaitUntil:
+    visible: 'Check these 2'
+    timeout: 15000
+- assertVisible: 'Call the dentist tomorrow'
+- assertVisible: '1 entry not added'
+- takeScreenshot: .maestro/screenshots/08-story-6-1-check-gate
+
+# Promote the unclaimed line (+) → it becomes a third box; drop it (×) —
+# counts move both ways (07f).
+- tapOn: 'Add as task: maybe fix the shed'
+- extendedWaitUntil:
+    visible: 'Check these 3'
+    timeout: 15000
+- tapOn: 'Drop task: Maybe fix the shed'
+- assertVisible: 'Check these 2'
+
+# Approve the gate — ONLY now do the tasks land locally.
+- tapOn: 'Add 2 tasks'
+
+# Local creation + pop home. Card labels are matched by PREFIX regex
 # (3.3 adds 'Worth N stars' and seed-jittered ordering — the top card is
 # whichever parsed task curation surfaced), so we only assert that a parsed
 # card is on top of a 2-card stack.

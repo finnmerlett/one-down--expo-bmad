@@ -28,12 +28,20 @@ export function BrainDumpInput({
   state,
   onSubmit,
   onQuickAddInstead,
+  value,
+  onChangeText,
 }: {
   state: BrainDumpState;
   onSubmit: (text: string) => void;
   onQuickAddInstead: () => void;
+  /** Controlled text (v1.5 D6: the route keeps the dump across the gate so
+   *  `Back to the dump` returns to it). Omitted = internal state (stories). */
+  value?: string;
+  onChangeText?: (text: string) => void;
 }) {
-  const [text, setText] = useState('');
+  const [innerText, setInnerText] = useState('');
+  const text = value ?? innerText;
+  const setText = onChangeText ?? setInnerText;
   const pending = state === 'submitted' || state === 'parsing' || state === 'parsing_long';
 
   return (
@@ -43,7 +51,7 @@ export function BrainDumpInput({
       <VStack className="flex-1 gap-4 px-6 pb-6 pt-2">
         <Text className="font-heading text-3xl text-typography-900">Brain dump</Text>
         <Text className="font-body text-base text-typography-500">
-          Get it all out — we&apos;ll sort it into tasks.
+          Get it all out, any format — we&apos;ll sort it into tasks.
         </Text>
         {/* Stays visible while parsing, just disabled (UX-DR20). */}
         <Textarea size="lg" isDisabled={pending} className="min-h-40 flex-1">
@@ -56,6 +64,14 @@ export function BrainDumpInput({
             className="flex-1"
           />
         </Textarea>
+        {/* Gold-star hint (07): more context in = better tasks out. */}
+        <HStack className="items-start gap-2">
+          <Text className="text-xs text-tertiary-500">★</Text>
+          <Text className="flex-1 font-body text-[13px] leading-[19px] text-typography-500">
+            Add all the details, timings or difficulties you can think of. All context is good
+            context.
+          </Text>
+        </HStack>
         {state === 'error' ? (
           <Text accessibilityLiveRegion="polite" className="text-sm text-error-600">
             Brain dump needs an internet connection. You can still add tasks one at a time.

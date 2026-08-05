@@ -19,6 +19,12 @@ appId: com.onedown.mobile
 - tapOn: "What's on your mind?"
 - inputText: 'Call the dentist soon. Ponder the universe quietly for a while'
 - tapOn: 'Parse my tasks'
+
+# v1.5 D6 gate: approve the parse on the check screen first.
+- extendedWaitUntil:
+    visible: 'Check these 2'
+    timeout: 15000
+- tapOn: 'Add 2 tasks'
 - extendedWaitUntil:
     visible: 'Task: (Call the dentist soon|Ponder the universe quietly for a while)\..* Card . of 2.*'
     timeout: 15000

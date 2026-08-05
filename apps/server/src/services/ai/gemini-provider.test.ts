@@ -20,9 +20,13 @@ import {
 
 // Pure mapping layer only — no network. The live generateContent path is
 // exercised manually with a real key (out of scope for CI).
+// D6: mapModelResponse returns { tasks, unclaimed } — these older tests
+// assert on the drafts array.
+const mapDrafts = (raw: unknown) => mapModelResponse(raw).tasks;
+
 describe('mapModelResponse', () => {
   it('maps a fully populated draft, normalizing the deadline to ISO', () => {
-    const drafts = mapModelResponse([
+    const drafts = mapDrafts([
       {
         title: '  Call the dentist  ',
         details: ' mention the crown ',
@@ -41,12 +45,13 @@ describe('mapModelResponse', () => {
         contexts: ['phone'],
         deadline: new Date('2026-07-17T18:00:00+02:00').toISOString(),
         timeSensitive: true,
+        evidence: [],
       },
     ]);
   });
 
   it('fills safe defaults when optional fields are missing', () => {
-    const drafts = mapModelResponse([{ title: 'Buy milk' }]);
+    const drafts = mapDrafts([{ title: 'Buy milk' }]);
 
     expect(drafts).toEqual([
       {
@@ -56,12 +61,13 @@ describe('mapModelResponse', () => {
         contexts: [],
         deadline: null,
         timeSensitive: false,
+        evidence: [],
       },
     ]);
   });
 
   it('drops unknown context values and deduplicates known ones', () => {
-    const drafts = mapModelResponse([
+    const drafts = mapDrafts([
       { title: 'Fix the shelf', contexts: ['home', 'garage', 'home', 42, 'laptop'] },
     ]);
 
@@ -69,7 +75,7 @@ describe('mapModelResponse', () => {
   });
 
   it('coerces invalid sizes, dates and details to null', () => {
-    const drafts = mapModelResponse([
+    const drafts = mapDrafts([
       { title: 'Plan the trip', size: 'enormous', deadline: 'next Tuesday-ish', details: '   ' },
     ]);
 
@@ -79,7 +85,7 @@ describe('mapModelResponse', () => {
   });
 
   it('treats only literal true as timeSensitive', () => {
-    const drafts = mapModelResponse([
+    const drafts = mapDrafts([
       { title: 'A', timeSensitive: 'yes' },
       { title: 'B', timeSensitive: 1 },
       { title: 'C', timeSensitive: true },
@@ -89,7 +95,7 @@ describe('mapModelResponse', () => {
   });
 
   it('skips entries without a usable title and non-object entries', () => {
-    const drafts = mapModelResponse([
+    const drafts = mapDrafts([
       { title: '   ' },
       { title: 42 },
       {},
@@ -107,16 +113,16 @@ describe('mapModelResponse', () => {
       title: `Task ${i + 1}`,
     }));
 
-    const drafts = mapModelResponse(raw);
+    const drafts = mapDrafts(raw);
 
     expect(drafts).toHaveLength(MAX_PARSED_TASKS);
     expect(drafts.at(-1)?.title).toBe(`Task ${MAX_PARSED_TASKS}`);
   });
 
   it('throws when the top-level shape is not an array (broken model contract)', () => {
-    expect(() => mapModelResponse({ tasks: [] })).toThrow(/not a JSON array/);
-    expect(() => mapModelResponse('[]')).toThrow(/not a JSON array/);
-    expect(() => mapModelResponse(undefined)).toThrow(/not a JSON array/);
+    expect(mapModelResponse({ tasks: [] })).toEqual({ tasks: [], unclaimed: [] });
+    expect(() => mapModelResponse('[]')).toThrow(/not a JSON parse object/);
+    expect(() => mapModelResponse(undefined)).toThrow(/not a JSON parse object/);
   });
 });
 
@@ -337,7 +343,7 @@ describe('decodeMicroResponse', () => {
 
 describe('decodeModelResponse', () => {
   it('decodes a valid JSON array body into drafts', () => {
-    const drafts = decodeModelResponse('[{"title":"Buy milk"}]');
+    const drafts = decodeModelResponse('[{"title":"Buy milk"}]').tasks;
 
     expect(drafts.map((d) => d.title)).toEqual(['Buy milk']);
   });

@@ -10,6 +10,7 @@ import {
   type BreakdownResult,
   type MicroTaskResult,
   type MoreStepsResult,
+  type PromoteLineResult,
   type RefineBreakdownResult,
 } from '@one-down/shared';
 import { z } from 'zod';
@@ -47,20 +48,58 @@ export const aiRouter = router({
   parseBrainDump: publicProcedure
     // .trim() runs before the checks, so whitespace-only input fails min(1)
     // and length is measured on the trimmed text (>2000 chars → BAD_REQUEST).
-    .input(z.object({ text: z.string().trim().min(1).max(MAX_BRAIN_DUMP_CHARS) }))
+    // v1.5 D6: optional feedback = re-parse the SAME dump with the user's
+    // correction applied (tasks may merge/split/claim unclaimed lines).
+    .input(
+      z.object({
+        text: z.string().trim().min(1).max(MAX_BRAIN_DUMP_CHARS),
+        feedback: z.string().trim().min(1).max(MAX_REFINE_FEEDBACK_CHARS).optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }): Promise<BrainDumpResult> => {
       const { provider, name } = createAiProvider(ctx.env);
 
       const startedAt = Date.now();
-      const tasks = await provider.parseBrainDump(input.text);
+      const { tasks, unclaimed } = await provider.parseBrainDump({
+        text: input.text,
+        feedback: input.feedback,
+      });
 
       // NFR-S3: counts + duration only — never the dump text or parsed titles.
       ctx.req.log.info(
-        { provider: name, taskCount: tasks.length, durationMs: Date.now() - startedAt },
+        {
+          provider: name,
+          taskCount: tasks.length,
+          unclaimedCount: unclaimed.length,
+          reparse: input.feedback !== undefined,
+          durationMs: Date.now() - startedAt,
+        },
         'brain dump parsed',
       );
 
-      return { tasks, provider: name };
+      return { tasks, unclaimed, provider: name };
+    }),
+
+  /**
+   * Promote ONE unclaimed dump line into a proper task draft (v1.5 D6) —
+   * the `+` button on the check screen's dashed rows. Nothing is persisted
+   * server-side.
+   */
+  promoteDumpLine: publicProcedure
+    .input(z.object({ line: z.string().trim().min(1).max(MAX_BRAIN_DUMP_CHARS) }))
+    .mutation(async ({ ctx, input }): Promise<PromoteLineResult> => {
+      const { provider, name } = createAiProvider(ctx.env);
+
+      const startedAt = Date.now();
+      const task = await provider.promoteDumpLine(input.line);
+
+      // NFR-S3: duration only — never the line or the resulting title.
+      ctx.req.log.info(
+        { provider: name, durationMs: Date.now() - startedAt },
+        'dump line promoted',
+      );
+
+      return { task, provider: name };
     }),
 
   /**

@@ -8,6 +8,8 @@ import {
 import { truncateChars } from '../../lib/text';
 import type {
   AiProvider,
+  ParseBrainDumpInput,
+  ParseBrainDumpOutput,
   MoreStepsInput,
   MoreStepsOutput,
   BreakdownTaskInput,
@@ -88,7 +90,16 @@ function draftFromSegment(segment: string): ParsedTaskDraft {
     contexts: inferContexts(lower),
     deadline,
     timeSensitive: deadline !== null || containsAny(lower, URGENCY_KEYWORDS),
+    // v1.5 D6: the segment itself is the quotable evidence.
+    evidence: [segment],
   };
+}
+
+// v1.5 D6 unclaimed contract (Maestro asserts this behavior): a segment
+// containing 'maybe' is too vague to claim — it lands in `unclaimed` until
+// promoted (or a re-parse with feedback claims everything).
+function isUnclaimed(segment: string): boolean {
+  return segment.toLowerCase().includes('maybe');
 }
 
 // Story 6.3 breakdown contract (Maestro asserts these exact strings):
@@ -110,14 +121,23 @@ const FAKE_REMAINING_STEPS = [
 
 export function createFakeProvider(): AiProvider {
   return {
-    parseBrainDump(text: string): Promise<ParsedTaskDraft[]> {
+    // v1.5 D6 parse contract: segments split on newline/./; — 'maybe'
+    // segments land in `unclaimed`; a re-parse WITH feedback claims every
+    // segment (the deterministic stand-in for "merge/split/gain evidence").
+    parseBrainDump({ text, feedback }: ParseBrainDumpInput): Promise<ParseBrainDumpOutput> {
       const segments = text
         .split(/[\n.;]/)
         .map((segment) => segment.trim())
         .filter((segment) => segment.length > 0)
         .slice(0, MAX_PARSED_TASKS);
 
-      return Promise.resolve(segments.map(draftFromSegment));
+      const claimed = feedback ? segments : segments.filter((segment) => !isUnclaimed(segment));
+      const unclaimed = feedback ? [] : segments.filter(isUnclaimed);
+      return Promise.resolve({ tasks: claimed.map(draftFromSegment), unclaimed });
+    },
+
+    promoteDumpLine(line: string): Promise<ParsedTaskDraft> {
+      return Promise.resolve(draftFromSegment(line.trim()));
     },
 
     breakdownTask({ title, mode }: BreakdownTaskInput): Promise<string[]> {

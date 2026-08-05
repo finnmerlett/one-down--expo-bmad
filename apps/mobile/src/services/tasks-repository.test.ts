@@ -78,6 +78,7 @@ describe('tasks-repository (integration, real migration SQL)', () => {
       details: null,
       size: null,
       contexts: [],
+      evidence: [],
       deadline: null,
       timeSensitive: false,
       ...overrides,
@@ -211,6 +212,7 @@ describe('tasks-repository (integration, real migration SQL)', () => {
           contexts: ['phone'],
           deadline: '2026-07-20T18:00:00.000Z',
           timeSensitive: false,
+          evidence: [],
         },
       ]);
       if (!task) throw new Error('seed failed');
@@ -241,6 +243,7 @@ describe('tasks-repository (integration, real migration SQL)', () => {
           contexts: [],
           deadline: null,
           timeSensitive: true,
+          evidence: [],
         },
       ]);
       if (!task) throw new Error('seed failed');
