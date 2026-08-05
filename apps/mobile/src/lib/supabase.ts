@@ -23,6 +23,13 @@ export const supabase = createClient(
   {
     auth: {
       storage: secureStoreAdapter,
+      // Pinned: supabase-js derives its default key from the server URL's
+      // hostname, so an embedded APK bundle and an OTA bundle baked with
+      // different EXPO_PUBLIC_SUPABASE_URLs store the session under
+      // DIFFERENT keys — a relaunch that swaps bundles signs the user out
+      // (found via e2e flow 52, 2026-08-05). One stable key survives any
+      // URL change.
+      storageKey: 'onedown-auth',
       autoRefreshToken: true,
       persistSession: true,
       // No web OAuth redirects in the native app.
