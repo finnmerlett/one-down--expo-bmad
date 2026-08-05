@@ -9,6 +9,7 @@ import {
   type BrainDumpResult,
   type BreakdownResult,
   type MicroTaskResult,
+  type MoreStepsResult,
   type RefineBreakdownResult,
 } from '@one-down/shared';
 import { z } from 'zod';
@@ -171,6 +172,59 @@ export const aiRouter = router({
       );
 
       return { steps, notesDistillation, provider: name };
+    }),
+
+  /**
+   * Grow an existing breakdown (v1.5 D4, "Get more steps"): three appended
+   * next steps, or — when the uncompleted steps already finish the task — a
+   * subdivision that replaces the uncompleted portion. Nothing is persisted
+   * server-side; the client writes accepted steps to local subtasks.
+   *
+   * publicProcedure by the same recorded 6.1 decision — gating lands in 8.2b.
+   */
+  moreSteps: publicProcedure
+    .input(
+      z.object({
+        title: taskTitleField,
+        details: breakdownContextField,
+        notes: breakdownContextField,
+        subtasks: z
+          .array(
+            z.object({
+              // Subtask titles are prompt context — truncate, never reject.
+              title: z
+                .string()
+                .transform((value) => truncateChars(value, MAX_BREAKDOWN_STEP_CHARS)),
+              completed: z.boolean(),
+            }),
+          )
+          .max(MAX_REFINE_SUBTASKS),
+      }),
+    )
+    .mutation(async ({ ctx, input }): Promise<MoreStepsResult> => {
+      const { provider, name } = createAiProvider(ctx.env);
+
+      const startedAt = Date.now();
+      const { steps, mode } = await provider.moreSteps({
+        title: input.title,
+        details: input.details,
+        notes: input.notes,
+        subtasks: input.subtasks,
+      });
+
+      // NFR-S3: counts + mode only — never task text or step content.
+      ctx.req.log.info(
+        {
+          provider: name,
+          mode,
+          stepCount: steps.length,
+          subtaskCount: input.subtasks.length,
+          durationMs: Date.now() - startedAt,
+        },
+        'breakdown grown',
+      );
+
+      return { steps, mode, provider: name };
     }),
 
   /**

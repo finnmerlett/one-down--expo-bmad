@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 
-import type { BreakdownMode, SubtaskData, TaskData } from '@one-down/shared';
+import type { SubtaskData, TaskData } from '@one-down/shared';
 import { tasks } from '@one-down/shared/schema-local';
 
 import { track } from '@/lib/analytics/track';
@@ -9,7 +9,9 @@ import { awardSubtaskStars } from '@/services/star-awards';
 import {
   createSubtasks,
   deleteSubtask,
-  replaceUncompletedSubtasks,
+  renameSubtask,
+  reorderSubtasks,
+  restoreSubtask,
   setSubtaskCompleted,
 } from '@/services/subtasks-repository';
 
@@ -67,25 +69,49 @@ export function removeSubtask(subtask: SubtaskData): void {
     .catch((error: unknown) => console.warn('Subtask delete failed', error));
 }
 
-/** Accept a breakdown proposal (AC3): save the steps, then report the save. */
-export function acceptBreakdown(taskId: string, steps: string[], mode: BreakdownMode): void {
-  void createSubtasks(db, taskId, steps, 'ai')
-    .then((created) => {
-      track('breakdown_accepted', { step_count: created.length, mode, via: 'initial' });
+/** Restore a deleted step from the undo toast (D4): the row comes back
+ *  verbatim; a completed one re-banks its stars via the delta accounting. */
+export function restoreStep(subtask: SubtaskData): void {
+  void restoreSubtask(db, subtask)
+    .then(async () => {
+      if (subtask.completed) {
+        const task = await parentTask(subtask.taskId);
+        if (task) {
+          await awardSubtaskStars(db, task, subtask, 'subtask_completed', 1);
+        }
+      }
+      track('subtask_delete_undone', { was_completed: subtask.completed });
     })
     // oxlint-disable-next-line no-console
-    .catch((error: unknown) => console.warn('Breakdown accept failed', error));
+    .catch((error: unknown) => console.warn('Subtask restore failed', error));
 }
 
-/**
- * Accept a REFINED proposal (Story 6.4, AC4): swap only the uncompleted
- * subtasks — completed ones are never modified (UX-DR7).
- */
-export function acceptRefinedBreakdown(taskId: string, steps: string[], mode: BreakdownMode): void {
-  void replaceUncompletedSubtasks(db, taskId, steps, 'ai')
-    .then(({ insertedCount }) => {
-      track('breakdown_accepted', { step_count: insertedCount, mode, via: 'refine' });
+/** Rewrite a step in place (D4 edit mode). Blank/identical text is a no-op. */
+export function renameStep(subtask: SubtaskData, title: string): void {
+  void renameSubtask(db, subtask.id, title)
+    .then((changed) => {
+      if (changed) track('subtask_renamed', {});
     })
     // oxlint-disable-next-line no-console
-    .catch((error: unknown) => console.warn('Refined breakdown accept failed', error));
+    .catch((error: unknown) => console.warn('Subtask rename failed', error));
+}
+
+/** Add a hand-typed step at the end of the list (D4 edit mode). */
+export function addStep(taskId: string, title: string): void {
+  void createSubtasks(db, taskId, [title], 'manual')
+    .then((created) => {
+      if (created.length > 0) track('subtask_added', { source: 'manual' });
+    })
+    // oxlint-disable-next-line no-console
+    .catch((error: unknown) => console.warn('Subtask add failed', error));
+}
+
+/** Persist a drag-to-reorder (D4 edit mode). */
+export function reorderSteps(taskId: string, orderedIds: string[], from: number, to: number): void {
+  void reorderSubtasks(db, taskId, orderedIds)
+    .then(() => {
+      track('subtask_reordered', { from, to });
+    })
+    // oxlint-disable-next-line no-console
+    .catch((error: unknown) => console.warn('Subtask reorder failed', error));
 }

@@ -10,8 +10,10 @@ import {
   type TaskRunningViewHandle,
 } from './task-running-view';
 import * as taskRunningStories from './task-running-view.stories';
+import { makeStepActions } from './task-running-view.stories';
 
-const { WithDetailsAndNotes, Bare } = composeStories(taskRunningStories);
+const { WithDetailsAndNotes, Bare, WithSubtasks, ChangeWorking } =
+  composeStories(taskRunningStories);
 
 // Task shape backing the WithDetailsAndNotes story — rerendering with a
 // changed `notes` simulates a write landing via the live query.
@@ -31,12 +33,11 @@ describe('TaskRunningView (portable stories)', () => {
     expect(screen.getByText('Sort out the garage')).toBeTruthy();
     expect(screen.getByText('At least clear a path to the freezer')).toBeTruthy();
     expect(screen.getByLabelText('Task notes').props.value).toBe('Shelves are up, boxes next');
-    // Done is disabled without onDone (Story 2.3); the rest stay inert until
-    // their stories land (Epic 6 / 2.4).
+    // Done is disabled without onDone (Story 2.3); Cut loose without
+    // onCutLoose (2.4). With zero steps only Get more steps shows (D4).
     expect(screen.getByLabelText('Mark as complete').props.accessibilityState?.disabled).toBe(true);
-    expect(screen.getByLabelText('Help me with this').props.accessibilityState?.disabled).toBe(
-      true,
-    );
+    expect(screen.getByLabelText('Get more steps')).toBeTruthy();
+    expect(screen.queryByLabelText('Change these')).toBeNull();
     expect(screen.getByLabelText('Cut it loose').props.accessibilityState?.disabled).toBe(true);
   });
 
@@ -314,12 +315,12 @@ describe('premium sparkle gating (Story 8.2a)', () => {
     useEntitlementsStore.setState({ isPremium: false });
   });
 
-  it('free tier: the discovery sparkle sits beside Help me with this', async () => {
+  it('free tier: the discovery sparkle sits beside Get more steps', async () => {
     await render(<WithDetailsAndNotes />);
 
     expect(screen.getByLabelText('Premium feature: AI task breakdown')).toBeTruthy();
     // Discovery only (AC3) — the gated button itself is untouched by gating.
-    expect(screen.getByLabelText('Help me with this')).toBeTruthy();
+    expect(screen.getByLabelText('Get more steps')).toBeTruthy();
   });
 
   it('premium: no sparkle rendered on the gated surface (AC4)', async () => {
@@ -327,6 +328,79 @@ describe('premium sparkle gating (Story 8.2a)', () => {
     await render(<WithDetailsAndNotes />);
 
     expect(screen.queryByLabelText('Premium feature: AI task breakdown')).toBeNull();
-    expect(screen.getByLabelText('Help me with this')).toBeTruthy();
+    expect(screen.getByLabelText('Get more steps')).toBeTruthy();
+  });
+});
+
+describe('step actions (D4, 05b–05e)', () => {
+  it('Get more steps flushes the notes draft first, then asks the controller', async () => {
+    const onPatch = jest.fn();
+    const getMoreSteps = jest.fn();
+    await render(
+      <WithDetailsAndNotes onPatch={onPatch} stepActions={makeStepActions({ getMoreSteps })} />,
+    );
+
+    await fireEvent.changeText(screen.getByLabelText('Task notes'), 'Current thinking');
+    await fireEvent.press(screen.getByLabelText('Get more steps'));
+
+    expect(getMoreSteps).toHaveBeenCalledTimes(1);
+    expect(onPatch).toHaveBeenCalledWith({ notes: 'Current thinking' });
+    expect(onPatch.mock.invocationCallOrder[0] ?? Infinity).toBeLessThan(
+      getMoreSteps.mock.invocationCallOrder[0] ?? 0,
+    );
+  });
+
+  it('Change these opens the box, dims Get more steps, and submits trimmed text', async () => {
+    const changeThese = jest.fn();
+    await render(<WithSubtasks stepActions={makeStepActions({ changeThese })} />);
+
+    // Closed: plain text button; the box is not on screen yet.
+    expect(screen.queryByLabelText('What should be different')).toBeNull();
+    await fireEvent.press(screen.getByLabelText('Change these'));
+
+    const input = screen.getByLabelText('What should be different');
+    expect(screen.getByLabelText('Get more steps').props.accessibilityState?.disabled).toBe(true);
+
+    await fireEvent.changeText(input, '  Make them physical actions  ');
+    // The Change button is now the filled submit (check glyph).
+    await fireEvent.press(screen.getByLabelText('Change these'));
+    expect(changeThese).toHaveBeenCalledWith('Make them physical actions');
+  });
+
+  it('pressing the open Change button with no text just closes the box', async () => {
+    const changeThese = jest.fn();
+    await render(<WithSubtasks stepActions={makeStepActions({ changeThese })} />);
+
+    await fireEvent.press(screen.getByLabelText('Change these'));
+    expect(screen.getByLabelText('What should be different')).toBeTruthy();
+
+    await fireEvent.press(screen.getByLabelText('Change these'));
+    expect(changeThese).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText('What should be different')).toBeNull();
+  });
+
+  it('working state fades the rows and swaps the pressed button for Working', async () => {
+    await render(<ChangeWorking />);
+
+    expect(screen.getByText('Working')).toBeTruthy();
+    // Rows fade (05d): the list container drops to 45%.
+    expect(screen.getByText('Set a 10-minute timer and keep going')).toBeTruthy();
+  });
+
+  it('error state offers Try again wired to retry', async () => {
+    const retry = jest.fn();
+    await render(
+      <WithDetailsAndNotes
+        stepActions={makeStepActions({
+          state: 'error',
+          kind: 'more',
+          errorReason: 'network',
+          retry,
+        })}
+      />,
+    );
+
+    await fireEvent.press(screen.getByLabelText('Try again'));
+    expect(retry).toHaveBeenCalledTimes(1);
   });
 });

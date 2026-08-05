@@ -23,7 +23,7 @@ appId: com.onedown.mobile
 # Prefix regex (flow 09 pattern): 3.3 extended the label with "Worth n stars".
 - tapOn: 'Task: Telemetry smoke task\..*'
 - waitForAnimationToEnd
-- assertVisible: 'Help me with this'
+- assertVisible: 'Get more steps'
 - back
 - waitForAnimationToEnd
 

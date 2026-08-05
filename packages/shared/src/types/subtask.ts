@@ -1,8 +1,9 @@
 /**
  * Where a subtask came from (Story 6.3/6.4): 'ai' = accepted breakdown step,
- * 'micro' = accepted micro-task nudge suggestion.
+ * 'micro' = accepted micro-task nudge suggestion, 'manual' = typed by hand
+ * in steps edit mode (v1.5 D4).
  */
-export const SUBTASK_SOURCES = ['ai', 'micro'] as const;
+export const SUBTASK_SOURCES = ['ai', 'micro', 'manual'] as const;
 export type SubtaskSource = (typeof SUBTASK_SOURCES)[number];
 
 /**

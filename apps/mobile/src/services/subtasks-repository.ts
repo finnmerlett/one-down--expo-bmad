@@ -91,6 +91,46 @@ export async function deleteSubtask(db: TasksDb, id: string): Promise<SubtaskDat
   return deleted ?? null;
 }
 
+/**
+ * Rewrite a step's title in place (D4 edit mode). Returns whether anything
+ * changed — blank or identical text is a no-op (the caller reverts the row).
+ */
+export async function renameSubtask(db: TasksDb, id: string, title: string): Promise<boolean> {
+  const trimmed = title.trim();
+  if (!trimmed) return false;
+  const [row] = await db.select().from(subtasks).where(eq(subtasks.id, id));
+  if (!row || row.title === trimmed) return false;
+  await db
+    .update(subtasks)
+    .set({ title: trimmed, updatedAt: new Date() })
+    .where(eq(subtasks.id, id));
+  return true;
+}
+
+/**
+ * Persist a drag-to-reorder (D4 edit mode): the given ids take orderIndex
+ * 0..n−1 in array order. Ids not in the list (raced insert) keep their index;
+ * unchanged rows are not rewritten.
+ */
+export async function reorderSubtasks(
+  db: TasksDb,
+  taskId: string,
+  orderedIds: string[],
+): Promise<void> {
+  const rows = await listSubtasks(db, taskId);
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  for (const [index, id] of orderedIds.entries()) {
+    const row = byId.get(id);
+    if (!row || row.orderIndex === index) continue;
+    await db.update(subtasks).set({ orderIndex: index }).where(eq(subtasks.id, id));
+  }
+}
+
+/** Re-insert a deleted row verbatim (undo toast) — same id, order, state. */
+export async function restoreSubtask(db: TasksDb, row: SubtaskData): Promise<void> {
+  await db.insert(subtasks).values(row).onConflictDoNothing();
+}
+
 /** Ordered read used by the live-query hook (and tests). */
 export async function listSubtasks(db: TasksDb, taskId: string): Promise<SubtaskData[]> {
   return db

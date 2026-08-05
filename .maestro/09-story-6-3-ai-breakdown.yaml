@@ -1,13 +1,14 @@
-# Story 6.3 — AI task breakdown: "Help me with this" on the running screen
-# requests first_steps via ai.breakdownTask (deterministic fake provider),
-# the proposal can be expanded to the full list and accepted as subtasks
-# (AC1–AC3), subtasks tick/untick/delete and survive leave+re-enter (AC4),
-# and the card-back entry auto-fires the request on arrival (AC6).
-# Fake-provider breakdown contract (fake-provider.ts — lockstep with this flow):
+# Story 6.3 → v1.5 D4 — AI steps land DIRECTLY: 'Get more steps' on the
+# working screen asks ai.breakdownTask (zero steps → the three starters) or
+# ai.moreSteps (existing steps → three appended continuations), the result
+# auto-accepts into the live subtask list with a report line + Undo — no
+# proposal ceremony. Row deletion lives in edit mode (Edit chip). The
+# card-back "Help me with this" entry auto-fires the same request (AC6).
+# Fake-provider contract (fake-provider.ts — lockstep with this flow):
 #   first_steps: Get everything you need for "<title>" in one place /
 #     Do just the first two minutes / Set a 10-minute timer and keep going
-#   full: the three above + Push through to the halfway point /
-#     Finish the last stretch / Put things away and tick it off
+#   moreSteps (≥2 uncompleted → appended): Carry on with the next small piece /
+#     Check what is still missing / Line up the step after that
 # Prereq (batched wave-end run): local server running WITHOUT GEMINI_API_KEY
 # (fake mode) and the APK built with EXPO_PUBLIC_API_URL=http://10.0.2.2:3000
 # (Story 5.1).
@@ -23,37 +24,30 @@ appId: com.onedown.mobile
     env:
       TASK_TITLE: 'Sort the paperwork mountain'
 
-# Open the card back and start the task (2.1 surface)
+# Open the working screen (2026-07-27 UX: card tap lands here directly)
 - tapOn: 'Task: Sort the paperwork mountain\..*'
 - waitForAnimationToEnd
 
-# Request a breakdown (AC1). The 'Breaking this down...' loading state is NOT
-# asserted: against the instant local fake provider it can render for only a
-# frame or two, gone before Maestro's first hierarchy poll — assert only the
-# settled proposal (same approach as 08-story-6-1-brain-dump.yaml).
-- tapOn: 'Help me with this'
-
-# Proposal arrives: the first_steps contract steps are listed (AC2)
-- extendedWaitUntil:
-    visible: 'Do just the first two minutes'
-    timeout: 15000
-- assertVisible: 'Add these steps'
-- assertVisible: 'Not helpful'
-
-# 'Show all steps' re-requests with mode=full and replaces the proposal (AC2)
-- tapOn: 'Show all steps'
-- extendedWaitUntil:
-    visible: 'Put things away and tick it off'
-    timeout: 15000
-
-# Accept: proposal becomes the live subtask list (AC3)
-- tapOn: 'Add these steps'
+# First ask (zero steps): the three starters land DIRECTLY as subtasks (D4).
+# The 'Working' spinner state is NOT asserted: against the instant local fake
+# provider it renders for ~500ms and Maestro's hierarchy poll can miss it.
+- tapOn: 'Get more steps'
 - extendedWaitUntil:
     visible: 'Subtask: Do just the first two minutes'
-    timeout: 5000
-- assertVisible: 'Subtask: Put things away and tick it off'
-- assertNotVisible: 'Add these steps'
-- takeScreenshot: .maestro/screenshots/09-story-6-3-subtask-list
+    timeout: 15000
+- assertVisible: 'Subtask: Set a 10-minute timer and keep going'
+
+# The label line reports the change with its Undo (05e)
+- assertVisible: '3 ADDED'
+- assertVisible: 'Undo step changes'
+- takeScreenshot: .maestro/screenshots/09-story-6-3-direct-steps
+
+# Second ask (steps exist): ai.moreSteps appends three continuations
+- tapOn: 'Get more steps'
+- extendedWaitUntil:
+    visible: 'Subtask: Carry on with the next small piece'
+    timeout: 15000
+- assertVisible: 'Subtask: Line up the step after that'
 
 # Tick a subtask — checked state is exposed via accessibility (AC4)
 - tapOn: 'Subtask: Do just the first two minutes'
@@ -70,12 +64,18 @@ appId: com.onedown.mobile
     text: 'Subtask: Do just the first two minutes'
     checked: true
 
-# Delete a subtask — the row disappears (AC4)
+# Delete a subtask — bins live in edit mode now (D4 05a): Edit chip in,
+# bin tap removes the row (undo toast appears), Done chip out.
+- tapOn: 'Edit steps'
 - tapOn: 'Delete subtask: Set a 10-minute timer and keep going'
 - assertNotVisible: 'Subtask: Set a 10-minute timer and keep going'
+- assertVisible: 'Step removed'
+- tapOn: 'Done editing'
+- waitForAnimationToEnd
 
-# Card-back entry: 'Help me with this' starts the task and lands on the
-# running screen with the breakdown request already in flight (AC6).
+# Card-back entry (AC6): the detail view's 'Help me with this' pushes the
+# running screen with ?breakdown=1, which auto-fires Get more steps — the
+# first steps land directly (D4). Reached via the working screen's pencil.
 # Fresh clearState launch: the garden task is the ONLY card, so the tap is
 # deterministic no matter how curation (3.3) orders a multi-card stack.
 - runFlow: common/launch-app.yaml
@@ -85,7 +85,8 @@ appId: com.onedown.mobile
       TASK_TITLE: 'Plan the garden overhaul'
 - tapOn: 'Task: Plan the garden overhaul\..*'
 - waitForAnimationToEnd
-# (Loading text not asserted — see the note on the first leg.)
+- tapOn: 'Edit task: Plan the garden overhaul'
+- waitForAnimationToEnd
 # The card back scrolls; the AI entry sits below the Start/Cut loose row and
 # can start below the fold — scroll it into view before tapping.
 - scrollUntilVisible:
@@ -94,7 +95,7 @@ appId: com.onedown.mobile
     direction: DOWN
 - tapOn: 'Help me with this'
 - extendedWaitUntil:
-    visible: 'Do just the first two minutes'
+    visible: 'Subtask: Do just the first two minutes'
     timeout: 15000
 
 - assertNotVisible: 'Unhandled'

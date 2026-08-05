@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { cssInterop } from 'nativewind';
 
-import { showRewardToast } from '@/components/feedback/reward-toast';
+import { showRewardToast, showUndoToast } from '@/components/feedback/reward-toast';
 import {
   TaskRunningView,
   type TaskRunningViewHandle,
@@ -14,14 +14,21 @@ import { ArrowLeftIcon, EditIcon, Icon, StarIcon } from '@/components/ui/icon';
 import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
 import { useToast } from '@/components/ui/toast';
-import { useBreakdown } from '@/hooks/use-breakdown';
 import { useStarTotals } from '@/hooks/use-star-totals';
+import { useStepActions } from '@/hooks/use-step-actions';
 import { useSubtasks } from '@/hooks/use-subtasks';
 import { useTasks } from '@/hooks/use-tasks';
 import { db } from '@/lib/local-db';
 import { awardCompletionStars, awardCutLooseStars } from '@/services/star-awards';
 import { bankedForCount, taskValue } from '@/services/star-calculator';
-import { removeSubtask, toggleSubtask } from '@/services/subtask-actions';
+import {
+  addStep,
+  removeSubtask,
+  renameStep,
+  reorderSteps,
+  restoreStep,
+  toggleSubtask,
+} from '@/services/subtask-actions';
 import { completeTask, createNotesAutosaver, cutLooseTask, startTask } from '@/services/task-edits';
 import { undoTaskCompletion, undoTaskCutLoose } from '@/services/task-undo';
 
@@ -47,14 +54,15 @@ export default function TaskRunningScreen() {
 
   const viewRef = useRef<TaskRunningViewHandle>(null);
 
-  // AI breakdown (Story 6.3): controller + live subtask list. The subtasks
-  // ride into the refine payload (Story 6.4) so completed steps are kept.
+  // AI step actions (D4): controller + live subtask list. The subtasks ride
+  // into the moreSteps/change payloads so completed steps are never touched.
   const subtasks = useSubtasks(id);
-  const breakdown = useBreakdown(task, subtasks);
+  const stepActions = useStepActions(task, subtasks);
 
-  // `?breakdown=1` (card-back "Help me with this") auto-fires the first_steps
-  // request once per mount — the param is only ever set on a fresh push, so
-  // no re-arm is needed. Waits for the live query to deliver the task.
+  // `?breakdown=1` (card-back "Help me with this") auto-fires Get more steps
+  // once per mount — with zero steps that IS the first-steps ask (D4). The
+  // param is only ever set on a fresh push, so no re-arm is needed. Waits
+  // for the live query to deliver the task.
   const autoFiredRef = useRef(false);
   useEffect(() => {
     if (breakdownParam !== '1' || !task || autoFiredRef.current) return;
@@ -62,19 +70,33 @@ export default function TaskRunningScreen() {
     // Requesting a breakdown is a meaningful action — start the task (the
     // card-back path already did; this covers any future ?breakdown=1 pushes).
     if (task.status === 'pending') startTask(task, 'task_running');
-    breakdown.request('first_steps', 'card_back');
-  }, [breakdownParam, task, breakdown]);
+    stepActions.getMoreSteps();
+  }, [breakdownParam, task, stepActions]);
 
   // One saver per screen session (Story 2.2): debounced autosaves all funnel
   // through it so `task_edited` fires at most once per session, not per pause.
   const saveNotes = useMemo(() => createNotesAutosaver(id), [id]);
 
   // Altering the task from here COUNTS AS STARTING it (2026-07-27): notes,
-  // breakdown requests, and subtask interactions flip pending → in_progress
+  // AI step requests, and subtask interactions flip pending → in_progress
   // (idempotent — startTask self-gates), while just opening the screen never
   // does. This is what makes the card's Continue chip honest.
   const ensureStarted = () => {
     if (task && task.status === 'pending') startTask(task, 'task_running');
+  };
+
+  // The view gets a wrapped controller so every AI step request also counts
+  // as starting the task (same rule as notes and subtask taps above).
+  const viewStepActions = {
+    ...stepActions,
+    getMoreSteps: () => {
+      ensureStarted();
+      stepActions.getMoreSteps();
+    },
+    changeThese: (feedback: string) => {
+      ensureStarted();
+      stepActions.changeThese(feedback);
+    },
   };
 
   // Blur is not guaranteed on unmount — flush the notes draft before the
@@ -206,11 +228,29 @@ export default function TaskRunningScreen() {
           ensureStarted();
           toggleSubtask(subtask);
         }}
-        onDeleteSubtask={removeSubtask}
-        breakdown={breakdown}
-        onHelp={() => {
-          ensureStarted();
-          breakdown.request('first_steps', 'task_running');
+        stepActions={viewStepActions}
+        stepEdits={{
+          rename: (subtask, title) => {
+            ensureStarted();
+            renameStep(subtask, title);
+          },
+          remove: (subtask) => {
+            ensureStarted();
+            removeSubtask(subtask);
+            // Undo re-inserts the row verbatim (banked stars re-bank too).
+            showUndoToast(toast, {
+              title: 'Step removed',
+              onUndo: () => restoreStep(subtask),
+            });
+          },
+          add: (title) => {
+            ensureStarted();
+            addStep(task.id, title);
+          },
+          reorder: (orderedIds, from, to) => {
+            ensureStarted();
+            reorderSteps(task.id, orderedIds, from, to);
+          },
         }}
       />
     </SafeAreaView>

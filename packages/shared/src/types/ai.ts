@@ -59,6 +59,24 @@ export interface RefineBreakdownResult {
 }
 
 /**
+ * How `ai.moreSteps` grew the list (v1.5 D4, design Row B "what Get more
+ * steps returns"): 'appended' = three next steps to add at the end;
+ * 'subdivided' = the existing uncompleted steps already finished the task,
+ * so they were broken down instead — the reply REPLACES the uncompleted
+ * portion (completed steps are never touched, and nothing is ever inserted
+ * above one).
+ */
+export const MORE_STEPS_MODES = ['appended', 'subdivided'] as const;
+export type MoreStepsMode = (typeof MORE_STEPS_MODES)[number];
+
+/** Response DTO of the `ai.moreSteps` tRPC mutation (v1.5 D4). */
+export interface MoreStepsResult {
+  steps: string[];
+  mode: MoreStepsMode;
+  provider: AiProviderName;
+}
+
+/**
  * Response DTO of the `ai.suggestMicroTask` tRPC mutation (Story 6.4, FR39):
  * one tiny first step for a task the user keeps skipping. Accepted via the
  * nudge UI as a single local subtask (`source: 'micro'`).

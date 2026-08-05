@@ -8,6 +8,8 @@ import {
 import { truncateChars } from '../../lib/text';
 import type {
   AiProvider,
+  MoreStepsInput,
+  MoreStepsOutput,
   BreakdownTaskInput,
   RefineBreakdownInput,
   RefineBreakdownOutput,
@@ -135,6 +137,31 @@ export function createFakeProvider(): AiProvider {
         steps: fakeFirstSteps(title).map((step) => `Refined: ${step}`),
         // truncateChars (not bare slice) — never splits a surrogate pair.
         notesDistillation: `Approach note: ${truncateChars(feedback.trim(), 140)}`,
+      });
+    },
+
+    // v1.5 D4 more-steps contract (deterministic for Maestro): fewer than 2
+    // not-completed steps -> subdivide each into a Prep/Do pair; otherwise
+    // append three canned continuation steps. Title/details/notes ignored.
+    moreSteps({ subtasks }: MoreStepsInput): Promise<MoreStepsOutput> {
+      const remaining = subtasks.filter((subtask) => !subtask.completed);
+      if (subtasks.length > 0 && remaining.length < 2) {
+        const subdivided = remaining.flatMap((subtask) => [
+          `Prep: ${truncateChars(subtask.title, 130)}`,
+          `Do: ${truncateChars(subtask.title, 132)}`,
+        ]);
+        return Promise.resolve({
+          mode: 'subdivided',
+          steps: subdivided.length > 0 ? subdivided : ['Wrap up and tidy anything left over'],
+        });
+      }
+      return Promise.resolve({
+        mode: 'appended',
+        steps: [
+          'Carry on with the next small piece',
+          'Check what is still missing',
+          'Line up the step after that',
+        ],
       });
     },
 

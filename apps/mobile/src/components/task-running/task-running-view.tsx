@@ -1,22 +1,21 @@
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
-import { Keyboard, KeyboardAvoidingView, ScrollView } from 'react-native';
+import { ActivityIndicator, Keyboard, KeyboardAvoidingView, ScrollView } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
-import type { SubtaskData, TaskData } from '@one-down/shared';
+import { MAX_REFINE_FEEDBACK_CHARS, type SubtaskData, type TaskData } from '@one-down/shared';
 
 import { SparkleBadge } from '@/components/premium/sparkle-badge';
-import { BreakdownProposal } from '@/components/task-running/breakdown-proposal';
+import { StepsEditor, type StepEditCallbacks } from '@/components/task-running/steps-editor';
 import { SubtaskList } from '@/components/task-running/subtask-list';
 import { Box } from '@/components/ui/box';
-import { Button, ButtonText } from '@/components/ui/button';
-import { CheckIcon, Icon } from '@/components/ui/icon';
+import { ArrowRightIcon, CheckIcon, Icon, RepeatIcon } from '@/components/ui/icon';
 import { HStack } from '@/components/ui/hstack';
 import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
 import { Textarea, TextareaInput } from '@/components/ui/textarea';
 import { VStack } from '@/components/ui/vstack';
 
-import type { BreakdownController } from '@/hooks/use-breakdown';
+import type { StepActionsController } from '@/hooks/use-step-actions';
 import type { UpdateTaskPatch } from '@/services/tasks-repository';
 
 export interface TaskRunningViewHandle {
@@ -61,15 +60,20 @@ function FadeEdge({ position }: { position: 'top' | 'bottom' }) {
 
 /**
  * Working screen body (v1.5 spec §5): Gabarito title + description stay put,
- * graded steps, NOTES field, and the two terminal actions — a filled 54px
- * `Mark as complete` and plain-text `Cut it loose`.
+ * graded steps, the AI step actions (D4), NOTES field, and the two terminal
+ * actions — a filled 54px `Mark as complete` and plain-text `Cut it loose`.
+ *
+ * Step actions (05b–05e): `Change these` opens a dashed WHAT SHOULD BE
+ * DIFFERENT box and itself becomes the filled submit (with a check) while
+ * `Get more steps` dims to 32% — one live action. Submitting shows a spinner
+ * + `Working` in the pressed button and fades the rows; results land
+ * DIRECTLY (no proposal), reported on the STEPS label line with Undo.
  *
  * Keyboard choreography (frame 05f): the notes field is the one thing you
  * must see while typing, so when IT focuses the step list becomes its own
  * soft-clipped scroll area and gives up the room; the title and description
  * never move; the terminal buttons pass below the fold. Everywhere else the
- * keyboard overlays without relayout. Dismiss and the list is exactly where
- * it was.
+ * keyboard overlays without relayout.
  */
 export function TaskRunningView({
   task,
@@ -78,9 +82,8 @@ export function TaskRunningView({
   onCutLoose,
   subtasks,
   onToggleSubtask,
-  onDeleteSubtask,
-  breakdown,
-  onHelp,
+  stepActions,
+  stepEdits,
   ref,
 }: {
   task: TaskData;
@@ -90,11 +93,10 @@ export function TaskRunningView({
   /** Saved subtasks (Story 6.3). Omitted/empty = no list rendered. */
   subtasks?: SubtaskData[];
   onToggleSubtask?: (subtask: SubtaskData) => void;
-  onDeleteSubtask?: (subtask: SubtaskData) => void;
-  /** Breakdown controller (Story 6.3). Omitted = "Help me with this" stays a disabled placeholder. */
-  breakdown?: BreakdownController;
-  /** "Help me with this" press — requests a first_steps breakdown. */
-  onHelp?: () => void;
+  /** D4 step actions controller. Omitted = the AI action row stays hidden. */
+  stepActions?: StepActionsController;
+  /** D4 edit-mode persistence. Omitted = no Edit chip. */
+  stepEdits?: StepEditCallbacks;
   ref?: Ref<TaskRunningViewHandle>;
 }) {
   const [keyboardUp, setKeyboardUp] = useState(false);
@@ -194,6 +196,166 @@ export function TaskRunningView({
     onCutLoose?.();
   };
 
+  // ── Step actions (D4) ────────────────────────────────────────────────────
+  const hasSteps = !!subtasks && subtasks.length > 0;
+  const working = stepActions?.state === 'working';
+  const changeWorking = working && stepActions?.kind === 'change';
+  const moreWorking = working && stepActions?.kind === 'more';
+
+  // ── Steps edit mode (05a/05b) ────────────────────────────────────────────
+  const [editMode, setEditMode] = useState(false);
+  // A held row freezes the steps scroll so the drag owns the vertical axis.
+  const [dragLocked, setDragLocked] = useState(false);
+  const enterEditMode = () => {
+    // Stale NEW tags/report would talk over the editor — clear on entry.
+    stepActions?.clearReport();
+    setEditMode(true);
+  };
+  // Every step deleted while editing → nothing left to edit; fall back out
+  // so the zero-steps action row (Get more steps) can return.
+  useEffect(() => {
+    if (editMode && !hasSteps) setEditMode(false);
+  }, [editMode, hasSteps]);
+
+  const [changeOpen, setChangeOpen] = useState(false);
+  const [changeText, setChangeText] = useState('');
+  // Close the box only when the submit actually lands (05e) — an error keeps
+  // it open with the text intact so Try again means try THAT again.
+  const changeSubmittedRef = useRef(false);
+  const actionsState = stepActions?.state;
+  useEffect(() => {
+    if (actionsState === 'idle' && changeSubmittedRef.current) {
+      changeSubmittedRef.current = false;
+      setChangeOpen(false);
+      setChangeText('');
+      // Unmounting the (possibly focused) box input makes Android hand
+      // focus to the notes field — drop the keyboard instead (on-device).
+      Keyboard.dismiss();
+    }
+  }, [actionsState]);
+
+  const submitChange = () => {
+    const trimmed = changeText.trim();
+    if (!stepActions || working) return;
+    if (!trimmed) {
+      setChangeOpen(false);
+      return;
+    }
+    // Flush the notes draft BEFORE changing (6.4 semantics kept): the
+    // distillation appends to the STORED notes, so an unflushed draft would
+    // otherwise be the write that gets appended over.
+    flushNotes();
+    changeSubmittedRef.current = true;
+    stepActions.changeThese(trimmed);
+  };
+
+  const handleGetMoreSteps = () => {
+    if (!stepActions || working || changeOpen) return;
+    flushNotes();
+    stepActions.getMoreSteps();
+  };
+
+  const actionsBlock = stepActions ? (
+    <VStack className="flex-none gap-2.5">
+      <HStack className="items-center gap-3">
+        {hasSteps ? (
+          changeOpen || changeWorking ? (
+            <Pressable
+              accessibilityRole="button"
+              aria-label="Change these"
+              disabled={changeWorking}
+              onPress={submitChange}
+              className="h-10 flex-row items-center justify-center gap-[7px] rounded-full bg-primary-500 px-[17px] active:bg-primary-600"
+            >
+              {changeWorking ? (
+                <>
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <Text className="font-body-bold text-sm text-typography-0">Working</Text>
+                </>
+              ) : (
+                <>
+                  <Icon as={CheckIcon} size="sm" className="text-typography-0" />
+                  <Text className="font-body-bold text-sm text-typography-0">Change these</Text>
+                </>
+              )}
+            </Pressable>
+          ) : (
+            <Pressable
+              accessibilityRole="button"
+              aria-label="Change these"
+              disabled={working}
+              onPress={() => setChangeOpen(true)}
+              className="h-10 flex-row items-center gap-[7px] rounded-full px-1 active:opacity-60"
+            >
+              <Icon as={RepeatIcon} size="sm" className="text-typography-500" />
+              <Text className="font-body-semibold text-sm text-typography-600">Change these</Text>
+            </Pressable>
+          )
+        ) : null}
+        <Box className="flex-1" />
+        <Pressable
+          accessibilityRole="button"
+          aria-label="Get more steps"
+          disabled={working || changeOpen}
+          onPress={handleGetMoreSteps}
+          className={`h-10 flex-row items-center justify-center gap-[7px] rounded-full bg-primary-500 px-[18px] active:bg-primary-600 ${
+            changeOpen && !changeWorking ? 'opacity-[0.32]' : ''
+          }`}
+        >
+          {moreWorking ? (
+            <>
+              <ActivityIndicator size="small" color="#FFFFFF" />
+              <Text className="font-body-bold text-sm text-typography-0">Working</Text>
+            </>
+          ) : (
+            <>
+              <Text className="font-body-bold text-sm text-typography-0">Get more steps</Text>
+              <Icon as={ArrowRightIcon} size="sm" className="text-typography-0" />
+            </>
+          )}
+        </Pressable>
+        <SparkleBadge feature="ai_breakdown" />
+      </HStack>
+      {changeOpen ? (
+        <VStack className="gap-2 rounded-[15px] border-[1.5px] border-dashed border-primary-300 bg-background-0 px-[15px] py-3">
+          <Text className="font-mono text-[11px] uppercase tracking-caps text-primary-600">
+            What should be different
+          </Text>
+          {/* Static className only — swapping a gluestack compound component's
+              classes per-render tripped the css-interop style context (D3). */}
+          <Textarea size="sm" className="min-h-12 border-0 bg-transparent p-0">
+            <TextareaInput
+              aria-label="What should be different"
+              placeholder="Say what's off in your own words"
+              value={changeText}
+              onChangeText={setChangeText}
+              editable={!changeWorking}
+              maxLength={MAX_REFINE_FEEDBACK_CHARS}
+              className="px-0"
+            />
+          </Textarea>
+        </VStack>
+      ) : null}
+      {stepActions.state === 'error' ? (
+        <HStack className="items-center gap-2">
+          <Text className="font-body text-[13px] text-typography-500">
+            {stepActions.errorReason === 'network'
+              ? "That didn't go through — check your connection."
+              : "That didn't work this time."}
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            aria-label="Try again"
+            hitSlop={6}
+            onPress={stepActions.retry}
+          >
+            <Text className="font-body-semibold text-[13px] text-primary-700">Try again</Text>
+          </Pressable>
+        </HStack>
+      ) : null}
+    </VStack>
+  ) : null;
+
   // Frame 05f: the choreography applies only while the NOTES field owns the
   // keyboard — the step list is what gives up the room.
   const choreographed = keyboardUp && notesFocused;
@@ -209,45 +371,26 @@ export function TaskRunningView({
     </VStack>
   );
 
-  const stepsBlock =
-    subtasks && subtasks.length > 0 ? (
+  const stepsBlock = hasSteps ? (
+    editMode && stepEdits ? (
+      <StepsEditor
+        subtasks={subtasks}
+        edits={stepEdits}
+        onDone={() => setEditMode(false)}
+        onDraggingChange={setDragLocked}
+      />
+    ) : (
       <SubtaskList
         subtasks={subtasks}
         taskSize={task.size}
         onToggle={onToggleSubtask}
-        onDelete={onDeleteSubtask}
-        // Flush the notes draft BEFORE refining (Story 6.4): the
-        // distillation appends to the STORED notes, so an unflushed
-        // draft would otherwise be the write that gets appended over.
-        onRefine={
-          breakdown
-            ? (feedback) => {
-                flushNotes();
-                breakdown.refine(feedback);
-              }
-            : undefined
-        }
-        refineDisabled={breakdown?.state === 'loading'}
+        report={stepActions?.report ?? null}
+        onUndo={stepActions?.undo}
+        onEditSteps={stepEdits && !working ? enterEditMode : undefined}
+        faded={working}
       />
-    ) : null;
-
-  const proposalBlock =
-    breakdown && breakdown.state !== 'idle' ? (
-      <BreakdownProposal
-        state={breakdown.state}
-        steps={breakdown.steps}
-        mode={breakdown.mode}
-        heading={breakdown.via === 'refine' ? 'Refined steps' : undefined}
-        loadingLabel={breakdown.via === 'refine' ? 'Rethinking the steps...' : undefined}
-        onAccept={breakdown.accept}
-        // A refined proposal has no deeper list to expand into.
-        onShowAll={
-          breakdown.via === 'initial' ? () => breakdown.request('full', 'task_running') : undefined
-        }
-        onReject={breakdown.reject}
-        onRetry={breakdown.retry}
-      />
-    ) : null;
+    )
+  ) : null;
 
   const notesBlock = (
     <VStack className="flex-none gap-[7px]">
@@ -288,11 +431,8 @@ export function TaskRunningView({
             content normally, stretched to fill while the notes field owns
             the keyboard (05f) — the list is what gives up the room. */}
         <Box className={choreographed ? 'min-h-0 flex-1' : 'min-h-0 shrink'}>
-          <ScrollView keyboardShouldPersistTaps="handled">
-            <VStack className="gap-4">
-              {stepsBlock}
-              {proposalBlock}
-            </VStack>
+          <ScrollView keyboardShouldPersistTaps="handled" scrollEnabled={!dragLocked}>
+            {stepsBlock}
           </ScrollView>
           {choreographed ? (
             <>
@@ -301,32 +441,25 @@ export function TaskRunningView({
             </>
           ) : null}
         </Box>
-        {notesBlock}
+        {/* The AI action row sits between steps and notes (05b) — hidden
+            while the notes field owns the keyboard (like the terminal) and
+            while the editor owns the list. */}
+        {choreographed || editMode ? null : actionsBlock}
+        {/* Edit mode recedes everything below the list to 62% (05a) — and
+            makes it inert so a mistap can't complete the task mid-edit. */}
+        <Box
+          className={editMode ? 'opacity-[0.62]' : ''}
+          pointerEvents={editMode ? 'none' : 'auto'}
+        >
+          {notesBlock}
+        </Box>
         {choreographed ? null : (
           <>
             <Box className="flex-1" />
-            <VStack className="gap-2.5 pt-2">
-              {/* AI breakdown entry (Story 6.3) with the premium discovery
-                  sparkle beside it (Story 8.2a). Hidden once subtasks exist
-                  or a proposal is in flight — the subtask area owns the flow
-                  then. Disabled placeholder when the route doesn't wire
-                  onHelp. D4 replaces this with Get more steps. */}
-              {(!subtasks || subtasks.length === 0) &&
-              (!breakdown || breakdown.state === 'idle') ? (
-                <HStack className="items-center gap-2">
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    isDisabled={!onHelp}
-                    onPress={onHelp}
-                    aria-label="Help me with this"
-                    className="flex-1 rounded-[13px]"
-                  >
-                    <ButtonText>Help me with this</ButtonText>
-                  </Button>
-                  <SparkleBadge feature="ai_breakdown" />
-                </HStack>
-              ) : null}
+            <VStack
+              className={editMode ? 'gap-2.5 pt-2 opacity-[0.62]' : 'gap-2.5 pt-2'}
+              pointerEvents={editMode ? 'none' : 'auto'}
+            >
               {/* The ONE terminal action per screen: filled 54px pill with a
                   leading check (glyph-before = action, spec §1). Hidden while
                   the keyboard is up (a mistap here is a terminal action). */}

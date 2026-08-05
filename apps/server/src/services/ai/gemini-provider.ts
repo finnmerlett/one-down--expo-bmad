@@ -7,7 +7,9 @@ import {
   MAX_PARSED_TASKS,
   TASK_CONTEXTS,
   TASK_SIZES,
+  MORE_STEPS_MODES,
   type BreakdownMode,
+  type MoreStepsMode,
   type ParsedTaskDraft,
   type TaskContext,
   type TaskSize,
@@ -18,6 +20,8 @@ import { truncateChars } from '../../lib/text';
 import type {
   AiProvider,
   BreakdownTaskInput,
+  MoreStepsInput,
+  MoreStepsOutput,
   RefineBreakdownInput,
   RefineBreakdownOutput,
   TaskPromptContext,
@@ -396,6 +400,88 @@ export function mapMicroResponse(raw: unknown): string {
   return step;
 }
 
+// --- Get more steps (v1.5 D4) ---------------------------------------------
+
+const moreStepsResponseSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    steps: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description: 'The new steps, in order.',
+    },
+    mode: {
+      type: Type.STRING,
+      enum: [...MORE_STEPS_MODES],
+      description:
+        'appended = steps to add after the list; subdivided = replacements for the uncompleted steps.',
+    },
+  },
+  required: ['steps', 'mode'],
+};
+
+function buildMoreStepsSystemInstruction(): string {
+  return [
+    'You extend a step-by-step task breakdown for a person with ADHD who wants to keep momentum.',
+    'Decide between exactly two modes:',
+    '- "appended": when the existing steps do NOT yet finish the task, return EXACTLY 3 new steps that continue after the last existing step, carrying the task further toward done. Never restate existing steps.',
+    '- "subdivided": when the existing not-completed steps would already finish the task on their own, there is nothing left to append — instead break those not-completed steps down into smaller intermediary steps (more steps, each smaller). Return the FULL replacement list for the not-completed portion, in order.',
+    'Rules:',
+    '- Steps marked [completed — keep, do not regenerate] are already done: NEVER restate or replace them, and never insert anything before them.',
+    '- If EVERY step is completed, use "appended" and return 3 new steps that carry the task further.',
+    '- Each step is one short imperative sentence, self-contained, no numbering or bullet prefixes.',
+    `- Keep every step under ${MAX_BREAKDOWN_STEP_CHARS} characters.`,
+    '- Output a JSON object with "steps" (array of strings) and "mode" ("appended" or "subdivided"), nothing else.',
+  ].join('\n');
+}
+
+/** Task context + the current step list (completed ones flagged). */
+function buildMoreStepsContents(input: MoreStepsInput): string {
+  const parts = [buildTaskContents(input)];
+  if (input.subtasks.length > 0) {
+    parts.push('Current steps:');
+    for (const subtask of input.subtasks) {
+      const marker = subtask.completed
+        ? '[completed — keep, do not regenerate]'
+        : '[not completed]';
+      parts.push(`- ${marker} ${subtask.title}`);
+    }
+  } else {
+    parts.push('There are no steps yet.');
+  }
+  return parts.join('\n');
+}
+
+const rawMoreStepsSchema = z.object({
+  steps: z.array(z.unknown()),
+  mode: z.unknown(),
+});
+
+/**
+ * Map a decoded more-steps response to validated output. Pure — steps run
+ * through the same tolerance layer as a breakdown; an unknown mode falls
+ * back to "appended" (the safe interpretation: nothing gets replaced).
+ */
+export function mapMoreStepsResponse(raw: unknown): MoreStepsOutput {
+  const parsed = rawMoreStepsSchema.safeParse(raw);
+  if (!parsed.success) {
+    throw new Error('AI model response was not a JSON object with a steps array');
+  }
+  const mode: MoreStepsMode = parsed.data.mode === 'subdivided' ? 'subdivided' : 'appended';
+  return { steps: mapBreakdownResponse(parsed.data.steps), mode };
+}
+
+/** Decode the raw more-steps body — generic parse-failure message (NFR-S3). */
+export function decodeMoreStepsResponse(body: string): MoreStepsOutput {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(body) as unknown;
+  } catch {
+    throw new Error('AI model response was not valid JSON');
+  }
+  return mapMoreStepsResponse(raw);
+}
+
 /** Decode the raw micro-task body — generic parse-failure message (NFR-S3). */
 export function decodeMicroResponse(body: string): string {
   let raw: unknown;
@@ -475,6 +561,26 @@ export function createGeminiProvider(apiKey: string): AiProvider {
         throw new Error('AI model returned an empty response');
       }
       return decodeRefineResponse(body);
+    },
+
+    async moreSteps(input: MoreStepsInput): Promise<MoreStepsOutput> {
+      const response = await ai.models.generateContent({
+        model: GEMINI_MODEL,
+        contents: buildMoreStepsContents(input),
+        config: {
+          systemInstruction: buildMoreStepsSystemInstruction(),
+          responseMimeType: 'application/json',
+          responseSchema: moreStepsResponseSchema,
+          // Minimal thinking — fast + cheap; structured extraction needs none (NFR-P3 <3s).
+          thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
+        },
+      });
+
+      const body = response.text;
+      if (!body) {
+        throw new Error('AI model returned an empty response');
+      }
+      return decodeMoreStepsResponse(body);
     },
 
     async suggestMicroTask(input: TaskPromptContext): Promise<string> {

@@ -174,6 +174,43 @@ export function RewardToast({
 }
 
 /**
+ * Plain undoable pill (D4 edit mode: "Step removed") — the reward pill's
+ * dark surface without stars or burst. Tapping Undo closes it and reverses.
+ */
+export function showUndoToast(
+  toast: ReturnType<typeof useToast>,
+  { title, onUndo }: { title: string; onUndo: () => void },
+): void {
+  toast.show({
+    placement: 'top',
+    duration: 5000,
+    render: ({ id }) => (
+      <Toast
+        nativeID={`toast-${id}`}
+        accessible
+        accessibilityLiveRegion="polite"
+        className="mt-2 items-center border-0 bg-transparent p-0 shadow-none"
+      >
+        <HStack className="items-center gap-3 rounded-full bg-[#2C2723] py-3 pl-[22px] pr-3 shadow-toast">
+          <Text className="font-heading text-base leading-5 text-[#F7F1E8]">{title}</Text>
+          <Pressable
+            accessibilityRole="button"
+            aria-label="Undo"
+            onPress={() => {
+              toast.close(id);
+              onUndo();
+            }}
+            className="ml-1 h-[31px] items-center justify-center rounded-full border border-[rgba(255,255,255,0.28)] px-3.5 active:bg-[rgba(255,255,255,0.08)]"
+          >
+            <Text className="font-body-semibold text-[12.5px] text-[#F7F1E8]">Undo</Text>
+          </Pressable>
+        </HStack>
+      </Toast>
+    ),
+  });
+}
+
+/**
  * Show the standard reward toast — one helper so the presentation stays
  * identical across every surface (complete, Cut it loose from the working
  * screen / overlay / list detail). An undoable toast stays up longer

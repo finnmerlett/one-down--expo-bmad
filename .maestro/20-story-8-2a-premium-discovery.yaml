@@ -1,5 +1,5 @@
 # Story 8.2a — premium discovery: the free tier shows a tappable sparkle
-# beside the gated "Help me with this" action (AC1), tapping opens the
+# beside the gated "Get more steps" action (AC1), tapping opens the
 # premium features page with the registry-driven list + placeholder CTA
 # (AC2), and going back leaves the running screen fully intact — gating is
 # discovery only, nothing is disabled (AC3).
@@ -19,7 +19,7 @@ appId: com.onedown.mobile
 - waitForAnimationToEnd
 
 # Running screen shows the premium sparkle beside the AI action (AC1)
-- assertVisible: 'Help me with this'
+- assertVisible: 'Get more steps'
 - assertVisible: 'Premium feature: AI task breakdown'
 
 # Tap the sparkle → premium page (AC2)
@@ -35,7 +35,7 @@ appId: com.onedown.mobile
 # Back → running screen still intact (AC3)
 - back
 - waitForAnimationToEnd
-- assertVisible: 'Help me with this'
+- assertVisible: 'Get more steps'
 - assertVisible: 'Sparkle me task'
 
 - assertNotVisible: 'Unhandled'

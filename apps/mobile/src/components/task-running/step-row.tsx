@@ -20,6 +20,7 @@ export function StepRow({
   subtask,
   grade,
   bankedStars = 0,
+  isNew = false,
   onToggle,
   onDelete,
 }: {
@@ -27,6 +28,8 @@ export function StepRow({
   grade: StepGrade;
   /** Hollow stars this DONE row banked (0 renders none). */
   bankedStars?: number;
+  /** Landed in the last AI action (05e) — draws the NEW tag. */
+  isNew?: boolean;
   onToggle?: (subtask: SubtaskData) => void;
   onDelete?: (subtask: SubtaskData) => void;
 }) {
@@ -68,6 +71,13 @@ export function StepRow({
         >
           {subtask.title}
         </Text>
+        {isNew ? (
+          <Box className="flex-none rounded-md bg-[#EDF8F9] px-[5px] py-[2px]">
+            <Text className="font-mono text-[9.5px] uppercase tracking-caps-tight text-primary-600">
+              New
+            </Text>
+          </Box>
+        ) : null}
         {grade === 'done' && bankedStars > 0 ? (
           <HStack className="flex-none gap-[3px]">
             {Array.from({ length: bankedStars }, (_, index) => (

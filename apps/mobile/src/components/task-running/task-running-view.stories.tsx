@@ -3,26 +3,28 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { Box } from '@/components/ui/box';
 
 import { makeTask } from '@/components/card-stack/task-card.stories';
-import type { BreakdownController } from '@/hooks/use-breakdown';
+import type { StepActionsController } from '@/hooks/use-step-actions';
 import { makeSubtask } from './subtask-list.stories';
 import { TaskRunningView } from './task-running-view';
 
 /** Inert controller fixture — stories must never hit the network. */
-function makeBreakdown(overrides: Partial<BreakdownController> = {}): BreakdownController {
-  const base: BreakdownController = {
+export function makeStepActions(
+  overrides: Partial<StepActionsController> = {},
+): StepActionsController {
+  const base: StepActionsController = {
     state: 'idle',
-    steps: [],
-    mode: 'first_steps',
-    via: 'initial',
-    request: () => undefined,
-    refine: () => undefined,
+    kind: null,
+    errorReason: null,
+    report: null,
+    getMoreSteps: () => undefined,
+    changeThese: () => undefined,
     retry: () => undefined,
-    accept: () => undefined,
-    reject: () => undefined,
+    undo: () => undefined,
+    clearReport: () => undefined,
   };
   // exactOptionalPropertyTypes: the Partial spread widens fields with
   // `| undefined`; every override here is always fully-formed.
-  return { ...base, ...overrides } as BreakdownController;
+  return { ...base, ...overrides } as StepActionsController;
 }
 
 const meta = {
@@ -52,6 +54,7 @@ export const WithDetailsAndNotes: Story = {
       notes: 'Shelves are up, boxes next',
       status: 'in_progress',
     }),
+    stepActions: makeStepActions(),
   },
 };
 
@@ -62,13 +65,11 @@ export const Bare: Story = {
       title: 'Water the plants',
       status: 'in_progress',
     }),
+    stepActions: makeStepActions(),
   },
 };
 
-/**
- * Stories 2.3/2.4 — Done and Cut loose wired, as the running route renders
- * it; only "Help me with this" (Epic 6) remains a disabled placeholder.
- */
+/** Stories 2.3/2.4 — Done and Cut loose wired, as the running route renders it. */
 export const AllActionsEnabled: Story = {
   args: {
     task: makeTask({
@@ -78,10 +79,11 @@ export const AllActionsEnabled: Story = {
     }),
     onDone: () => {},
     onCutLoose: () => {},
+    stepActions: makeStepActions(),
   },
 };
 
-/** Story 6.3 — accepted breakdown: live subtask list above the notes. */
+/** D4 (05b) — steps present: Change these + Get more steps under the list. */
 export const WithSubtasks: Story = {
   args: {
     task: makeTask({
@@ -91,34 +93,67 @@ export const WithSubtasks: Story = {
     }),
     onDone: () => {},
     onCutLoose: () => {},
-    onHelp: () => {},
-    breakdown: makeBreakdown(),
+    stepActions: makeStepActions(),
     subtasks: [
       makeSubtask({ id: 'st-1', title: 'Do just the first two minutes', completed: true }),
       makeSubtask({ id: 'st-2', title: 'Set a 10-minute timer and keep going', orderIndex: 1 }),
     ],
     onToggleSubtask: () => {},
-    onDeleteSubtask: () => {},
   },
 };
 
-/** Story 6.3 — proposal in flight: the subtask area shows the pending steps. */
-export const WithProposal: Story = {
+/** D4 (05d) — Change these submitted: spinner + Working, rows at 45%. */
+export const ChangeWorking: Story = {
   args: {
     task: makeTask({
-      id: 'task-running-proposal',
+      id: 'task-running-working',
       title: 'Sort the paperwork mountain',
       status: 'in_progress',
     }),
     onDone: () => {},
     onCutLoose: () => {},
-    breakdown: makeBreakdown({
-      state: 'proposal',
-      steps: [
-        'Get everything you need for "Sort the paperwork mountain" in one place',
-        'Do just the first two minutes',
-        'Set a 10-minute timer and keep going',
-      ],
+    stepActions: makeStepActions({ state: 'working', kind: 'change' }),
+    subtasks: [
+      makeSubtask({ id: 'st-1', title: 'Do just the first two minutes', completed: true }),
+      makeSubtask({ id: 'st-2', title: 'Set a 10-minute timer and keep going', orderIndex: 1 }),
+    ],
+  },
+};
+
+/** D4 (05e) — the result landed: report line + Undo, NEW tags on the rows. */
+export const AfterChange: Story = {
+  args: {
+    task: makeTask({
+      id: 'task-running-after',
+      title: 'Repot the plants',
+      status: 'in_progress',
     }),
+    onDone: () => {},
+    onCutLoose: () => {},
+    stepActions: makeStepActions({
+      report: {
+        kind: 'change',
+        added: 1,
+        changed: 1,
+        newTitles: new Set(['Pick a weekend slot next week', 'Add “Repot plants” and a reminder']),
+      },
+    }),
+    subtasks: [
+      makeSubtask({ id: 'st-1', title: 'Buy compost and pots', completed: true }),
+      makeSubtask({ id: 'st-2', title: 'Pick a weekend slot next week', orderIndex: 1 }),
+      makeSubtask({ id: 'st-3', title: 'Add “Repot plants” and a reminder', orderIndex: 2 }),
+    ],
+  },
+};
+
+/** D4 — the request failed: quiet inline line + Try again. */
+export const ActionFailed: Story = {
+  args: {
+    task: makeTask({
+      id: 'task-running-failed',
+      title: 'Water the plants',
+      status: 'in_progress',
+    }),
+    stepActions: makeStepActions({ state: 'error', kind: 'more', errorReason: 'network' }),
   },
 };

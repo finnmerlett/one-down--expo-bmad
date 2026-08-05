@@ -24,7 +24,6 @@ const meta = {
   component: SubtaskList,
   args: {
     onToggle: () => undefined,
-    onDelete: () => undefined,
   },
   decorators: [
     (Story) => (
@@ -39,7 +38,7 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-/** No subtasks — the list renders nothing (the view shows the proposal slot instead). */
+/** No subtasks — the list renders nothing (the view shows the action row alone). */
 export const Empty: Story = {
   args: { subtasks: [] },
 };
@@ -64,8 +63,37 @@ export const MixedCompletion: Story = {
   },
 };
 
-/** Story 6.4 — the inline feedback input, expanded ("Why does this miss the mark?"). */
-export const RefineOpen: Story = {
+/** D4 (05e) — after an AI action: report line with Undo, NEW tags on the
+ *  changed rows, Edit chip on the right. */
+export const AfterAiChange: Story = {
+  args: {
+    subtasks: [
+      makeSubtask({
+        id: 'subtask-1',
+        title: 'Get everything you need in one place',
+        completed: true,
+        orderIndex: 0,
+      }),
+      makeSubtask({ id: 'subtask-2', title: 'Pick a weekend slot next week', orderIndex: 1 }),
+      makeSubtask({
+        id: 'subtask-3',
+        title: 'Add “Repot plants” and a reminder',
+        orderIndex: 2,
+      }),
+    ],
+    report: {
+      kind: 'change',
+      added: 1,
+      changed: 1,
+      newTitles: new Set(['Pick a weekend slot next week', 'Add “Repot plants” and a reminder']),
+    },
+    onUndo: () => undefined,
+    onEditSteps: () => undefined,
+  },
+};
+
+/** D4 (05d) — an AI action in flight: the rows drop to 45%. */
+export const WorkingFaded: Story = {
   args: {
     subtasks: [
       makeSubtask({ id: 'subtask-1', title: 'Do just the first two minutes', completed: true }),
@@ -75,7 +103,6 @@ export const RefineOpen: Story = {
         orderIndex: 1,
       }),
     ],
-    onRefine: () => undefined,
-    initialRefineOpen: true,
+    faded: true,
   },
 };

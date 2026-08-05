@@ -4,7 +4,10 @@ import {
   createSubtasks,
   deleteSubtask,
   listSubtasks,
+  renameSubtask,
+  reorderSubtasks,
   replaceUncompletedSubtasks,
+  restoreSubtask,
   setSubtaskCompleted,
 } from './subtasks-repository';
 
@@ -102,5 +105,49 @@ describe('subtasks-repository (integration, real migration SQL)', () => {
 
     expect(await deleteSubtask(testDb.db, subtask.id)).toBeNull();
     expect(await listSubtasks(testDb.db, 'task-1')).toEqual([]);
+  });
+
+  it('renameSubtask trims and rewrites in place; blank/identical are no-ops (D4)', async () => {
+    const [subtask] = await createSubtasks(testDb.db, 'task-1', ['Old wording'], 'ai');
+    if (!subtask) throw new Error('seed failed');
+
+    expect(await renameSubtask(testDb.db, subtask.id, '  New wording ')).toBe(true);
+    const [listed] = await listSubtasks(testDb.db, 'task-1');
+    expect(listed?.title).toBe('New wording');
+    expect(listed?.orderIndex).toBe(0);
+
+    expect(await renameSubtask(testDb.db, subtask.id, 'New wording')).toBe(false);
+    expect(await renameSubtask(testDb.db, subtask.id, '   ')).toBe(false);
+    expect(await renameSubtask(testDb.db, 'missing-id', 'Anything')).toBe(false);
+  });
+
+  it('reorderSubtasks writes 0..n−1 in the given order, skipping unknown ids (D4)', async () => {
+    const created = await createSubtasks(testDb.db, 'task-1', ['A', 'B', 'C'], 'ai');
+    const ids = created.map((row) => row.id);
+    if (ids.length !== 3) throw new Error('seed failed');
+
+    await reorderSubtasks(testDb.db, 'task-1', [ids[2]!, ids[0]!, 'ghost-id', ids[1]!]);
+
+    const listed = await listSubtasks(testDb.db, 'task-1');
+    expect(listed.map((row) => row.title)).toEqual(['C', 'A', 'B']);
+    expect(listed.map((row) => row.orderIndex)).toEqual([0, 1, 3]);
+  });
+
+  it('restoreSubtask re-inserts a deleted row verbatim and is conflict-safe (D4 undo)', async () => {
+    const [subtask] = await createSubtasks(testDb.db, 'task-1', ['Bring me back'], 'ai');
+    if (!subtask) throw new Error('seed failed');
+    await setSubtaskCompleted(testDb.db, subtask.id, true);
+    const deleted = await deleteSubtask(testDb.db, subtask.id);
+    if (!deleted) throw new Error('delete failed');
+
+    await restoreSubtask(testDb.db, deleted);
+    // A second undo tap must not throw or duplicate.
+    await restoreSubtask(testDb.db, deleted);
+
+    const listed = await listSubtasks(testDb.db, 'task-1');
+    expect(listed).toHaveLength(1);
+    expect(listed[0]?.id).toBe(subtask.id);
+    expect(listed[0]?.completed).toBe(true);
+    expect(listed[0]?.orderIndex).toBe(subtask.orderIndex);
   });
 });

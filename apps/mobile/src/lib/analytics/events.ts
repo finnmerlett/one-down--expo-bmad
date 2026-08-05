@@ -53,6 +53,23 @@ export type AnalyticsEventMap = EnforceFlatProps<{
     bonus: number;
     banked_converted: number;
   };
+  /** v1.5 D4 — Get more steps landed (mode: first ask / appended / subdivided). */
+  steps_grown: {
+    mode: 'first' | 'appended' | 'subdivided';
+    step_count: number;
+    duration_ms: number;
+    provider: string;
+  };
+  steps_grow_failed: { reason: 'network' | 'server_error' };
+  /** v1.5 D4 — Change these rewrote the uncompleted steps (counts only). */
+  steps_changed: {
+    step_count: number;
+    feedback_chars: number;
+    duration_ms: number;
+    provider: string;
+  };
+  steps_change_failed: { reason: 'network' | 'server_error' };
+  steps_change_undone: { kind: 'delete-created' | 'restore-uncompleted' };
   /** v1.5 D2 — a don't-skip offer appeared on a card (amounts only). */
   offer_started: { amount: number; trigger: 'avoidance' | 'age' };
   /** v1.5 D2 — a live offer eroded one ladder step on a committed pass. */
@@ -136,9 +153,17 @@ export type AnalyticsEventMap = EnforceFlatProps<{
   /** Story 6.3 — proposal rejected ("Not helpful"); nothing saved. */
   breakdown_rejected: { step_count: number; via: 'initial' | 'refine' };
   /** Story 6.3 — a subtask was ticked (or unticked — `reversed: true`). */
-  subtask_completed: { source: 'ai' | 'micro'; reversed: boolean };
+  subtask_completed: { source: 'ai' | 'micro' | 'manual'; reversed: boolean };
   /** Story 6.3 — a subtask row was deleted. */
   subtask_deleted: { was_completed: boolean };
+  /** v1.5 D4 — a deleted step was restored from the undo toast. */
+  subtask_delete_undone: { was_completed: boolean };
+  /** v1.5 D4 — a step was typed by hand in edit mode. */
+  subtask_added: { source: 'manual' };
+  /** v1.5 D4 — a step title was rewritten in place (never the text). */
+  subtask_renamed: Record<string, never>;
+  /** v1.5 D4 — a step was dragged to a new position. */
+  subtask_reordered: { from: number; to: number };
   /** Story 6.4 — refine feedback sent (length only, never the text — NFR-S3). */
   breakdown_feedback_submitted: { char_count: number };
   /** Story 6.4 — the refined proposal arrived (counts and flags only). */

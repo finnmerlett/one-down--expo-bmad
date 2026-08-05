@@ -1,13 +1,24 @@
-import { useState } from 'react';
-
 import { sizeKeyOf, STAR_WEIGHTS, type SubtaskData, type TaskSize } from '@one-down/shared';
 
-import { Button, ButtonText } from '@/components/ui/button';
+import { Box } from '@/components/ui/box';
+import { EditIcon, Icon } from '@/components/ui/icon';
+import { HStack } from '@/components/ui/hstack';
+import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
-import { Textarea, TextareaInput } from '@/components/ui/textarea';
 import { VStack } from '@/components/ui/vstack';
 
+import type { StepChangeReport } from '@/hooks/use-step-actions';
+
 import { StepRow, type StepGrade } from './step-row';
+
+/** The label-line summary of the last AI action (05e): `2 ADDED · 1 CHANGED`. */
+export function reportLabel(report: Pick<StepChangeReport, 'added' | 'changed'>): string {
+  const parts = [
+    report.added > 0 ? `${report.added} ADDED` : null,
+    report.changed > 0 ? `${report.changed} CHANGED` : null,
+  ].filter(Boolean);
+  return parts.length > 0 ? parts.join(' · ') : 'NO CHANGES';
+}
 
 /**
  * The step list on the working screen (v1.5 spec §5): `STEPS` caps label,
@@ -15,36 +26,36 @@ import { StepRow, type StepGrade } from './step-row';
  * uncompleted), done rows carrying their banked hollow stars. A11y rows keep
  * the 6.3 checkbox contract.
  *
- * Story 6.4's Refine affordance survives below the list until D4 replaces it
- * with the Change these / Get more steps action row.
+ * After an AI action (D4) the label line reports what changed —
+ * `STEPS  2 ADDED · 1 CHANGED  [Undo]` — and the affected rows carry NEW
+ * tags. While an action is in flight the rows fade to 45%.
  */
 export function SubtaskList({
   subtasks,
   taskSize = null,
   onToggle,
   onDelete,
-  onRefine,
-  refineDisabled = false,
-  initialRefineOpen = false,
+  report = null,
+  onUndo,
+  onEditSteps,
+  faded = false,
 }: {
   subtasks: SubtaskData[];
   /** Parent task size — sets how many hollow stars a done row shows. */
   taskSize?: TaskSize | null;
   onToggle?: (subtask: SubtaskData) => void;
   onDelete?: (subtask: SubtaskData) => void;
-  /** Submit refine feedback (Story 6.4). Omitted = no Refine button. */
-  onRefine?: (feedback: string) => void;
-  /** Disable submission while a refine round-trip is in flight. */
-  refineDisabled?: boolean;
-  /** Story/preview affordance — start with the feedback input expanded. */
-  initialRefineOpen?: boolean;
+  /** Last AI action's change report — drives the label line + NEW tags. */
+  report?: StepChangeReport | null;
+  /** Undo the reported change (only rendered alongside a report). */
+  onUndo?: () => void;
+  /** Opens steps edit mode (the `Edit` chip). Omitted = no chip. */
+  onEditSteps?: () => void;
+  /** An AI action is rewriting the list — rows drop to 45% (05d). */
+  faded?: boolean;
 }) {
-  const [refineOpen, setRefineOpen] = useState(initialRefineOpen);
-  const [feedback, setFeedback] = useState('');
-
   if (subtasks.length === 0) return null;
 
-  const showRefine = onRefine !== undefined && subtasks.some((subtask) => subtask.source === 'ai');
   const nowId = subtasks.find((subtask) => !subtask.completed)?.id;
   const sizeKey = sizeKeyOf(taskSize);
   // Hollow stars per done row (1 quick win / 2 big time) — rows past the
@@ -57,20 +68,48 @@ export function SubtaskList({
 
   let doneSeen = 0;
 
-  const handleSendFeedback = () => {
-    const trimmed = feedback.trim();
-    if (!trimmed) return;
-    onRefine?.(trimmed);
-    setFeedback('');
-    setRefineOpen(false);
-  };
-
   return (
     <VStack className="gap-2.5">
-      <Text className="font-mono text-[11px] uppercase tracking-caps text-typography-400">
-        Steps
-      </Text>
-      <VStack className="gap-2">
+      <HStack className="min-h-6 items-center gap-2.5">
+        <Text className="font-mono text-[11px] uppercase tracking-caps text-typography-400">
+          Steps
+        </Text>
+        {report ? (
+          <>
+            <Text className="font-mono text-[11px] uppercase tracking-caps text-primary-600">
+              {reportLabel(report)}
+            </Text>
+            {onUndo ? (
+              <Pressable
+                accessibilityRole="button"
+                aria-label="Undo step changes"
+                hitSlop={6}
+                onPress={onUndo}
+                className="rounded-full bg-primary-50 px-[9px] py-[2px] active:bg-primary-100"
+              >
+                <Text className="font-body-semibold text-[11.5px] text-primary-700">Undo</Text>
+              </Pressable>
+            ) : null}
+          </>
+        ) : null}
+        <Box className="flex-1" />
+        {onEditSteps ? (
+          <Pressable
+            accessibilityRole="button"
+            aria-label="Edit steps"
+            hitSlop={6}
+            onPress={onEditSteps}
+            className="flex-row items-center gap-[5px] rounded-full bg-primary-50 px-[11px] py-[3px] active:bg-primary-100"
+          >
+            <Icon as={EditIcon} size="2xs" className="text-primary-700" />
+            <Text className="font-body-semibold text-[12px] text-primary-700">Edit</Text>
+          </Pressable>
+        ) : null}
+      </HStack>
+      <VStack
+        className={`gap-2 ${faded ? 'opacity-[0.45]' : ''}`}
+        pointerEvents={faded ? 'none' : 'auto'}
+      >
         {subtasks.map((subtask) => {
           const grade = gradeOf(subtask);
           const banked = grade === 'done' ? (++doneSeen <= bankCap ? bankPerStep : 0) : 0;
@@ -80,45 +119,13 @@ export function SubtaskList({
               subtask={subtask}
               grade={grade}
               bankedStars={banked}
+              isNew={!subtask.completed && (report?.newTitles.has(subtask.title) ?? false)}
               onToggle={onToggle}
               onDelete={onDelete}
             />
           );
         })}
       </VStack>
-      {showRefine && !refineOpen ? (
-        <Button
-          size="sm"
-          variant="link"
-          aria-label="Refine"
-          onPress={() => setRefineOpen(true)}
-          className="self-start"
-        >
-          <ButtonText>Refine</ButtonText>
-        </Button>
-      ) : null}
-      {showRefine && refineOpen ? (
-        <VStack className="gap-2 pt-1">
-          <Textarea size="sm" isDisabled={refineDisabled} className="rounded-[15px]">
-            <TextareaInput
-              aria-label="Breakdown feedback"
-              placeholder="Why does this miss the mark?"
-              value={feedback}
-              onChangeText={setFeedback}
-            />
-          </Textarea>
-          <Button
-            size="sm"
-            variant="outline"
-            aria-label="Send feedback"
-            isDisabled={refineDisabled || feedback.trim().length === 0}
-            onPress={handleSendFeedback}
-            className="self-start"
-          >
-            <ButtonText>Send feedback</ButtonText>
-          </Button>
-        </VStack>
-      ) : null}
     </VStack>
   );
 }

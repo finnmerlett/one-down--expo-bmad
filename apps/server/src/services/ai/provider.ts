@@ -1,4 +1,9 @@
-import type { AiProviderName, BreakdownMode, ParsedTaskDraft } from '@one-down/shared';
+import type {
+  AiProviderName,
+  BreakdownMode,
+  MoreStepsMode,
+  ParsedTaskDraft,
+} from '@one-down/shared';
 
 import type { Env } from '../../lib/env';
 import { createFakeProvider } from './fake-provider';
@@ -34,6 +39,17 @@ export interface RefineBreakdownOutput {
   notesDistillation: string | null;
 }
 
+/** Provider-level input for Get more steps (v1.5 D4) — refine sans feedback. */
+export interface MoreStepsInput extends TaskPromptContext {
+  subtasks: RefineSubtask[];
+}
+
+/** Provider-level result of Get more steps — the router adds the provider. */
+export interface MoreStepsOutput {
+  steps: string[];
+  mode: MoreStepsMode;
+}
+
 /**
  * The AI backend seam. Later stories add methods to this same interface so
  * both providers stay drop-in interchangeable.
@@ -48,6 +64,12 @@ export interface AiProvider {
    * plus a distillation of durable facts from the feedback (or null).
    */
   refineBreakdown(input: RefineBreakdownInput): Promise<RefineBreakdownOutput>;
+  /**
+   * Grow a breakdown (v1.5 D4): three next steps appended after the existing
+   * list, OR — when the uncompleted steps already finish the task — a
+   * subdivision of the remaining steps that replaces the uncompleted portion.
+   */
+  moreSteps(input: MoreStepsInput): Promise<MoreStepsOutput>;
   /** One tiny physical first step for a task the user keeps skipping (FR39). */
   suggestMicroTask(input: TaskPromptContext): Promise<string>;
 }
