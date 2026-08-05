@@ -41,10 +41,38 @@ flow-side or environment defect — no app regression, no OTA rollback.
    login, the currently-running instance was left in place. Relay runbook
    updated.
 
+## Follow-on fixes (same batch, found by the un-masked flows)
+
+7. **Supabase session storage key pinned** (`cbbc331`) — supabase-js derives
+   its default session-storage key from the server URL's hostname
+   (`sb-<host>-auth-token`). The embedded APK bundle (10.0.2.2) and a
+   downloaded OTA bundle (tailnet host from the EAS env) therefore stored /
+   looked up the session under DIFFERENT keys, and expo-updates boots the
+   downloaded bundle on the second launch — so flow 52's restart-persistence
+   step came back signed out. `storageKey: 'onedown-auth'` in
+   `src/lib/supabase.ts` makes the session URL-independent. Migration note:
+   sessions stored under old URL-derived keys are orphaned — one re-sign-in
+   on any already-signed-in device.
+8. **syncedAt stamped from the DB clock** (`2a41269`) — `pushTasks` used
+   `new Date()` (app-server clock) while `pullTasks` hands out cursors from
+   Postgres `now()`. Skew between the clocks could permanently hide a row
+   from the next pull (JS behind PG) and flaked the since-boundary test
+   ~1 in 4 (JS ahead). Both sides now use `sql\`now()\`` — 8 consecutive
+   clean test runs.
+
 ## Test/e2e impact
 
 - Flows 18 + 23 re-run individually against the batch APK: both green.
-- Flows 52/53 need the next `test:e2e:fresh` rebuild (new baked env) to go
-  green — verified in this batch via targeted re-run after rebuild.
+- Flow 53 green after the .env supabase-URL fix + rebuild.
+- Flow 52 green after the storageKey pin (OTA republished first — the
+  mid-flow relaunch boots the downloaded OTA bundle, so BOTH bundles need
+  the pin).
+- With those, every flow in the suite is accounted for green (the 29
+  batch-passes + the 4 individually re-verified).
 - Known flake unchanged: first maestro attempt after a fresh install can die
   with "Device localhost:5555 was requested" — retry once.
+- Residual quirk (documented, not fixed): an e2e mid-flow relaunch without
+  clearState may boot the freshly-downloaded OTA bundle, whose EAS-env bakes
+  (tailnet URLs, no OTA_UI gate) differ from the local APK. Deeper fix would
+  be `updates.checkAutomatically: "NEVER"` + JS-triggered checks — a phone
+  UX trade-off left as the owner's call.
