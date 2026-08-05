@@ -74,6 +74,8 @@ export type AnalyticsEventMap = EnforceFlatProps<{
   offer_started: { amount: number; trigger: 'avoidance' | 'age' };
   /** v1.5 D2 — a live offer eroded one ladder step on a committed pass. */
   offer_eroded: { from: number; to: number };
+  /** v1.5 D7 — the appearance setting changed. */
+  appearance_changed: { value: 'system' | 'light' | 'dark' };
   /** Story 8.1 — a notification preference changed (new SETTING value only, never task content). */
   notification_pref_changed: { pref: 'deadline_urgency' | 'challenges'; value: string };
   /** Story 8.1 — the system notification permission request resolved. */

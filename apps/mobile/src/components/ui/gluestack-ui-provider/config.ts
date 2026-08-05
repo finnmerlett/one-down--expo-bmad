@@ -22,7 +22,7 @@ import { vars } from 'nativewind';
  *               value lives at 600 here so #8A8073 gets a real slot)
  * - background→ 0 card stock white · 100 mint ground #F4F6F5 · 800+ dark set
  *
- * Dark mode arrives in story D7; until then dark mirrors light.
+ * Dark palette below (D7): inverted ramps + pinned dark grounds.
  */
 const palette = {
   /* Primary — teal (themed clay) */
@@ -178,9 +178,166 @@ const palette = {
   '--color-indicator-error': '193 82 58',
 };
 
+/**
+ * Dark palette (D7, frame 03 + spec §0 dark mapping): each ramp is the light
+ * ramp INVERTED (dark-N = light-(950−N)) so every bg-x-50 + text-x-700 pair
+ * keeps its contrast relationship, with the design's dark ground set and
+ * on-fill text pinned by hand. Dark primary-500 lands on #49BAB9 exactly
+ * (the frame's dark button teal).
+ */
+const darkPalette = {
+  /* Primary — teal, brightened for dark (500 = #49BAB9 buttons) */
+  '--color-primary-0': '20 47 45',
+  '--color-primary-50': '31 77 74',
+  '--color-primary-100': '44 110 106',
+  '--color-primary-200': '49 134 131',
+  '--color-primary-300': '53 154 150',
+  '--color-primary-400': '67 167 161',
+  '--color-primary-500': '73 186 185',
+  '--color-primary-600': '149 211 211',
+  '--color-primary-700': '189 225 225',
+  '--color-primary-800': '223 241 241',
+  '--color-primary-900': '225 245 245',
+  '--color-primary-950': '237 248 249',
+
+  /* Secondary */
+  '--color-secondary-0': '43 46 44',
+  '--color-secondary-50': '56 60 58',
+  '--color-secondary-100': '80 84 82',
+  '--color-secondary-200': '110 115 113',
+  '--color-secondary-300': '146 152 149',
+  '--color-secondary-400': '180 186 183',
+  '--color-secondary-500': '209 214 212',
+  '--color-secondary-600': '226 230 228',
+  '--color-secondary-700': '234 237 236',
+  '--color-secondary-800': '244 246 245',
+  '--color-secondary-900': '249 251 250',
+  '--color-secondary-950': '255 255 255',
+
+  /* Tertiary — gold, pale stars on dark */
+  '--color-tertiary-0': '51 38 9',
+  '--color-tertiary-50': '78 58 16',
+  '--color-tertiary-100': '110 82 23',
+  '--color-tertiary-200': '142 106 30',
+  '--color-tertiary-300': '166 123 44',
+  '--color-tertiary-400': '185 138 50',
+  '--color-tertiary-500': '222 196 138',
+  '--color-tertiary-600': '231 211 166',
+  '--color-tertiary-700': '241 222 176',
+  '--color-tertiary-800': '247 235 210',
+  '--color-tertiary-900': '253 246 231',
+  '--color-tertiary-950': '255 252 244',
+
+  /* Error */
+  '--color-error-0': '59 25 18',
+  '--color-error-50': '92 39 28',
+  '--color-error-100': '124 53 38',
+  '--color-error-200': '158 67 48',
+  '--color-error-300': '193 82 58',
+  '--color-error-400': '217 99 74',
+  '--color-error-500': '227 123 99',
+  '--color-error-600': '236 148 129',
+  '--color-error-700': '245 183 168',
+  '--color-error-800': '250 216 207',
+  '--color-error-900': '253 234 229',
+  '--color-error-950': '254 244 241',
+
+  /* Success — pine */
+  '--color-success-0': '21 33 24',
+  '--color-success-50': '34 54 38',
+  '--color-success-100': '47 75 53',
+  '--color-success-200': '61 97 68',
+  '--color-success-300': '70 109 77',
+  '--color-success-400': '79 122 87',
+  '--color-success-500': '118 157 125',
+  '--color-success-600': '157 191 163',
+  '--color-success-700': '199 219 202',
+  '--color-success-800': '230 238 230',
+  '--color-success-900': '237 243 237',
+  '--color-success-950': '244 248 244',
+
+  /* Warning */
+  '--color-warning-0': '56 34 9',
+  '--color-warning-50': '89 55 14',
+  '--color-warning-100': '122 76 18',
+  '--color-warning-200': '158 99 22',
+  '--color-warning-300': '194 124 27',
+  '--color-warning-400': '222 146 38',
+  '--color-warning-500': '234 168 69',
+  '--color-warning-600': '241 188 102',
+  '--color-warning-700': '246 211 151',
+  '--color-warning-800': '250 231 196',
+  '--color-warning-900': '253 243 224',
+  '--color-warning-950': '255 250 240',
+
+  /* Info — blueprint blue */
+  '--color-info-0': '13 24 38',
+  '--color-info-50': '22 40 63',
+  '--color-info-100': '30 52 80',
+  '--color-info-200': '36 71 112',
+  '--color-info-300': '44 90 143',
+  '--color-info-400': '61 103 150',
+  '--color-info-500': '110 144 184',
+  '--color-info-600': '159 192 232',
+  '--color-info-700': '190 213 240',
+  '--color-info-800': '221 233 247',
+  '--color-info-900': '234 242 251',
+  '--color-info-950': '244 248 253',
+
+  /* Typography — paper ink on dark (0-100 stay light for on-fill text) */
+  '--color-typography-0': '255 255 255',
+  '--color-typography-50': '250 250 249',
+  '--color-typography-100': '240 239 236',
+  '--color-typography-200': '87 82 75',
+  '--color-typography-300': '110 101 92',
+  '--color-typography-400': '138 128 115',
+  '--color-typography-500': '162 151 136',
+  '--color-typography-600': '181 170 154',
+  '--color-typography-700': '196 184 166',
+  '--color-typography-800': '240 239 236',
+  '--color-typography-900': '250 250 249',
+  '--color-typography-950': '255 255 255',
+
+  /* Outline — light hairlines at low contrast */
+  '--color-outline-0': '38 36 32',
+  '--color-outline-50': '56 53 48',
+  '--color-outline-100': '74 71 65',
+  '--color-outline-200': '94 91 84',
+  '--color-outline-300': '118 115 108',
+  '--color-outline-400': '146 143 136',
+  '--color-outline-500': '173 171 165',
+  '--color-outline-600': '197 196 191',
+  '--color-outline-700': '214 214 210',
+  '--color-outline-800': '226 226 223',
+  '--color-outline-900': '240 240 238',
+  '--color-outline-950': '250 250 249',
+
+  /* Background — dark ground set (#2B2E2C ground, #383C39 card) */
+  '--color-background-0': '56 60 57',
+  '--color-background-50': '49 53 51',
+  '--color-background-100': '43 46 44',
+  '--color-background-200': '49 53 51',
+  '--color-background-300': '63 67 64',
+  '--color-background-400': '74 79 76',
+  '--color-background-500': '217 222 220',
+  '--color-background-600': '234 237 236',
+  '--color-background-700': '239 242 241',
+  '--color-background-800': '244 246 245',
+  '--color-background-900': '253 254 254',
+  '--color-background-950': '255 255 255',
+
+  /* Background Special + focus indicators */
+  '--color-background-error': '92 39 28',
+  '--color-background-warning': '89 55 14',
+  '--color-background-success': '34 54 38',
+  '--color-background-muted': '49 53 51',
+  '--color-background-info': '30 52 80',
+  '--color-indicator-primary': '73 186 185',
+  '--color-indicator-info': '159 192 232',
+  '--color-indicator-error': '236 148 129',
+};
+
 export const config = {
   light: vars(palette),
-  // Dark palette lands in story D7; mirroring keeps an OS dark scheme from
-  // restyling the app before then.
-  dark: vars(palette),
+  dark: vars(darkPalette),
 };

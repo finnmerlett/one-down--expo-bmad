@@ -26,6 +26,7 @@ import { useNotificationResync } from '../hooks/use-notification-resync';
 import { AppPostHogProvider } from '../lib/posthog';
 import { TrpcProvider } from '../lib/trpc';
 import { db } from '../lib/local-db';
+import { applyAppearance, getAppearance } from '../services/appearance';
 import { refreshEntitlements } from '../services/entitlements/entitlements-service';
 
 // Schema migrations run before anything can touch the db; the navigator only
@@ -102,6 +103,17 @@ export default function RootLayout() {
       // oxlint-disable-next-line no-console
       console.warn('Entitlements refresh failed', error),
     );
+  }, []);
+
+  // Apply the stored appearance (D7) — default Light; a late apply just
+  // flips the scheme a frame after first paint, which the splash gate hides.
+  useEffect(() => {
+    void getAppearance(db)
+      .then(applyAppearance)
+      .catch((error: unknown) =>
+        // oxlint-disable-next-line no-console
+        console.warn('Appearance load failed', error),
+      );
   }, []);
 
   // Hold on the (blank) splash until fonts resolve — avoids a flash of the

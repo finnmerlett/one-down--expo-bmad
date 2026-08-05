@@ -7,6 +7,7 @@ import { cssInterop } from 'nativewind';
 
 import { useAuth } from '@/components/auth/auth-provider';
 import { AccountSection } from '@/components/settings/account-section';
+import { AppearanceSection } from '@/components/settings/appearance-section';
 import {
   NotificationPreferencesSection,
   type NotificationPermissionState,
@@ -24,6 +25,7 @@ import {
   type ChallengeCadence,
   type NotificationPrefs,
 } from '@/services/notifications/notification-prefs';
+import { getAppearance, setAppearance, type AppearanceMode } from '@/services/appearance';
 
 // Third-party component — NativeWind only auto-interops react-native core.
 cssInterop(SafeAreaView, { className: 'style' });
@@ -43,11 +45,16 @@ export default function SettingsScreen() {
   // values arrive so an early toggle can never overwrite them with defaults.
   const [prefs, setPrefs] = useState<NotificationPrefs | null>(null);
   const [permission, setPermission] = useState<NotificationPermissionState>('undetermined');
+  // null until loaded — same early-toggle guard as the notification prefs.
+  const [appearance, setAppearanceState] = useState<AppearanceMode | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     void getNotificationPrefs(db).then((stored) => {
       if (!cancelled) setPrefs(stored);
+    });
+    void getAppearance(db).then((stored) => {
+      if (!cancelled) setAppearanceState(stored);
     });
     const checkPermission = () =>
       void Notifications.getPermissionsAsync().then((response) => {
@@ -114,6 +121,15 @@ export default function SettingsScreen() {
         <Text className="font-heading text-2xl text-typography-900">Settings</Text>
       </HStack>
       <SettingsView>
+        {appearance ? (
+          <AppearanceSection
+            mode={appearance}
+            onChange={(mode) => {
+              setAppearanceState(mode);
+              void setAppearance(db, mode);
+            }}
+          />
+        ) : null}
         <AccountSection
           email={session?.user.email ?? null}
           onSignIn={() => router.push('/(auth)/login')}
