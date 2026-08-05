@@ -78,6 +78,16 @@ export async function maybeStartOffer(
 }
 
 /**
+ * What one more committed pass would COST a live offer (E5x mid-drag float:
+ * the clay −N rising off the badge). Pure — mirrors erodeOffer's rung rule.
+ */
+export function erosionLoss(task: Pick<TaskData, 'size'>, amount: number): number {
+  const ladder = STAR_WEIGHTS.offerLadder[sizeKeyOf(task.size)];
+  const to = ladder.find((step) => step < amount) ?? 0;
+  return Math.max(0, amount - to);
+}
+
+/**
  * Erode a task's live offer by one ladder step after a committed pass.
  * Front-loaded: the first skip costs the most. At 0 the offer is spent and
  * the cooldown starts. Returns {from, to} when something eroded, null when

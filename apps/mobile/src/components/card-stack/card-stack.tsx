@@ -14,7 +14,10 @@ import type { TaskData } from '@one-down/shared';
 
 import { Box } from '@/components/ui/box';
 import { Pressable } from '@/components/ui/pressable';
+import { Text } from '@/components/ui/text';
 import type { StarBadge } from '@/services/star-calculator';
+import { erosionLoss as computeErosionLoss } from '@/services/star-offers';
+import { BonusAura } from './bonus-aura';
 import { evaluateTaskHealth } from '@/services/task-health';
 import { HEALTH_LABELS, TaskCard } from './task-card';
 
@@ -66,6 +69,7 @@ function SwipeableTopCard({
   onPress,
   onEdit,
   onReview,
+  erosionLoss = 0,
 }: {
   task: TaskData;
   starValue: number;
@@ -76,8 +80,10 @@ function SwipeableTopCard({
   onPress: () => void;
   /** Top-left corner tap → edit surface (2026-07-27). */
   onEdit?: () => void;
-  /** Top-right corner tap → review mode, wired only on flagged cards (6.2). */
+  /** Top-right corner tap → check queue, wired only on flagged cards (6.2/D6b). */
   onReview?: () => void;
+  /** E5x: what THIS committed pass costs a live offer (0 = no float). */
+  erosionLoss?: number;
 }) {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
@@ -136,6 +142,30 @@ function SwipeableTopCard({
   });
   const gesture = Gesture.Exclusive(pan, tap);
 
+  // E5x mid-drag erosion float: the clay −N rises off the badge as the drag
+  // passes the commit threshold — derived purely from the drag distance.
+  const erosionStyle = useAnimatedStyle(() => {
+    const dx = Math.abs(translateX.value);
+    return {
+      opacity: interpolate(
+        dx,
+        [DISMISS_THRESHOLD_PX, DISMISS_THRESHOLD_PX + 40, DISMISS_THRESHOLD_PX + 180],
+        [0, 1, 0],
+        Extrapolation.CLAMP,
+      ),
+      transform: [
+        {
+          translateY: interpolate(
+            dx,
+            [DISMISS_THRESHOLD_PX, DISMISS_THRESHOLD_PX + 180],
+            [0, -30],
+            Extrapolation.CLAMP,
+          ),
+        },
+      ],
+    };
+  });
+
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
       { translateX: translateX.value + settle.value * SLOT_X[1]! },
@@ -158,9 +188,18 @@ function SwipeableTopCard({
         accessible
         accessibilityLabel={accessibilityLabel}
       >
+        {badge ? <BonusAura /> : null}
         <View className="h-full w-full rounded-[22px] bg-background-0">
           <TaskCard task={task} starValue={starValue} badge={badge} topOfDeck={topOfDeck} />
         </View>
+        {erosionLoss > 0 ? (
+          <Animated.View
+            pointerEvents="none"
+            style={[{ position: 'absolute', top: 30, left: 20 }, erosionStyle]}
+          >
+            <Text className="font-mono text-[17px] text-error-600">{`−${erosionLoss}`}</Text>
+          </Animated.View>
+        ) : null}
       </Animated.View>
     </GestureDetector>
   );
@@ -374,6 +413,10 @@ export function CardStack({
                 accessibilityLabel={`Task: ${task.title}. Worth ${getStarValue(task)} stars. Card ${topIndex + 1} of ${tasks.length}${badgeSuffix(task)}${healthSuffix(task)}`}
                 badge={getBadge?.(task) ?? null}
                 topOfDeck={getTopOfDeck?.(task) ?? false}
+                erosionLoss={(() => {
+                  const live = getBadge?.(task) ?? null;
+                  return live?.kind === 'offer' ? computeErosionLoss(task, live.amount) : 0;
+                })()}
                 onDismiss={advance}
                 onPress={() => onCardPress?.(task)}
                 onEdit={onEditPress ? () => onEditPress(task) : undefined}
