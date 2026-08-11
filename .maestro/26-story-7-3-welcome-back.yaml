@@ -24,10 +24,16 @@ appId: com.onedown.mobile
 # Size the second task from the list detail (it is not the top card).
 - tapOn: 'Open task list'
 - waitForAnimationToEnd
+# Row tap lands on the WORKING screen (2026-08-11); the editor is behind
+# the pencil, and its back button returns here first.
 - tapOn: 'Open task: Big one'
 - waitForAnimationToEnd
+- tapOn: 'Edit task: Big one'
+- waitForAnimationToEnd
 - tapOn: 'Size: Big time'
-- tapOn: 'Back to task list'
+- tapOn: 'Back to task'
+- waitForAnimationToEnd
+- tapOn: 'Pause and go back'
 - waitForAnimationToEnd
 - tapOn: 'Back to home'
 - waitForAnimationToEnd

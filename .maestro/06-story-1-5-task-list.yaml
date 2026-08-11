@@ -41,22 +41,29 @@ appId: com.onedown.mobile
 - assertVisible: 'First listed task'
 - assertVisible: 'Second listed task'
 
-# Row tap -> isolated full-screen card back with its own back button (AC3)
+# Row tap -> the task's WORKING screen in its looking state (2026-08-11:
+# viewing, not editing); the pencil opens the editor flat (no card chrome)
 - tapOn: 'Open task: First listed task'
 - waitForAnimationToEnd
-- assertVisible: 'Back to task list'
+- assertVisible: 'Mark as complete'
+- tapOn: 'Edit task: First listed task'
+- waitForAnimationToEnd
+- assertVisible: 'Back to task'
 - assertVisible: 'Editing card'
 - assertVisible: 'Details'
 
-# Inline edit; the back button flushes the in-flight title, and the list
+# Inline edit; the back buttons flush the in-flight title, and the list
 # reflects the change (auto-save reuse from 1.4)
+# Cursor-proof rename: append a marker wherever the cursor lands (erase +
+# selection menus are both cursor/toolbar roulette on the emulator IME).
 - tapOn: 'Task title'
-- eraseText
-- inputText: 'Renamed listed task'
-- tapOn: 'Back to task list'
+- inputText: 'ZZRENAMED'
+- tapOn: 'Back to task'
 - waitForAnimationToEnd
-- assertVisible: 'Renamed listed task'
-- assertNotVisible: 'First listed task'
+- tapOn: 'Pause and go back'
+- waitForAnimationToEnd
+- assertVisible: '.*ZZRENAMED.*'
+- assertNotVisible: 'Open task: First listed task'
 
 # System back from the list lands home with the stack intact
 - back

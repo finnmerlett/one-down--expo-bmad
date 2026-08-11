@@ -66,16 +66,22 @@ appId: com.onedown.mobile
 - assertVisible: 'Task: Start me task. Worth 5 stars. Card 1 of 1'
 - assertVisible: 'In progress'
 
-# Second surface: task list → detail (v1.5: the detail is the EDITING CARD
-# view — no notes, no Continue button; doing lives on the working screen).
+# Second surface: task list → row tap lands on the WORKING screen in its
+# looking state (2026-08-11: viewing, not editing) — 'In progress' chip
+# already earned from the first leg; the editor lives behind the pencil.
 - tapOn: 'Open task list'
 - waitForAnimationToEnd
 - tapOn: 'Open task: Start me task'
 - waitForAnimationToEnd
+- assertVisible: 'Mark as complete'
+- tapOn: 'Edit task: Start me task'
+- waitForAnimationToEnd
 - assertVisible: 'Editing card'
 - assertVisible: 'Done editing'
 
-# Unwind to home: detail → list → home
+# Unwind to home: editor → working screen → list → home
+- back
+- waitForAnimationToEnd
 - back
 - waitForAnimationToEnd
 - back

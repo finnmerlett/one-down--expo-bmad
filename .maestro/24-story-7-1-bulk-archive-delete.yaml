@@ -33,6 +33,11 @@ appId: com.onedown.mobile
     timeout: 5000
 
 # --- Multi-select on the active tab (AC1) ---
+# The completion toast overlaps the top bar (taller at the 1.15 scale) and
+# its Undo button eats taps — let it expire first.
+- extendedWaitUntil:
+    notVisible: 'One down!'
+    timeout: 8000
 - tapOn: 'Open task list'
 - waitForAnimationToEnd
 - longPressOn: 'Open task: Archive me B'

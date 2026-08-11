@@ -32,7 +32,10 @@ appId: com.onedown.mobile
 - assertNotVisible: 'Cut loose'
 
 # Inline title edit; auto-save on blur (AC4)
-- tapOn: 'Task title'
+- longPressOn: 'Task title'
+# Select all via the selection menu — cursor-position-proof (the 1.15 type
+# scale moved the tap-center inside the text; plain eraseText left residue)
+- tapOn: 'Select all'
 - eraseText
 - inputText: 'Edited task title'
 # Dismiss the keyboard BEFORE tapping chips: with the soft keyboard up they

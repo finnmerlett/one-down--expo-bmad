@@ -20,7 +20,11 @@ appId: com.onedown.mobile
     visible: '5 stars, 5 earned today'
     timeout: 5000
 
-# Done section shows the row with its Undo affordance
+# Done section shows the row with its Undo affordance. The completion toast
+# overlaps the top bar and eats taps — let it expire first.
+- extendedWaitUntil:
+    notVisible: 'One down!'
+    timeout: 8000
 - tapOn: 'Open task list'
 - waitForAnimationToEnd
 - assertVisible: 'Done'

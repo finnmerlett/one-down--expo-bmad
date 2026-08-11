@@ -54,6 +54,9 @@ appId: com.onedown.mobile
 - extendedWaitUntil:
     visible: 'Subtask: Refined: Do just the first two minutes'
     timeout: 15000
+# The refine's ADDED step takes the list past 3 — the collapsed window
+# hides the tail; show the whole list before asserting it.
+- tapOn: 'Show all steps'
 - assertVisible: 'Subtask: Refined: Set a 10-minute timer and keep going'
 - assertVisible:
     text: 'Subtask: Get everything you need for "Sort the paperwork mountain" in one place'

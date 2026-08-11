@@ -28,8 +28,8 @@
     "emulator:headless": "${ANDROID_HOME:-$HOME/Library/Android/sdk}/emulator/emulator @Pixel_8_API_35 -no-window -no-audio",
     "storybook": "bun --cwd apps/mobile storybook",
     "storybook:android": "bun --cwd apps/mobile storybook:android",
-    "mobile:build": "cd apps/mobile && npx expo prebuild --platform android --no-install && cd android && ./gradlew :app:assembleRelease",
-    "mobile:install": "${ANDROID_HOME:-$HOME/Library/Android/sdk}/platform-tools/adb install -r apps/mobile/android/app/build/outputs/apk/release/app-release.apk",
+    "mobile:build": "cd apps/mobile && npx expo prebuild --platform android --no-install && cd android && ./gradlew :app:createBundleReleaseJsAndAssets --rerun :app:assembleRelease",
+    "mobile:install": "${ANDROID_HOME:-$HOME/Library/Android/sdk}/platform-tools/adb -s ${ANDROID_SERIAL:-emulator-5554} install -r apps/mobile/android/app/build/outputs/apk/release/app-release.apk",
     "mobile:uninstall": "${ANDROID_HOME:-$HOME/Library/Android/sdk}/platform-tools/adb uninstall com.onedown.mobile",
     "test:e2e": "./scripts/maestro-test.sh",
     "test:e2e:fresh": "bun run mobile:build && bun run mobile:install && bun run test:e2e"

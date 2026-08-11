@@ -115,3 +115,21 @@ long batches this session.
   (lint/one-down-plugin.mjs: no-arbitrary-text-size).
 - Seeding (13) stashed for session 9.5: `git stash` "9.5: task seeding via
   sync accounts".
+
+## E2E lock-in (post-commit)
+
+Suite green 33/33 on the 9.4 build (29 in the final full run + 4 patched
+flows verified individually against the same APK). 52/53 pass for the first
+time since the July tailnet migration. Notable causes fixed along the way:
+
+- **Gradle does not track .env as a bundle-task input** (bit twice, both
+  directions): `mobile:build` now always runs
+  `:app:createBundleReleaseJsAndAssets --rerun`; `mobile:install` pins to
+  the emulator serial (a bare `adb install` fails with the phone attached).
+- Flow drift from 9.4 behavior: 06/07/26 row-taps land on the working
+  screen (editor via the pencil); 09/10 expand the collapsed step window
+  ('Show all steps') before asserting steps past 3.
+- 1.15-scale fallout in flows: text-edit taps land mid-text (06 renames via
+  cursor-proof appended marker; 05 uses select-all), and the completion
+  toast now overlaps the top bar — 24/27 wait for 'One down!' to clear
+  before tapping 'Open task list'.

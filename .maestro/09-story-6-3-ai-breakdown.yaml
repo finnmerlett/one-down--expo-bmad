@@ -42,8 +42,14 @@ appId: com.onedown.mobile
 - assertVisible: 'Undo step changes'
 - takeScreenshot: .maestro/screenshots/09-story-6-3-direct-steps
 
-# Second ask (steps exist): ai.moreSteps appends three continuations
+# Second ask (steps exist): ai.moreSteps appends three continuations.
+# Past 3 steps the list collapses to the current-step window — the All
+# toggle appearing doubles as the wait for the results landing.
 - tapOn: 'More steps'
+- extendedWaitUntil:
+    visible: 'Show all steps'
+    timeout: 15000
+- tapOn: 'Show all steps'
 - extendedWaitUntil:
     visible: 'Subtask: Carry on with the next small piece'
     timeout: 15000
