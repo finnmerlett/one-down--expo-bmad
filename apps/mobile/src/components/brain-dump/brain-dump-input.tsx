@@ -67,7 +67,7 @@ export function BrainDumpInput({
         {/* Gold-star hint (07): more context in = better tasks out. */}
         <HStack className="items-start gap-2">
           <Text className="text-xs text-tertiary-500">★</Text>
-          <Text className="flex-1 font-body text-[13px] leading-[19px] text-typography-500">
+          <Text className="flex-1 font-body text-sm leading-[19px] text-typography-500">
             Add all the details, timings or difficulties you can think of. All context is good
             context.
           </Text>

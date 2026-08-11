@@ -103,7 +103,7 @@ export function ContextSheet({
       <HStack className="items-center justify-between gap-2.5">
         <VStack className="min-w-0 gap-0.5">
           <HStack className="items-center gap-1.5">
-            <Text className="font-body-bold text-[15px] text-typography-900">Right now</Text>
+            <Text className="font-body-bold text-base text-typography-900">Right now</Text>
             <BlockArrow direction="down" size={15} color={INK} />
           </HStack>
           <Text className="font-body-medium text-xs text-typography-500">
@@ -117,7 +117,7 @@ export function ContextSheet({
           onPress={onDone}
           className="h-[34px] flex-none items-center justify-center rounded-[11px] bg-primary-500 px-4 active:bg-primary-600"
         >
-          <Text className="font-body-bold text-[12.5px] text-typography-0">Done</Text>
+          <Text className="font-body-bold text-xs text-typography-0">Done</Text>
         </Pressable>
       </HStack>
 
@@ -137,7 +137,7 @@ export function ContextSheet({
       </Box>
 
       <VStack className="mt-[15px] gap-2.5">
-        <Text className="font-mono text-[11px] uppercase tracking-caps text-typography-400">
+        <Text className="font-mono text-xs uppercase tracking-caps text-typography-400">
           How much time
         </Text>
         <HStack className="rounded-full bg-[rgba(44,39,35,0.06)] p-[3px]">
@@ -157,8 +157,8 @@ export function ContextSheet({
                 <Text
                   className={
                     selected
-                      ? 'font-body-bold text-[13px] text-primary-500'
-                      : 'font-body-medium text-[13px] text-typography-500'
+                      ? 'font-body-bold text-sm text-primary-500'
+                      : 'font-body-medium text-sm text-typography-500'
                   }
                 >
                   {label}

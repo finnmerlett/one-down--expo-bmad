@@ -41,7 +41,7 @@ export function MicroTaskNudge({
 
   return (
     <VStack className="mx-[30px] -mt-4 mb-[14px] gap-[9px] rounded-[18px] border border-outline-100 bg-background-0 px-3.5 py-3 shadow-float">
-      <Text className="font-body text-[13px] leading-[19px] text-typography-600">
+      <Text className="font-body text-sm leading-[19px] text-typography-600">
         This one keeps coming back round.
       </Text>
       <Pressable
@@ -54,9 +54,7 @@ export function MicroTaskNudge({
         {busy ? (
           <ActivityIndicator size="small" accessibilityLabel="Finding a tiny first step" />
         ) : null}
-        <Text className="font-body-bold text-[13px] text-primary-600">
-          Show me the smallest step
-        </Text>
+        <Text className="font-body-bold text-sm text-primary-600">Show me the smallest step</Text>
         {busy ? null : <Icon as={ArrowRight} size="2xs" className="text-primary-600" />}
       </Pressable>
     </VStack>

@@ -113,7 +113,7 @@ export function BlueprintCard({
       }
     >
       <Text
-        className="font-body-semibold text-[13px]"
+        className="font-body-semibold text-sm"
         style={{ color: selected ? INK_BRIGHT : INK_MID }}
       >
         {label}
@@ -123,12 +123,12 @@ export function BlueprintCard({
 
   const groupLabel = (label: string, tag: 'guessed' | 'nothing' | null) => (
     <HStack className="items-center justify-between">
-      <Text className="font-mono text-[11px] uppercase tracking-caps" style={{ color: INK_LABEL }}>
+      <Text className="font-mono text-xs uppercase tracking-caps" style={{ color: INK_LABEL }}>
         {label}
       </Text>
       {tag ? (
         <Text
-          className="font-mono text-[11px] uppercase tracking-caps"
+          className="font-mono text-xs uppercase tracking-caps"
           style={{ color: tag === 'guessed' ? INK_MID : 'rgba(160,200,245,0.55)' }}
         >
           {tag === 'guessed' ? 'We guessed' : 'Nothing to go on'}
@@ -170,14 +170,14 @@ export function BlueprintCard({
             multiline
             returnKeyType="done"
             blurOnSubmit
-            className="min-w-0 flex-1 font-heading text-[24px] leading-[29px]"
+            className="min-w-0 flex-1 font-heading text-2xl leading-[29px]"
             style={{ color: INK_BRIGHT, padding: 0 }}
           />
           <HStack className="flex-none items-baseline gap-[2px] pt-1">
-            <Text className="font-mono text-[17px]" style={{ color: INK_MID }}>
+            <Text className="font-mono text-lg" style={{ color: INK_MID }}>
               {taskValue({ ...task, size })}
             </Text>
-            <Text className="text-[11px]" style={{ color: INK_MID }}>
+            <Text className="text-xs" style={{ color: INK_MID }}>
               ★
             </Text>
           </HStack>

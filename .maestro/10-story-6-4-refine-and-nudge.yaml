@@ -1,4 +1,4 @@
-# Story 6.4 → v1.5 D4 — 'Change these' on the working screen opens the dashed
+# Story 6.4 → v1.5 D4 — 'Change' on the working screen opens the dashed
 # WHAT SHOULD BE DIFFERENT box, the submit rewrites only the UNCOMPLETED
 # steps DIRECTLY (no proposal), the distillation lands in the notes, and the
 # label line reports the change with Undo (AC1–AC4). Skipping a card 5+ times
@@ -27,7 +27,7 @@ appId: com.onedown.mobile
 # Open the working screen and land the first three steps (D4 direct)
 - tapOn: 'Task: Sort the paperwork mountain\..*'
 - waitForAnimationToEnd
-- tapOn: 'Get more steps'
+- tapOn: 'More steps'
 - extendedWaitUntil:
     visible: 'Subtask: Do just the first two minutes'
     timeout: 15000
@@ -38,13 +38,13 @@ appId: com.onedown.mobile
     text: 'Subtask: Get everything you need for "Sort the paperwork mountain" in one place'
     checked: true
 
-# 'Change these' opens the dashed box (05c); the same button (now filled with
+# 'Change' opens the dashed box (05c); the same button (now filled with
 # a check) submits the typed feedback (05d).
-- tapOn: 'Change these'
+- tapOn: 'Change'
 - assertVisible: "Say what's off in your own words"
 - tapOn: 'What should be different'
 - inputText: 'Too vague, give me physical actions'
-- tapOn: 'Change these'
+- tapOn: 'Change'
 
 # The 'Working' spinner state is NOT asserted: even with its 500ms minimum
 # visible duration, Maestro's hierarchy polls on a release build can miss the

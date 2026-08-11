@@ -38,7 +38,7 @@ export interface CardBackHandle {
 /** Mono caps section label (v1.5 spec §1). */
 function CapsLabel({ children }: { children: string }) {
   return (
-    <Text className="font-mono text-[11px] uppercase tracking-caps text-typography-400">
+    <Text className="font-mono text-xs uppercase tracking-caps text-typography-400">
       {children}
     </Text>
   );
@@ -48,7 +48,7 @@ function CapsLabel({ children }: { children: string }) {
  *  (spec §2); it sits at the right end of a flagged group's label line. */
 function GuessedTag() {
   return (
-    <Text className="font-mono text-[11px] uppercase tracking-caps text-info-600">We guessed</Text>
+    <Text className="font-mono text-xs uppercase tracking-caps text-info-600">We guessed</Text>
   );
 }
 
@@ -161,11 +161,16 @@ export function CardBack({
   onConfirmAll,
   onKeep,
   backLabel = 'Back to card front',
+  frameless = false,
   ref,
 }: {
   task: TaskData;
   onPatch: (patch: UpdateTaskPatch) => void;
   onClose: () => void;
+  /** Drop the card outline/shadow (2026-08-11 item 9): the editor reached
+   *  from the DOING screen is a plain screen, not a floating card — the
+   *  card chrome only belongs to the pencil-on-the-stack entry. */
+  frameless?: boolean;
   /** Health-prompt "Break it down" → running screen (Story 7.2). */
   onStart?: () => void;
   /** Health-prompt "Cut loose" → guilt-free archive (Story 7.2). */
@@ -330,7 +335,13 @@ export function CardBack({
   );
 
   return (
-    <Box className="h-full w-full overflow-hidden rounded-[28px] border border-outline-100 bg-background-0 shadow-soft-card">
+    <Box
+      className={
+        frameless
+          ? 'h-full w-full bg-background-0'
+          : 'h-full w-full overflow-hidden rounded-[28px] border border-outline-100 bg-background-0 shadow-soft-card'
+      }
+    >
       <HStack className="items-center gap-1 px-3 pt-3">
         <Pressable
           accessibilityRole="button"
@@ -342,7 +353,7 @@ export function CardBack({
           <Icon as={ArrowLeftIcon} size="lg" className="text-typography-700" />
         </Pressable>
         <Icon as={EditIcon} size="2xs" className="text-primary-600" />
-        <Text className="font-mono text-[11px] uppercase tracking-caps text-primary-600">
+        <Text className="font-mono text-xs uppercase tracking-caps text-primary-600">
           Editing card
         </Text>
         <Box className="flex-1" />
@@ -353,7 +364,7 @@ export function CardBack({
           className="h-8 items-center gap-1.5 rounded-full border border-tertiary-300 bg-tertiary-100 px-[13px]"
         >
           <Text className="text-xs text-tertiary-500">★</Text>
-          <Text className="font-mono text-[13px] leading-none text-tertiary-700">
+          <Text className="font-mono text-sm leading-none text-tertiary-700">
             {taskValue(task)}
           </Text>
         </HStack>
@@ -375,7 +386,7 @@ export function CardBack({
                   value={title}
                   onChangeText={setTitleDraft}
                   onBlur={flushTitle}
-                  className="font-heading text-[27px] leading-[32px] text-typography-900"
+                  className="font-heading text-3xl leading-[32px] text-typography-900"
                 />
               </Input>
             </Box>
@@ -396,7 +407,7 @@ export function CardBack({
                 // NOTHING TO GO ON (frame 06 variant): grey dashed row —
                 // pick a date or agree there is none; either settles it.
                 <VStack className="gap-1.5">
-                  <Text className="font-mono text-[11px] uppercase tracking-caps text-typography-300">
+                  <Text className="font-mono text-xs uppercase tracking-caps text-typography-300">
                     Nothing to go on
                   </Text>
                   <HStack className="h-[52px] items-center gap-2.5 rounded-[15px] border-[1.5px] border-dashed border-outline-200 px-4">
@@ -411,15 +422,13 @@ export function CardBack({
                       onPress={() => onConfirm?.('missingDeadline')}
                       className="h-9 flex-none items-center justify-center rounded-[10px] border border-outline-200 bg-background-0 px-3"
                     >
-                      <Text className="font-body-semibold text-[13px] text-typography-600">
-                        None
-                      </Text>
+                      <Text className="font-body-semibold text-sm text-typography-600">None</Text>
                     </Pressable>
                   </HStack>
                 </VStack>
               ) : deadlineGuessed ? (
                 <HStack className="h-[52px] items-center gap-2.5 rounded-[15px] border-[1.5px] border-dashed border-[rgba(30,52,80,0.42)] bg-info-50 px-4">
-                  <Text className="flex-1 font-body-semibold text-[15px] text-info-800">
+                  <Text className="flex-1 font-body-semibold text-base text-info-800">
                     {deadlineLabel}
                   </Text>
                   {calendarButton(true)}
@@ -429,7 +438,7 @@ export function CardBack({
                 </HStack>
               ) : (
                 <HStack className="h-[52px] items-center gap-2.5 rounded-[15px] border border-outline-100 bg-background-0 px-4">
-                  <Text className="flex-1 font-body-semibold text-[15px] text-typography-900">
+                  <Text className="flex-1 font-body-semibold text-base text-typography-900">
                     {deadlineLabel}
                   </Text>
                   {task.deadline ? (
@@ -439,9 +448,7 @@ export function CardBack({
                       hitSlop={6}
                       onPress={() => patchDeadline(null)}
                     >
-                      <Text className="font-body-medium text-[13px] text-typography-400">
-                        Clear
-                      </Text>
+                      <Text className="font-body-medium text-sm text-typography-400">Clear</Text>
                     </Pressable>
                   ) : null}
                   {calendarButton(false)}
@@ -550,7 +557,7 @@ export function CardBack({
                   onPress={confirmAll}
                   className="h-[50px] flex-row items-center justify-center rounded-full bg-info-100 active:bg-info-200"
                 >
-                  <Text className="font-body-semibold text-[15px] text-info-800">
+                  <Text className="font-body-semibold text-base text-info-800">
                     Confirm all guesses
                   </Text>
                   <Text className="absolute right-5 text-xs text-tertiary-500">★</Text>

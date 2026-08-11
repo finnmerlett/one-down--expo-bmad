@@ -28,7 +28,7 @@ appId: com.onedown.mobile
 - assertVisible: 'Start me task'
 - assertVisible: 'Notes'
 - assertVisible: 'Mark as complete'
-- assertVisible: 'Get more steps'
+- assertVisible: 'More steps'
 - assertVisible: 'Cut it loose'
 
 # Just looking is NOT starting: leave untouched -> no Continue marker

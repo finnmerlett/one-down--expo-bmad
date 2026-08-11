@@ -47,7 +47,7 @@ export function ContextBar({
       className="h-[46px] flex-row items-center justify-between rounded-[15px] border border-outline-100 bg-background-0 py-0 pl-4 pr-[7px] active:bg-background-50"
     >
       <HStack className="flex-none items-center gap-1.5">
-        <Text className="font-body-bold text-[13.5px] text-typography-900">Right now</Text>
+        <Text className="font-body-bold text-sm text-typography-900">Right now</Text>
         <BlockArrow direction="right" size={15} color={INK} />
       </HStack>
       <HStack className="min-w-0 flex-1 items-center justify-end gap-3 overflow-hidden pr-4">

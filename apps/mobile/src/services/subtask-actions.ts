@@ -1,11 +1,7 @@
-import { eq } from 'drizzle-orm';
-
-import type { SubtaskData, TaskData } from '@one-down/shared';
-import { tasks } from '@one-down/shared/schema-local';
+import type { SubtaskData } from '@one-down/shared';
 
 import { track } from '@/lib/analytics/track';
 import { db } from '@/lib/local-db';
-import { awardSubtaskStars } from '@/services/star-awards';
 import {
   createSubtasks,
   deleteSubtask,
@@ -16,33 +12,21 @@ import {
 } from '@/services/subtasks-repository';
 
 // Fire-and-forget subtask actions (Story 6.3), mirroring task-edits.ts:
-// module-scoped db writes survive screen unmounts; stars/analytics only after
-// the write actually changed something.
-
-// Banking needs the parent task's size (v1.5: 1★/step quick win, 2★ big
-// time, capped) — read it fresh so a size edit mid-session banks correctly.
-async function parentTask(taskId: string): Promise<Pick<TaskData, 'id' | 'size'> | null> {
-  const [row] = await db
-    .select({ id: tasks.id, size: tasks.size })
-    .from(tasks)
-    .where(eq(tasks.id, taskId));
-  return row ?? null;
-}
+// module-scoped db writes survive screen unmounts; analytics only after the
+// write actually changed something. Step ticks never touch the star ledger —
+// banking is cosmetic (2026-08-11 item 7); the pot pays at completion.
 
 /**
- * Tick/untick a subtask (AC4/AC5). The repository's changed-guard makes the
- * banking delta exactly-once per real state change — a stale double tap
- * banks nothing.
+ * Tick/untick a subtask (AC4/AC5). Banked stars are COSMETIC (2026-08-11
+ * item 7): ticking writes NOTHING to the star ledger — the banked indicator
+ * is derived live from completed-step counts (useBankedStars/bankedForCount)
+ * and the whole value pays out only at task completion.
  */
 export function toggleSubtask(subtask: SubtaskData): void {
   const next = !subtask.completed;
   void setSubtaskCompleted(db, subtask.id, next)
-    .then(async (changed) => {
+    .then((changed) => {
       if (!changed) return;
-      const task = await parentTask(subtask.taskId);
-      if (task) {
-        await awardSubtaskStars(db, task, subtask, 'subtask_completed', next ? 1 : -1);
-      }
       track('subtask_completed', { source: subtask.source, reversed: !next });
     })
     // oxlint-disable-next-line no-console
@@ -50,19 +34,13 @@ export function toggleSubtask(subtask: SubtaskData): void {
 }
 
 /**
- * Delete a subtask (AC4/AC5): a COMPLETED one un-banks its stars via the
- * delta accounting; an incomplete one banks/reverses nothing.
+ * Delete a subtask (AC4/AC5). Nothing to un-bank — banking is cosmetic and
+ * count-derived, so the indicator adjusts by itself.
  */
 export function removeSubtask(subtask: SubtaskData): void {
   void deleteSubtask(db, subtask.id)
-    .then(async (deleted) => {
+    .then((deleted) => {
       if (!deleted) return;
-      if (deleted.completed) {
-        const task = await parentTask(subtask.taskId);
-        if (task) {
-          await awardSubtaskStars(db, task, subtask, 'subtask_deleted', -1);
-        }
-      }
       track('subtask_deleted', { was_completed: deleted.completed });
     })
     // oxlint-disable-next-line no-console
@@ -70,16 +48,10 @@ export function removeSubtask(subtask: SubtaskData): void {
 }
 
 /** Restore a deleted step from the undo toast (D4): the row comes back
- *  verbatim; a completed one re-banks its stars via the delta accounting. */
+ *  verbatim; the cosmetic banked indicator follows the count by itself. */
 export function restoreStep(subtask: SubtaskData): void {
   void restoreSubtask(db, subtask)
-    .then(async () => {
-      if (subtask.completed) {
-        const task = await parentTask(subtask.taskId);
-        if (task) {
-          await awardSubtaskStars(db, task, subtask, 'subtask_completed', 1);
-        }
-      }
+    .then(() => {
       track('subtask_delete_undone', { was_completed: subtask.completed });
     })
     // oxlint-disable-next-line no-console

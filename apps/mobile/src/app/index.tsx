@@ -1,5 +1,8 @@
+import { BlurTargetView, BlurView } from 'expo-blur';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { View } from 'react-native';
+import Animated, { Easing, FadeIn, FadeOut, withTiming } from 'react-native-reanimated';
 
 import {
   MICRO_TASK_SKIP_THRESHOLD,
@@ -23,10 +26,8 @@ import { ContextBar } from '@/components/stack-filters/context-bar';
 import { ContextSheet } from '@/components/stack-filters/context-sheet';
 import { SizeSwitcher } from '@/components/stack-filters/size-switcher';
 import { Box } from '@/components/ui/box';
-import { Button, ButtonText } from '@/components/ui/button';
 import { HStack } from '@/components/ui/hstack';
 import { Pressable } from '@/components/ui/pressable';
-import { Text } from '@/components/ui/text';
 import { useToast } from '@/components/ui/toast';
 import { VStack } from '@/components/ui/vstack';
 import { useAbsenceCheck } from '@/hooks/use-absence-check';
@@ -57,6 +58,36 @@ import { useAppStore } from '@/stores/app-store';
 import { useContextBarStore } from '@/stores/context-bar-store';
 import { useQuickAddStore } from '@/stores/quick-add-store';
 import { useStackFiltersStore } from '@/stores/stack-filters-store';
+
+// Context-sheet morph (2026-08-11 item 1): grows down out of the bar's spot
+// and shrinks back — replaces the old instant mount/unmount pop.
+const sheetEnter = () => {
+  'worklet';
+  return {
+    initialValues: { opacity: 0, transform: [{ translateY: -14 }, { scale: 0.96 }] },
+    animations: {
+      opacity: withTiming(1, { duration: 200 }),
+      transform: [
+        { translateY: withTiming(0, { duration: 220, easing: Easing.out(Easing.cubic) }) },
+        { scale: withTiming(1, { duration: 220, easing: Easing.out(Easing.cubic) }) },
+      ],
+    },
+  };
+};
+
+const sheetExit = () => {
+  'worklet';
+  return {
+    initialValues: { opacity: 1, transform: [{ translateY: 0 }, { scale: 1 }] },
+    animations: {
+      opacity: withTiming(0, { duration: 150 }),
+      transform: [
+        { translateY: withTiming(-14, { duration: 170, easing: Easing.in(Easing.cubic) }) },
+        { scale: withTiming(0.96, { duration: 170, easing: Easing.in(Easing.cubic) }) },
+      ],
+    },
+  };
+};
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -169,6 +200,9 @@ export default function HomeScreen() {
   // it, and open the working screen with it showing. The pending ref rides
   // through the request's proposal state.
   const nudgeGoRef = useRef(false);
+  // What the context-sheet scrim blurs (expo-blur 56 needs an explicit
+  // target): the home content BELOW the overlay — never the overlay itself.
+  const blurTargetRef = useRef<View>(null);
   const handleNudgeGo = useCallback(() => {
     nudgeGoRef.current = true;
     micro.request();
@@ -257,91 +291,121 @@ export default function HomeScreen() {
         )
       }
     >
-      {/* OTA update prompt (2026-07-27) — appears only when a downloaded
+      {/* Blur target wrapper: everything the expanded context sheet sits
+          over. collapsable={false} keeps the native view alive for the
+          snapshot; flex/column flow is identical to the bare children. */}
+      <BlurTargetView ref={blurTargetRef} style={{ flex: 1 }}>
+        {/* OTA update prompt (2026-07-27) — appears only when a downloaded
           update is pending; one tap reloads into it (no double-restart). */}
-      <UpdateReadyBanner />
-      {/* Shared filter chrome stays visible in every home state — the user
+        <UpdateReadyBanner />
+        {/* Shared filter chrome stays visible in every home state — the user
           must always be able to un-filter. The CardBackOverlay paints over
           it. Tight gap so the stack loses minimal height. */}
-      <VStack className="gap-1">
-        {/* Fixed-height slot: the reachability dot can flip states without
+        <VStack className="gap-1">
+          {/* Fixed-height slot: the reachability dot can flip states without
             ever shifting the card stack below (Story 5.1 AC-5). */}
-        <HStack className="h-4 items-center justify-end px-2">
-          <ConnectionStatus />
-        </HStack>
-        <VStack className="px-[22px]">
-          <ContextBar
-            activeContexts={activeContexts}
-            attentionContexts={attention}
-            onExpand={expandBar}
-          />
-          <Box className="mt-[9px]">
-            <SizeSwitcher mode={mode} onSetMode={handleSetMode} />
-          </Box>
+          <HStack className="h-4 items-center justify-end px-2">
+            <ConnectionStatus />
+          </HStack>
+          <VStack className="px-[22px]">
+            <ContextBar
+              activeContexts={activeContexts}
+              attentionContexts={attention}
+              onExpand={expandBar}
+            />
+            <Box className="mt-[9px]">
+              <SizeSwitcher mode={mode} onSetMode={handleSetMode} />
+            </Box>
+          </VStack>
         </VStack>
-      </VStack>
-      {tasks.length === 0 ? (
-        // New-user empty state (AC2). Epic 6 swaps this CTA to brain dump.
-        <EmptyState
-          title="No tasks yet"
-          body="Get things out of your head — add your first task."
-          actionLabel="Add a task"
-          onAction={overlayUp ? undefined : open}
-        />
-      ) : curated.length === 0 ? (
-        activeContexts.length > 0 || mode !== null ? (
-          // Filters match nothing (AC1) — never show "no tasks" copy here,
-          // tasks exist but fail the filter (1.3 AC8 guard).
+        {tasks.length === 0 ? (
+          // New-user empty state (AC2). Epic 6 swaps this CTA to brain dump.
           <EmptyState
-            {...emptyStackCopy(activeContexts, mode)}
-            actionLabel="Show all tasks"
-            onAction={() => {
-              clearFilters();
-              track('stack_filters_cleared', { via: 'empty_state' });
-            }}
-          />
-        ) : (
-          // Everything completed/cut loose (AC3) — achievement framing.
-          <EmptyState
-            title="All clear"
-            body="Nothing waiting right now. Add a task or check your list."
+            title="No tasks yet"
+            body="Get things out of your head — add your first task."
             actionLabel="Add a task"
             onAction={overlayUp ? undefined : open}
           />
-        )
-      ) : (
-        <>
-          <CardStack
-            tasks={curated}
-            getStarValue={getStarValue}
-            getBadge={getBadge}
-            getTopOfDeck={getTopOfDeck}
-            // Tap = go DO it (2026-07-27): straight to the working screen,
-            // without starting the task — the working screen flips status on
-            // the first meaningful action. Editing moved to the pencil.
-            onCardPress={(task) => router.push(`/task-running/${task.id}`)}
-            onEditPress={(task) => setOpenTaskId(task.id)}
-            onReviewPress={handleReviewPress}
-            onSwipe={handleSwipe}
-            onTopChange={handleTopChange}
-          />
-          {showNudge ? (
-            <MicroTaskNudge state={micro.state} onGo={handleNudgeGo} onRetry={handleNudgeGo} />
-          ) : null}
-        </>
-      )}
+        ) : curated.length === 0 ? (
+          activeContexts.length > 0 || mode !== null ? (
+            // Filters match nothing (AC1) — never show "no tasks" copy here,
+            // tasks exist but fail the filter (1.3 AC8 guard).
+            <EmptyState
+              {...emptyStackCopy(activeContexts, mode)}
+              actionLabel="Show all tasks"
+              onAction={() => {
+                clearFilters();
+                track('stack_filters_cleared', { via: 'empty_state' });
+              }}
+            />
+          ) : (
+            // Everything completed/cut loose (AC3) — achievement framing.
+            <EmptyState
+              title="All clear"
+              body="Nothing waiting right now. Add a task or check your list."
+              actionLabel="Add a task"
+              onAction={overlayUp ? undefined : open}
+            />
+          )
+        ) : (
+          <>
+            <CardStack
+              tasks={curated}
+              getStarValue={getStarValue}
+              getBadge={getBadge}
+              getTopOfDeck={getTopOfDeck}
+              // Tap = go DO it (2026-07-27): straight to the working screen,
+              // without starting the task — the working screen flips status on
+              // the first meaningful action. Editing moved to the pencil.
+              onCardPress={(task) => router.push(`/task-running/${task.id}`)}
+              onEditPress={(task) => setOpenTaskId(task.id)}
+              onReviewPress={handleReviewPress}
+              onSwipe={handleSwipe}
+              onTopChange={handleTopChange}
+            />
+            {showNudge ? (
+              <MicroTaskNudge state={micro.state} onGo={handleNudgeGo} onRetry={handleNudgeGo} />
+            ) : null}
+          </>
+        )}
+      </BlurTargetView>
       {/* Expanded "Right now" sheet (frame 01): scrim over the content, the
           sheet floating where the bar sits. The standing actions below stay
           live (they carry the triage entry in this state). */}
       {barExpanded && !overlayUp ? (
         <Box className="absolute inset-0">
-          <Pressable
-            accessibilityRole="button"
-            aria-label="Close context sheet"
-            onPress={collapseBar}
-            className="absolute inset-0 bg-background-100/70"
-          />
-          <Box className="mx-3.5 mt-9">
+          {/* Blurred scrim (2026-08-11 item 1): the deck genuinely blurs
+              behind the sheet; the wash on top keeps the old tone. */}
+          <Animated.View
+            entering={FadeIn.duration(180)}
+            exiting={FadeOut.duration(150)}
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+          >
+            <BlurView
+              intensity={22}
+              tint="light"
+              blurMethod="dimezisBlurView"
+              blurTarget={blurTargetRef}
+              style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+            />
+            <Pressable
+              accessibilityRole="button"
+              aria-label="Close context sheet"
+              onPress={collapseBar}
+              className="absolute inset-0 bg-background-100/40"
+            />
+          </Animated.View>
+          {/* The sheet grows out of the bar's spot instead of popping.
+              Plain style — reanimated views are not css-interop registered. */}
+          <Animated.View
+            entering={sheetEnter}
+            exiting={sheetExit}
+            // Even expansion (item 1): the bar sits at 22dp side insets and
+            // ~20dp from the overlay top; the sheet extends 8dp past it on
+            // ALL sides — sides 22→14, top 20→12 — so the collapsed bar
+            // overlays the expanded sheet with uniform padding.
+            style={{ marginHorizontal: 14, marginTop: 12 }}
+          >
             <ContextSheet
               activeContexts={activeContexts}
               availableContexts={available}
@@ -351,7 +415,7 @@ export default function HomeScreen() {
               onSetMode={handleSetMode}
               onDone={collapseBar}
             />
-          </Box>
+          </Animated.View>
         </Box>
       ) : null}
       {openTask ? (

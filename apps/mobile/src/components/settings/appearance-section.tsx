@@ -25,7 +25,7 @@ export function AppearanceSection({
 }) {
   return (
     <VStack className="gap-2.5">
-      <Text className="font-mono text-[11px] uppercase tracking-caps text-typography-400">
+      <Text className="font-mono text-xs uppercase tracking-caps text-typography-400">
         Appearance
       </Text>
       <HStack className="gap-2">

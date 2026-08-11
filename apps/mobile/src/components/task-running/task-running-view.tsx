@@ -1,14 +1,21 @@
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
-import { ActivityIndicator, Keyboard, KeyboardAvoidingView, ScrollView } from 'react-native';
-import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
+import { ActivityIndicator, Keyboard, KeyboardAvoidingView } from 'react-native';
 
 import { MAX_REFINE_FEEDBACK_CHARS, type SubtaskData, type TaskData } from '@one-down/shared';
 
 import { SparkleBadge } from '@/components/premium/sparkle-badge';
+import { FadedScrollView } from '@/components/shared/faded-scroll-view';
 import { StepsEditor, type StepEditCallbacks } from '@/components/task-running/steps-editor';
 import { SubtaskList } from '@/components/task-running/subtask-list';
 import { Box } from '@/components/ui/box';
-import { ArrowRightIcon, CheckIcon, Icon, RepeatIcon } from '@/components/ui/icon';
+import {
+  ArrowRightIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  Icon,
+  RepeatIcon,
+} from '@/components/ui/icon';
 import { HStack } from '@/components/ui/hstack';
 import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
@@ -29,34 +36,6 @@ export interface TaskRunningViewHandle {
  * Notes survive a process kill even when the field was never left.
  */
 export const NOTES_AUTOSAVE_DEBOUNCE_MS = 500;
-
-/** Soft-fade scroll clip (saved listClipMode, spec §5): the step list reads
- *  as sliding under an edge rather than ending. Ground-coloured gradient. */
-function FadeEdge({ position }: { position: 'top' | 'bottom' }) {
-  return (
-    <Box
-      pointerEvents="none"
-      className={`absolute left-0 right-0 ${position === 'top' ? 'top-0' : 'bottom-0'}`}
-      style={{ height: 12 }}
-    >
-      <Svg width="100%" height={12}>
-        <Defs>
-          <LinearGradient
-            id={`fade-${position}`}
-            x1="0"
-            y1={position === 'top' ? '0' : '1'}
-            x2="0"
-            y2={position === 'top' ? '1' : '0'}
-          >
-            <Stop offset="0" stopColor="#F4F6F5" stopOpacity={1} />
-            <Stop offset="1" stopColor="#F4F6F5" stopOpacity={0} />
-          </LinearGradient>
-        </Defs>
-        <Rect width="100%" height={12} fill={`url(#fade-${position})`} />
-      </Svg>
-    </Box>
-  );
-}
 
 /**
  * Working screen body (v1.5 spec §5): Gabarito title + description stay put,
@@ -219,6 +198,10 @@ export function TaskRunningView({
 
   const [changeOpen, setChangeOpen] = useState(false);
   const [changeText, setChangeText] = useState('');
+  // More/Less (2026-08-11 item 6): collapsed shows a 3-step scroll window,
+  // expanded the whole list that fits. Edit mode always gets full height —
+  // drag-reordering inside a 3-row porthole would be misery.
+  const [stepsExpanded, setStepsExpanded] = useState(false);
   // Close the box only when the submit actually lands (05e) — an error keeps
   // it open with the text intact so Try again means try THAT again.
   const changeSubmittedRef = useRef(false);
@@ -255,14 +238,47 @@ export function TaskRunningView({
     stepActions.getMoreSteps();
   };
 
+  const choreographed = keyboardUp && notesFocused;
+
+  // Collapsed step window (2026-08-11 item 6): show the current step and one
+  // either side, with ellipsis rows marking the hidden rest. Everything above
+  // the window is completed by construction ('now' = first incomplete).
+  // Expanded / edit / keyboard states always show the whole list.
+  const stepList = subtasks ?? [];
+  const windowed = !stepsExpanded && !editMode && !choreographed && stepList.length > 3;
+  const nowIndex = stepList.findIndex((subtask) => !subtask.completed);
+  const windowCenter = nowIndex === -1 ? stepList.length - 1 : nowIndex;
+  const windowStart = windowed ? Math.min(Math.max(windowCenter - 1, 0), stepList.length - 3) : 0;
+  const visibleSubtasks = windowed ? stepList.slice(windowStart, windowStart + 3) : stepList;
+  const hiddenAbove = windowed ? windowStart : 0;
+  const hiddenBelow = windowed ? stepList.length - windowStart - 3 : 0;
+
   const actionsBlock = stepActions ? (
     <VStack className="flex-none gap-2.5">
       <HStack className="items-center gap-3">
+        {hasSteps && stepList.length > 3 ? (
+          <Pressable
+            accessibilityRole="button"
+            aria-label={stepsExpanded ? 'Show fewer steps' : 'Show all steps'}
+            onPress={() => setStepsExpanded((expanded) => !expanded)}
+            className="h-10 flex-row items-center gap-1 rounded-full px-1 active:opacity-60"
+          >
+            <Icon
+              as={stepsExpanded ? ChevronUpIcon : ChevronDownIcon}
+              size="sm"
+              className="text-typography-500"
+            />
+            <Text className="font-body-semibold text-sm text-typography-600">
+              {stepsExpanded ? 'Less' : 'All'}
+            </Text>
+          </Pressable>
+        ) : null}
+        {hasSteps ? <Box className="flex-1" /> : null}
         {hasSteps ? (
           changeOpen || changeWorking ? (
             <Pressable
               accessibilityRole="button"
-              aria-label="Change these"
+              aria-label="Change"
               disabled={changeWorking}
               onPress={submitChange}
               className="h-10 flex-row items-center justify-center gap-[7px] rounded-full bg-primary-500 px-[17px] active:bg-primary-600"
@@ -275,27 +291,27 @@ export function TaskRunningView({
               ) : (
                 <>
                   <Icon as={CheckIcon} size="sm" className="text-typography-0" />
-                  <Text className="font-body-bold text-sm text-typography-0">Change these</Text>
+                  <Text className="font-body-bold text-sm text-typography-0">Change</Text>
                 </>
               )}
             </Pressable>
           ) : (
             <Pressable
               accessibilityRole="button"
-              aria-label="Change these"
+              aria-label="Change"
               disabled={working}
               onPress={() => setChangeOpen(true)}
               className="h-10 flex-row items-center gap-[7px] rounded-full px-1 active:opacity-60"
             >
               <Icon as={RepeatIcon} size="sm" className="text-typography-500" />
-              <Text className="font-body-semibold text-sm text-typography-600">Change these</Text>
+              <Text className="font-body-semibold text-sm text-typography-600">Change</Text>
             </Pressable>
           )
         ) : null}
         <Box className="flex-1" />
         <Pressable
           accessibilityRole="button"
-          aria-label="Get more steps"
+          aria-label="More steps"
           disabled={working || changeOpen}
           onPress={handleGetMoreSteps}
           className={`h-10 flex-row items-center justify-center gap-[7px] rounded-full bg-primary-500 px-[18px] active:bg-primary-600 ${
@@ -309,7 +325,7 @@ export function TaskRunningView({
             </>
           ) : (
             <>
-              <Text className="font-body-bold text-sm text-typography-0">Get more steps</Text>
+              <Text className="font-body-bold text-sm text-typography-0">More steps</Text>
               <Icon as={ArrowRightIcon} size="sm" className="text-typography-0" />
             </>
           )}
@@ -318,7 +334,7 @@ export function TaskRunningView({
       </HStack>
       {changeOpen ? (
         <VStack className="gap-2 rounded-[15px] border-[1.5px] border-dashed border-primary-300 bg-background-0 px-[15px] py-3">
-          <Text className="font-mono text-[11px] uppercase tracking-caps text-primary-600">
+          <Text className="font-mono text-xs uppercase tracking-caps text-primary-600">
             What should be different
           </Text>
           {/* Static className only — swapping a gluestack compound component's
@@ -338,7 +354,7 @@ export function TaskRunningView({
       ) : null}
       {stepActions.state === 'error' ? (
         <HStack className="items-center gap-2">
-          <Text className="font-body text-[13px] text-typography-500">
+          <Text className="font-body text-sm text-typography-500">
             {stepActions.errorReason === 'network'
               ? "That didn't go through — check your connection."
               : "That didn't work this time."}
@@ -349,7 +365,7 @@ export function TaskRunningView({
             hitSlop={6}
             onPress={stepActions.retry}
           >
-            <Text className="font-body-semibold text-[13px] text-primary-700">Try again</Text>
+            <Text className="font-body-semibold text-sm text-primary-700">Try again</Text>
           </Pressable>
         </HStack>
       ) : null}
@@ -358,11 +374,10 @@ export function TaskRunningView({
 
   // Frame 05f: the choreography applies only while the NOTES field owns the
   // keyboard — the step list is what gives up the room.
-  const choreographed = keyboardUp && notesFocused;
 
   const titleBlock = (
     <VStack className="flex-none gap-[9px]">
-      <Text className="font-heading text-[28px] leading-[33px] tracking-tight text-typography-900">
+      <Text className="font-heading text-3xl leading-[33px] tracking-tight text-typography-900">
         {task.title}
       </Text>
       {task.details ? (
@@ -381,7 +396,9 @@ export function TaskRunningView({
       />
     ) : (
       <SubtaskList
-        subtasks={subtasks}
+        subtasks={visibleSubtasks}
+        hiddenAbove={hiddenAbove}
+        hiddenBelow={hiddenBelow}
         taskSize={task.size}
         onToggle={onToggleSubtask}
         report={stepActions?.report ?? null}
@@ -394,9 +411,7 @@ export function TaskRunningView({
 
   const notesBlock = (
     <VStack className="flex-none gap-[7px]">
-      <Text className="font-mono text-[11px] uppercase tracking-caps text-typography-400">
-        Notes
-      </Text>
+      <Text className="font-mono text-xs uppercase tracking-caps text-typography-400">Notes</Text>
       {/* Static className only — swapping a gluestack compound component's
           classes per-render tripped the css-interop style context on device
           (D3); the component's own data-[focus] variant draws the ring. */}
@@ -430,17 +445,15 @@ export function TaskRunningView({
         {/* Steps live in their own scroll area at ALL times: sized to
             content normally, stretched to fill while the notes field owns
             the keyboard (05f) — the list is what gives up the room. */}
-        <Box className={choreographed ? 'min-h-0 flex-1' : 'min-h-0 shrink'}>
-          <ScrollView keyboardShouldPersistTaps="handled" scrollEnabled={!dragLocked}>
-            {stepsBlock}
-          </ScrollView>
-          {choreographed ? (
-            <>
-              <FadeEdge position="top" />
-              <FadeEdge position="bottom" />
-            </>
-          ) : null}
-        </Box>
+        {/* Scroll-aware soft edges (item 4): fades only when content is
+            actually hidden past an edge. Collapsed windows fit → no fades. */}
+        <FadedScrollView
+          containerClassName={choreographed ? 'min-h-0 flex-1' : 'min-h-0 shrink'}
+          keyboardShouldPersistTaps="handled"
+          scrollEnabled={!dragLocked}
+        >
+          {stepsBlock}
+        </FadedScrollView>
         {/* The AI action row sits between steps and notes (05b) — hidden
             while the notes field owns the keyboard (like the terminal) and
             while the editor owns the list. */}

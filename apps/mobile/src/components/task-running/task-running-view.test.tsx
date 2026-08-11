@@ -34,10 +34,10 @@ describe('TaskRunningView (portable stories)', () => {
     expect(screen.getByText('At least clear a path to the freezer')).toBeTruthy();
     expect(screen.getByLabelText('Task notes').props.value).toBe('Shelves are up, boxes next');
     // Done is disabled without onDone (Story 2.3); Cut loose without
-    // onCutLoose (2.4). With zero steps only Get more steps shows (D4).
+    // onCutLoose (2.4). With zero steps only More steps shows (D4).
     expect(screen.getByLabelText('Mark as complete').props.accessibilityState?.disabled).toBe(true);
-    expect(screen.getByLabelText('Get more steps')).toBeTruthy();
-    expect(screen.queryByLabelText('Change these')).toBeNull();
+    expect(screen.getByLabelText('More steps')).toBeTruthy();
+    expect(screen.queryByLabelText('Change')).toBeNull();
     expect(screen.getByLabelText('Cut it loose').props.accessibilityState?.disabled).toBe(true);
   });
 
@@ -315,12 +315,12 @@ describe('premium sparkle gating (Story 8.2a)', () => {
     useEntitlementsStore.setState({ isPremium: false });
   });
 
-  it('free tier: the discovery sparkle sits beside Get more steps', async () => {
+  it('free tier: the discovery sparkle sits beside More steps', async () => {
     await render(<WithDetailsAndNotes />);
 
     expect(screen.getByLabelText('Premium feature: AI task breakdown')).toBeTruthy();
     // Discovery only (AC3) — the gated button itself is untouched by gating.
-    expect(screen.getByLabelText('Get more steps')).toBeTruthy();
+    expect(screen.getByLabelText('More steps')).toBeTruthy();
   });
 
   it('premium: no sparkle rendered on the gated surface (AC4)', async () => {
@@ -328,12 +328,12 @@ describe('premium sparkle gating (Story 8.2a)', () => {
     await render(<WithDetailsAndNotes />);
 
     expect(screen.queryByLabelText('Premium feature: AI task breakdown')).toBeNull();
-    expect(screen.getByLabelText('Get more steps')).toBeTruthy();
+    expect(screen.getByLabelText('More steps')).toBeTruthy();
   });
 });
 
 describe('step actions (D4, 05b–05e)', () => {
-  it('Get more steps flushes the notes draft first, then asks the controller', async () => {
+  it('More steps flushes the notes draft first, then asks the controller', async () => {
     const onPatch = jest.fn();
     const getMoreSteps = jest.fn();
     await render(
@@ -341,7 +341,7 @@ describe('step actions (D4, 05b–05e)', () => {
     );
 
     await fireEvent.changeText(screen.getByLabelText('Task notes'), 'Current thinking');
-    await fireEvent.press(screen.getByLabelText('Get more steps'));
+    await fireEvent.press(screen.getByLabelText('More steps'));
 
     expect(getMoreSteps).toHaveBeenCalledTimes(1);
     expect(onPatch).toHaveBeenCalledWith({ notes: 'Current thinking' });
@@ -350,20 +350,20 @@ describe('step actions (D4, 05b–05e)', () => {
     );
   });
 
-  it('Change these opens the box, dims Get more steps, and submits trimmed text', async () => {
+  it('Change these opens the box, dims More steps, and submits trimmed text', async () => {
     const changeThese = jest.fn();
     await render(<WithSubtasks stepActions={makeStepActions({ changeThese })} />);
 
     // Closed: plain text button; the box is not on screen yet.
     expect(screen.queryByLabelText('What should be different')).toBeNull();
-    await fireEvent.press(screen.getByLabelText('Change these'));
+    await fireEvent.press(screen.getByLabelText('Change'));
 
     const input = screen.getByLabelText('What should be different');
-    expect(screen.getByLabelText('Get more steps').props.accessibilityState?.disabled).toBe(true);
+    expect(screen.getByLabelText('More steps').props.accessibilityState?.disabled).toBe(true);
 
     await fireEvent.changeText(input, '  Make them physical actions  ');
     // The Change button is now the filled submit (check glyph).
-    await fireEvent.press(screen.getByLabelText('Change these'));
+    await fireEvent.press(screen.getByLabelText('Change'));
     expect(changeThese).toHaveBeenCalledWith('Make them physical actions');
   });
 
@@ -371,10 +371,10 @@ describe('step actions (D4, 05b–05e)', () => {
     const changeThese = jest.fn();
     await render(<WithSubtasks stepActions={makeStepActions({ changeThese })} />);
 
-    await fireEvent.press(screen.getByLabelText('Change these'));
+    await fireEvent.press(screen.getByLabelText('Change'));
     expect(screen.getByLabelText('What should be different')).toBeTruthy();
 
-    await fireEvent.press(screen.getByLabelText('Change these'));
+    await fireEvent.press(screen.getByLabelText('Change'));
     expect(changeThese).not.toHaveBeenCalled();
     expect(screen.queryByLabelText('What should be different')).toBeNull();
   });

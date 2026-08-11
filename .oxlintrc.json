@@ -3,7 +3,11 @@
     "browser": true,
     "node": true
   },
-  "ignorePatterns": ["dist/**", "node_modules/**", "*.config.js"],
+  "ignorePatterns": [
+    "dist/**",
+    "node_modules/**",
+    "*.config.js"
+  ],
   "rules": {
     "no-console": "warn",
     "no-unused-vars": [
@@ -12,6 +16,10 @@
         "argsIgnorePattern": "^_",
         "varsIgnorePattern": "^_"
       }
-    ]
-  }
+    ],
+    "one-down/no-arbitrary-text-size": "error"
+  },
+  "jsPlugins": [
+    "./lint/one-down-plugin.mjs"
+  ]
 }

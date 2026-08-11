@@ -83,7 +83,7 @@ export const AllActionsEnabled: Story = {
   },
 };
 
-/** D4 (05b) — steps present: Change these + Get more steps under the list. */
+/** D4 (05b) — steps present: Change these + More steps under the list. */
 export const WithSubtasks: Story = {
   args: {
     task: makeTask({

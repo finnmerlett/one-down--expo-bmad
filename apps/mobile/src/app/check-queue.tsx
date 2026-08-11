@@ -171,7 +171,7 @@ export default function CheckQueueScreen() {
         </Text>
         <Box className="flex-1" />
         {total > 0 ? (
-          <Text className="pr-2 font-mono text-[13px]" style={{ color: RAIL_DONE }}>
+          <Text className="pr-2 font-mono text-sm" style={{ color: RAIL_DONE }}>
             {`${position} / ${total}`}
           </Text>
         ) : null}
@@ -192,7 +192,7 @@ export default function CheckQueueScreen() {
           </HStack>
         ) : null}
         <Text
-          className="font-mono text-[11px] uppercase tracking-caps"
+          className="font-mono text-xs uppercase tracking-caps"
           style={{ color: 'rgba(160,200,245,0.7)' }}
         >
           Clear the queue · ★ 5
@@ -209,7 +209,7 @@ export default function CheckQueueScreen() {
         </ScrollView>
       ) : (
         <VStack className="flex-1 items-center justify-center gap-3 px-8">
-          <Text className="text-[40px]">★</Text>
+          <Text className="text-4xl">★</Text>
           <Text className="text-center font-heading text-2xl" style={{ color: '#F2F7FD' }}>
             Queue clear
           </Text>

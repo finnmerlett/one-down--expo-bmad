@@ -103,7 +103,7 @@ function PulsingStar({ celebrate }: { celebrate: boolean }) {
   const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   return (
     <Animated.View style={style}>
-      <Text className="text-[21px] leading-6 text-[#DBAE55]">★</Text>
+      <Text className="text-xl leading-6 text-[#DBAE55]">★</Text>
     </Animated.View>
   );
 }
@@ -153,9 +153,7 @@ export function RewardToast({
           <PulsingStar celebrate={burst} />
           <VStack>
             <Text className="font-heading text-base leading-5 text-[#F7F1E8]">{title}</Text>
-            <Text className="font-mono text-[11.5px] tracking-caps-tight text-[#B5AA9A]">
-              {subline}
-            </Text>
+            <Text className="font-mono text-xs tracking-caps-tight text-[#B5AA9A]">{subline}</Text>
           </VStack>
           {onUndo ? (
             <Pressable
@@ -164,7 +162,7 @@ export function RewardToast({
               onPress={onUndo}
               className="ml-2 h-[31px] items-center justify-center rounded-full border border-[rgba(255,255,255,0.28)] px-3.5 active:bg-[rgba(255,255,255,0.08)]"
             >
-              <Text className="font-body-semibold text-[12.5px] text-[#F7F1E8]">Undo</Text>
+              <Text className="font-body-semibold text-xs text-[#F7F1E8]">Undo</Text>
             </Pressable>
           ) : null}
         </HStack>
@@ -202,7 +200,7 @@ export function showUndoToast(
             }}
             className="ml-1 h-[31px] items-center justify-center rounded-full border border-[rgba(255,255,255,0.28)] px-3.5 active:bg-[rgba(255,255,255,0.08)]"
           >
-            <Text className="font-body-semibold text-[12.5px] text-[#F7F1E8]">Undo</Text>
+            <Text className="font-body-semibold text-xs text-[#F7F1E8]">Undo</Text>
           </Pressable>
         </HStack>
       </Toast>

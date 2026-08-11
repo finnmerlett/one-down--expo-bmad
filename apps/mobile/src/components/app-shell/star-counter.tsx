@@ -55,9 +55,9 @@ export function StarCounter({
       className="h-11 justify-center"
     >
       <HStack className="items-baseline gap-2">
-        <Text className="text-[15px] leading-none text-tertiary-500">★</Text>
+        <Text className="text-base leading-none text-tertiary-500">★</Text>
         <Text
-          className={`font-mono text-[21px] leading-none ${
+          className={`font-mono text-xl leading-none ${
             highlighted ? 'text-tertiary-600' : 'text-typography-900'
           }`}
         >
@@ -73,7 +73,7 @@ export function StarCounter({
             <Box className="h-3.5 w-px self-center bg-outline-200" />
             <HStack className="items-center gap-1 self-center">
               <Icon as={StarIcon} size="2xs" className="text-tertiary-500" />
-              <Text className="font-mono text-[13px] leading-none text-tertiary-700">{banked}</Text>
+              <Text className="font-mono text-sm leading-none text-tertiary-700">{banked}</Text>
               <Text className="font-body-semibold text-xs text-tertiary-700">banked</Text>
             </HStack>
           </>

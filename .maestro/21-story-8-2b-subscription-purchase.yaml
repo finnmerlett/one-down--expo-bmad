@@ -52,7 +52,7 @@ appId: com.onedown.mobile
 # Sparkle gone on the running screen (8.2a AC4 end-to-end)
 - back
 - waitForAnimationToEnd
-- assertVisible: 'Get more steps'
+- assertVisible: 'More steps'
 - assertNotVisible: 'Premium feature: AI task breakdown'
 
 # Launch-refresh path (AC6): plain relaunch (NO clearState) keeps premium
@@ -63,7 +63,7 @@ appId: com.onedown.mobile
 # v1.5: the detail is edit-only — reach the working screen from the deck.
 - tapOn: 'Task: Premium purchase task\..*'
 - waitForAnimationToEnd
-- assertVisible: 'Get more steps'
+- assertVisible: 'More steps'
 - assertNotVisible: 'Premium feature: AI task breakdown'
 
 - assertNotVisible: 'Unhandled'

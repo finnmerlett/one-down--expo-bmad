@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Modal, Pressable, type TextInput } from 'react-native';
+import { Keyboard, Modal, Pressable, View, type TextInput } from 'react-native';
 
 import { Button, ButtonText } from '@/components/ui/button';
 import { Input, InputField } from '@/components/ui/input';
@@ -24,6 +24,23 @@ export function QuickAddSheet({
   const [details, setDetails] = useState('');
   const [error, setError] = useState<string | null>(null);
   const titleRef = useRef<TextInput>(null);
+
+  // Manual keyboard inset. KeyboardAvoidingView inside a Modal held a stale
+  // bottom pad when the keyboard was dismissed with BACK while the input
+  // stayed focused — the sheet hovered a keyboard-height above the bottom
+  // (bug session 2026-08-11 item 10). The global keyboardDidShow/Hide pair
+  // fires reliably for both dismissal paths, so the pad always resets.
+  const [keyboardPad, setKeyboardPad] = useState(0);
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', (event) => {
+      setKeyboardPad(event.endCoordinates.height);
+    });
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardPad(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
 
   // Drafts deliberately survive close/reopen (don't punish an interrupted
   // capture) — but a stale validation error must not greet a fresh open.
@@ -50,8 +67,8 @@ export function QuickAddSheet({
   return (
     <Modal visible={isOpen} transparent animationType="slide" onRequestClose={onClose}>
       {/* RN 0.85 Android is edge-to-edge: adjustResize never resizes the Modal
-          window, so explicit padding behavior is required on BOTH platforms. */}
-      <KeyboardAvoidingView behavior="padding" className="flex-1">
+          window, so an explicit keyboard pad is required on BOTH platforms. */}
+      <View className="flex-1" style={{ paddingBottom: keyboardPad }}>
         {/* Backdrop: tap anywhere above the sheet to dismiss */}
         <Pressable
           accessibilityRole="button"
@@ -98,7 +115,7 @@ export function QuickAddSheet({
             <ButtonText>Save</ButtonText>
           </Button>
         </VStack>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }

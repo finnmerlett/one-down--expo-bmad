@@ -1,3 +1,29 @@
+// Global UI scale (2026-08-11 item 3): every font AND icon size flows
+// through the standard tokens below, so this one constant rescales the whole
+// UI. Arbitrary `text-[Npx]` classes are banned — and so are CUSTOM token
+// names: gluestack's tailwind-merge drops `text-*` names it doesn't know.
+// If a size outside the standard scale is ever needed, extend
+// tailwind-merge first. After changing the scale: restart metro with
+// --clear.
+const UI_SCALE = 1.15;
+
+/**
+ * Font token: design-px base (+ ~1.36 line height), both scaled.
+ * @param {number} size
+ * @returns {[string, { lineHeight: string }]}
+ */
+const font = (size) => [
+  `${Math.round(size * UI_SCALE * 2) / 2}px`,
+  { lineHeight: `${Math.round(size * 1.36 * UI_SCALE * 2) / 2}px` },
+];
+
+/**
+ * Icon/box token for the Icon size variants.
+ * @param {number} size
+ * @returns {string}
+ */
+const icon = (size) => `${Math.round(size * UI_SCALE * 2) / 2}px`;
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: process.env.DARK_MODE ? process.env.DARK_MODE : 'class',
@@ -189,7 +215,29 @@ module.exports = {
         extrablack: '950',
       },
       fontSize: {
-        '2xs': '10px',
+        // Standard Tailwind names ONLY (owner decision 2026-08-11): custom
+        // token names get silently dropped by gluestack's tailwind-merge
+        // (it classifies unknown `text-*` as a color and dedupes it against
+        // the real color class). If a size outside this scale is ever truly
+        // needed, extend tailwind-merge FIRST, then add the token here.
+        '2xs': font(10),
+        xs: font(12),
+        sm: font(14),
+        base: font(16),
+        lg: font(18),
+        xl: font(20),
+        '2xl': font(24),
+        '3xl': font(30),
+        '4xl': font(36),
+      },
+      spacing: {
+        // Icon size tokens (components/ui/icon size variants) — same scale.
+        'icon-2xs': icon(12),
+        'icon-xs': icon(14),
+        'icon-sm': icon(16),
+        'icon-md': icon(18),
+        'icon-lg': icon(20),
+        'icon-xl': icon(24),
       },
       letterSpacing: {
         // DM Mono caps labels run .07–.11em (spec §1)

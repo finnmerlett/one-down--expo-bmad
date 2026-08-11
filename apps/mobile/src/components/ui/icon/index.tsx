@@ -17,12 +17,14 @@ const iconStyle = tva({
   base: 'text-typography-950 fill-none pointer-events-none',
   variants: {
     size: {
-      '2xs': 'h-3 w-3',
-      xs: 'h-3.5 w-3.5',
-      sm: 'h-4 w-4',
-      md: 'h-[18px] w-[18px]',
-      lg: 'h-5 w-5',
-      xl: 'h-6 w-6',
+      // Scaled icon tokens (tailwind.config.js UI_SCALE) — icons grow and
+      // shrink with the global type scale (2026-08-11 item 3).
+      '2xs': 'h-icon-2xs w-icon-2xs',
+      xs: 'h-icon-xs w-icon-xs',
+      sm: 'h-icon-sm w-icon-sm',
+      md: 'h-icon-md w-icon-md',
+      lg: 'h-icon-lg w-icon-lg',
+      xl: 'h-icon-xl w-icon-xl',
     },
   },
 });

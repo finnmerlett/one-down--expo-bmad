@@ -37,7 +37,7 @@ export function BottomActions({
         >
           <Icon as={Layers} size="lg" className="text-info-800" />
           <HStack className="absolute -right-0.5 -top-0.5 h-[19px] min-w-[19px] items-center justify-center rounded-full bg-info-800 px-[5px]">
-            <Text className="font-mono text-[10.5px] leading-none text-info-50">{triageCount}</Text>
+            <Text className="font-mono text-2xs leading-none text-info-50">{triageCount}</Text>
           </HStack>
         </Pressable>
       ) : null}
@@ -56,7 +56,7 @@ export function BottomActions({
         className="h-[54px] flex-1 flex-row items-center justify-center gap-2.5 rounded-full bg-primary-500 shadow-fab active:bg-primary-600"
       >
         <Icon as={Brain} size="md" className="text-typography-0" />
-        <Text className="font-body-bold text-[15px] text-typography-0">Brain dump</Text>
+        <Text className="font-body-bold text-base text-typography-0">Brain dump</Text>
       </Pressable>
     </HStack>
   );

@@ -1,4 +1,4 @@
-# Story 6.3 → v1.5 D4 — AI steps land DIRECTLY: 'Get more steps' on the
+# Story 6.3 → v1.5 D4 — AI steps land DIRECTLY: 'More steps' on the
 # working screen asks ai.breakdownTask (zero steps → the three starters) or
 # ai.moreSteps (existing steps → three appended continuations), the result
 # auto-accepts into the live subtask list with a report line + Undo — no
@@ -31,7 +31,7 @@ appId: com.onedown.mobile
 # First ask (zero steps): the three starters land DIRECTLY as subtasks (D4).
 # The 'Working' spinner state is NOT asserted: against the instant local fake
 # provider it renders for ~500ms and Maestro's hierarchy poll can miss it.
-- tapOn: 'Get more steps'
+- tapOn: 'More steps'
 - extendedWaitUntil:
     visible: 'Subtask: Do just the first two minutes'
     timeout: 15000
@@ -43,7 +43,7 @@ appId: com.onedown.mobile
 - takeScreenshot: .maestro/screenshots/09-story-6-3-direct-steps
 
 # Second ask (steps exist): ai.moreSteps appends three continuations
-- tapOn: 'Get more steps'
+- tapOn: 'More steps'
 - extendedWaitUntil:
     visible: 'Subtask: Carry on with the next small piece'
     timeout: 15000

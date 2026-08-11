@@ -39,6 +39,8 @@ export function SubtaskList({
   onUndo,
   onEditSteps,
   faded = false,
+  hiddenAbove = 0,
+  hiddenBelow = 0,
 }: {
   subtasks: SubtaskData[];
   /** Parent task size — sets how many hollow stars a done row shows. */
@@ -53,6 +55,12 @@ export function SubtaskList({
   onEditSteps?: () => void;
   /** An AI action is rewriting the list — rows drop to 45% (05d). */
   faded?: boolean;
+  /** Collapsed 3-step window (2026-08-11 item 6): steps hidden above the
+   *  slice. They are all COMPLETED by construction (the window starts at
+   *  the current step minus one), so they also seed the banked-star count. */
+  hiddenAbove?: number;
+  /** Steps hidden below the slice — draws the trailing ellipsis row. */
+  hiddenBelow?: number;
 }) {
   if (subtasks.length === 0) return null;
 
@@ -66,17 +74,16 @@ export function SubtaskList({
   const gradeOf = (subtask: SubtaskData): StepGrade =>
     subtask.completed ? 'done' : subtask.id === nowId ? 'now' : 'later';
 
-  let doneSeen = 0;
+  // Hidden-above rows are all done — they consumed bank slots first.
+  let doneSeen = hiddenAbove;
 
   return (
     <VStack className="gap-2.5">
       <HStack className="min-h-6 items-center gap-2.5">
-        <Text className="font-mono text-[11px] uppercase tracking-caps text-typography-400">
-          Steps
-        </Text>
+        <Text className="font-mono text-xs uppercase tracking-caps text-typography-400">Steps</Text>
         {report ? (
           <>
-            <Text className="font-mono text-[11px] uppercase tracking-caps text-primary-600">
+            <Text className="font-mono text-xs uppercase tracking-caps text-primary-600">
               {reportLabel(report)}
             </Text>
             {onUndo ? (
@@ -87,7 +94,7 @@ export function SubtaskList({
                 onPress={onUndo}
                 className="rounded-full bg-primary-50 px-[9px] py-[2px] active:bg-primary-100"
               >
-                <Text className="font-body-semibold text-[11.5px] text-primary-700">Undo</Text>
+                <Text className="font-body-semibold text-xs text-primary-700">Undo</Text>
               </Pressable>
             ) : null}
           </>
@@ -102,7 +109,7 @@ export function SubtaskList({
             className="flex-row items-center gap-[5px] rounded-full bg-primary-50 px-[11px] py-[3px] active:bg-primary-100"
           >
             <Icon as={EditIcon} size="2xs" className="text-primary-700" />
-            <Text className="font-body-semibold text-[12px] text-primary-700">Edit</Text>
+            <Text className="font-body-semibold text-xs text-primary-700">Edit</Text>
           </Pressable>
         ) : null}
       </HStack>
@@ -110,6 +117,7 @@ export function SubtaskList({
         className={`gap-2 ${faded ? 'opacity-[0.45]' : ''}`}
         pointerEvents={faded ? 'none' : 'auto'}
       >
+        {hiddenAbove > 0 ? <EllipsisRow count={hiddenAbove} where="earlier" /> : null}
         {subtasks.map((subtask) => {
           const grade = gradeOf(subtask);
           const banked = grade === 'done' ? (++doneSeen <= bankCap ? bankPerStep : 0) : 0;
@@ -125,7 +133,21 @@ export function SubtaskList({
             />
           );
         })}
+        {hiddenBelow > 0 ? <EllipsisRow count={hiddenBelow} where="later" /> : null}
       </VStack>
     </VStack>
+  );
+}
+
+/** Collapsed-window marker: steps exist past this edge (item 6). */
+function EllipsisRow({ count, where }: { count: number; where: 'earlier' | 'later' }) {
+  return (
+    <Box
+      accessible
+      accessibilityLabel={`${count} ${where} ${count === 1 ? 'step' : 'steps'} hidden`}
+      className="items-center py-0.5"
+    >
+      <Text className="font-mono text-sm leading-none text-typography-300">⋯</Text>
+    </Box>
   );
 }

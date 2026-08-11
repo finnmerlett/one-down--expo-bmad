@@ -41,8 +41,8 @@ export function SizeSwitcher({
             <Text
               className={
                 selected
-                  ? 'font-body-bold text-[11.5px] text-primary-600'
-                  : 'font-body-semibold text-[11.5px] text-typography-500'
+                  ? 'font-body-bold text-xs text-primary-600'
+                  : 'font-body-semibold text-xs text-typography-500'
               }
             >
               {label}

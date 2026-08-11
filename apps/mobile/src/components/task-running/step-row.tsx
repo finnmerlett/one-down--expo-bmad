@@ -41,7 +41,13 @@ export function StepRow({
         : 'border border-outline-100 bg-background-0 py-2.5';
 
   return (
-    <HStack className={`items-center gap-[13px] rounded-[15px] px-[15px] ${rowClass}`}>
+    // Keyed by grade: the grade flip swaps shadow/border classes, which
+    // otherwise makes css-interop UPGRADE the view in place — its dev-only
+    // upgrade warning deep-serialized the props and crashed on
+    // react-navigation's throwing context getters (2026-08-11 item 7; the
+    // library is also patched, see patches/). A remount per grade is free —
+    // the row is stateless.
+    <HStack key={grade} className={`items-center gap-[13px] rounded-[15px] px-[15px] ${rowClass}`}>
       <Pressable
         accessibilityRole="checkbox"
         accessibilityState={{ checked: subtask.completed }}
@@ -65,7 +71,7 @@ export function StepRow({
             grade === 'done'
               ? 'flex-1 font-body text-sm leading-5 text-typography-400 line-through'
               : grade === 'now'
-                ? 'flex-1 font-body-semibold text-[14.5px] leading-5 text-typography-900'
+                ? 'flex-1 font-body-semibold text-sm leading-5 text-typography-900'
                 : 'flex-1 font-body-medium text-sm leading-5 text-typography-600'
           }
         >
@@ -73,7 +79,7 @@ export function StepRow({
         </Text>
         {isNew ? (
           <Box className="flex-none rounded-md bg-[#EDF8F9] px-[5px] py-[2px]">
-            <Text className="font-mono text-[9.5px] uppercase tracking-caps-tight text-primary-600">
+            <Text className="font-mono text-2xs uppercase tracking-caps-tight text-primary-600">
               New
             </Text>
           </Box>

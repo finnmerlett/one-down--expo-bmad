@@ -232,7 +232,10 @@ export default function TaskListScreen() {
         onUndoComplete={handleUndoComplete}
         getStarValue={taskValue}
         getBadge={(task) => liveBadge(task, offers.get(task.id), new Date())}
-        onTaskPress={(task) => router.push(`/task/${task.id}`)}
+        // Viewing, not editing (2026-08-11 item 8): rows open the task's
+        // working screen in its looking state — status only flips on the
+        // first meaningful action. Editing lives behind the pencil there.
+        onTaskPress={(task) => router.push(`/task-running/${task.id}`)}
         onAddPress={() => {
           // The quick-add sheet is mounted on the home screen — open it via
           // the global UI store, then pop back so it shows as home regains

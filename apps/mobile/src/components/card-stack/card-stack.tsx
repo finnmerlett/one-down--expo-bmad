@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { Dimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
+  Easing,
   Extrapolation,
   interpolate,
+  useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
   withTiming,
+  type SharedValue,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import type { TaskData } from '@one-down/shared';
@@ -28,6 +31,13 @@ const VISIBLE_CARDS = 3;
 const DISMISS_THRESHOLD_PX = 92;
 const FLY_OFF_DISTANCE = 1000;
 const FLY_OFF_DURATION_MS = 680;
+/** Fling physics (2026-08-11): momentum counts toward the commit — the
+ *  release decision projects ~150ms of travel at the release velocity, so a
+ *  short fast flick dismisses. The fly-off duration matches the fling speed
+ *  (floored so a slow commit still leaves briskly). */
+const MOMENTUM_LOOKAHEAD_S = 0.15;
+const MIN_FLING_SPEED_PX_S = 900;
+const MIN_FLY_OFF_MS = 120;
 /** Drag styling from the design deck: slight drop + rotation follow. */
 const DRAG_DROP_RATIO = 0.05;
 const DRAG_ROTATE_DEG_PER_PX = 0.035;
@@ -48,8 +58,14 @@ const FILL = { height: '100%', width: '100%' } as const;
 // Playing-card proportions (owner feedback 2026-07-27): 2.5:3.5.
 export const CARD_WIDTH = 280;
 export const CARD_HEIGHT = 392;
+/** |translateX| at which the card has fully left the screen — the advance
+ *  fires HERE (mid-flight), not at the end of the 1000px timing. */
+const EXIT_X = (Dimensions.get('window').width + CARD_WIDTH) / 2;
 /** Corner tap zones (edit top-left, review top-right) routed inside the tap gesture. */
 const CORNER_SIZE = 64;
+/** The gold/primary band (task-card h-[52px]) pushes the corner markers down
+ *  — their tap targets must follow (2026-08-11 item 8). */
+const BAND_HEIGHT = 52;
 
 /**
  * The interactive top card OWNS its shared values, so they are born zeroed on
@@ -70,6 +86,8 @@ function SwipeableTopCard({
   onEdit,
   onReview,
   erosionLoss = 0,
+  dragProgress,
+  entrance,
 }: {
   task: TaskData;
   starValue: number;
@@ -84,35 +102,67 @@ function SwipeableTopCard({
   onReview?: () => void;
   /** E5x: what THIS committed pass costs a live offer (0 = no float). */
   erosionLoss?: number;
+  /** 0→1: how far the drag has carried the card off-screen — the stacked
+   *  cards read this and rise toward their next slot IN STEP with the drag. */
+  dragProgress: SharedValue<number>;
+  /** false right after a drag advance: the promoted card already sits square
+   *  on top (the drag walked it there), so no slot-1 entrance replay. */
+  entrance: boolean;
 }) {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   // Entrance: born at the depth-1 fan slot, settles square to the top slot.
-  const settle = useSharedValue(1);
+  const settle = useSharedValue(entrance ? 1 : 0);
+  const dismissed = useSharedValue(false);
 
   useEffect(() => {
-    settle.value = withTiming(0, { duration: PROMOTE_DURATION_MS });
-  }, [settle]);
+    if (entrance) settle.value = withTiming(0, { duration: PROMOTE_DURATION_MS });
+  }, [entrance, settle]);
+
+  // The stacked cards' promotion tracks the drag continuously — and the
+  // advance fires the moment the card has LEFT THE SCREEN (drag or flight),
+  // not when the 1000px timing ends (that pause read as lag).
+  useAnimatedReaction(
+    () => translateX.value,
+    (tx) => {
+      dragProgress.value = Math.min(Math.abs(tx) / EXIT_X, 1);
+      if (!dismissed.value && Math.abs(tx) >= EXIT_X) {
+        dismissed.value = true;
+        scheduleOnRN(onDismiss);
+      }
+    },
+  );
 
   const pan = Gesture.Pan()
     .onChange((event) => {
       translateX.value += event.changeX;
       translateY.value += event.changeY;
     })
-    .onEnd(() => {
-      if (Math.abs(translateX.value) > DISMISS_THRESHOLD_PX) {
-        const direction = Math.sign(translateX.value);
-        translateX.value = withTiming(
-          direction * FLY_OFF_DISTANCE,
-          { duration: FLY_OFF_DURATION_MS },
-          (finished) => {
-            // finished is false when a new touch re-grabs the card mid-flight
-            // (the drag simply continues) — only a completed fly-off advances.
-            if (finished) {
-              scheduleOnRN(onDismiss);
-            }
-          },
-        );
+    .onEnd((event) => {
+      // Momentum counts: project ~150ms of travel at the release velocity,
+      // so a short fast flick commits even when the finger barely moved.
+      const tx = translateX.value;
+      const projected = tx + event.velocityX * MOMENTUM_LOOKAHEAD_S;
+      // A flick back toward center after dragging out (sign flip) is a
+      // CANCEL — without this the card at +150 could fly to −1000, fast and
+      // the wrong way (lift-off velocity spikes made this easy to hit).
+      const yankedBack = Math.abs(tx) > 20 && Math.sign(projected) !== Math.sign(tx);
+      if (Math.abs(projected) > DISMISS_THRESHOLD_PX && !yankedBack) {
+        const direction = Math.sign(projected);
+        const target = direction * FLY_OFF_DISTANCE;
+        const speed = Math.max(Math.abs(event.velocityX), MIN_FLING_SPEED_PX_S);
+        // True travel distance — NOT 1000−|tx|, which under-timed (and so
+        // over-sped) any flight that had to cross back over the card.
+        const remaining = Math.abs(target - tx);
+        translateX.value = withTiming(target, {
+          duration: Math.min(
+            Math.max((remaining / speed) * 1000, MIN_FLY_OFF_MS),
+            FLY_OFF_DURATION_MS,
+          ),
+          easing: Easing.out(Easing.quad),
+        });
+        // Dismissal fires from the reaction above at screen exit — a re-grab
+        // mid-flight before that still just continues the drag.
       } else {
         translateX.value = withSpring(0, SNAP_SPRING);
         translateY.value = withSpring(0, SNAP_SPRING);
@@ -126,9 +176,11 @@ function SwipeableTopCard({
   // transparent corner Pressables painted above this card: RNGH claims the
   // raw touch stream, so those siblings can't be trusted to receive presses
   // (they remain as TalkBack targets — both paths fire idempotent actions).
+  // A live band shifts the markers down a band-height — the zones follow.
+  const cornerTop = badge || topOfDeck ? BAND_HEIGHT : 0;
   const tap = Gesture.Tap().onEnd((event, success) => {
     if (!success) return;
-    if (event.y <= CORNER_SIZE) {
+    if (event.y >= cornerTop && event.y <= cornerTop + CORNER_SIZE) {
       if (onEdit && event.x <= CORNER_SIZE) {
         scheduleOnRN(onEdit);
         return;
@@ -197,7 +249,7 @@ function SwipeableTopCard({
             pointerEvents="none"
             style={[{ position: 'absolute', top: 30, left: 20 }, erosionStyle]}
           >
-            <Text className="font-mono text-[17px] text-error-600">{`−${erosionLoss}`}</Text>
+            <Text className="font-mono text-lg text-error-600">{`−${erosionLoss}`}</Text>
           </Animated.View>
         ) : null}
       </Animated.View>
@@ -221,33 +273,62 @@ function StackedCard({
   badge,
   topOfDeck,
   depth,
+  dragProgress,
+  snap,
 }: {
   task: TaskData;
   starValue: number;
   badge: StarBadge | null;
   topOfDeck: boolean;
   depth: number;
+  /** The top card's 0→1 off-screen progress — position tracks it live. */
+  dragProgress: SharedValue<number>;
+  /** true on a drag advance: the drag already walked this card to its new
+   *  slot, so the depth change lands as a snap, not a second animation. */
+  snap: boolean;
 }) {
   const progress = useSharedValue(depth + 1);
+  // Mount fade (2026-08-11 item 11): a card entering the window must fade in
+  // DURING its slide, not pop to its slot opacity — with a shallow deck the
+  // entering card lands at depth 1, whose slot opacity is already 1, so the
+  // progress-derived opacity alone showed it instantly.
+  const mountFade = useSharedValue(0);
+  const mounted = useRef(false);
 
   useEffect(() => {
-    progress.value = withTiming(depth, { duration: PROMOTE_DURATION_MS });
-  }, [depth, progress]);
+    if (!mounted.current) {
+      // Fresh card at the back: the only post-release motion — a fade-in
+      // synchronized with the slide from one slot deeper.
+      mounted.current = true;
+      progress.value = withTiming(depth, { duration: PROMOTE_DURATION_MS });
+      mountFade.value = withTiming(1, { duration: PROMOTE_DURATION_MS });
+    } else if (snap) {
+      progress.value = depth;
+    } else {
+      progress.value = withTiming(depth, { duration: PROMOTE_DURATION_MS });
+    }
+  }, [depth, progress, mountFade, snap]);
 
   const frameStyle = useAnimatedStyle(() => {
-    const clamped = Math.min(Math.max(progress.value, 0), 2);
+    // Position rides the live drag: as the top card leaves, every stacked
+    // card slides/rotates toward its next slot IN STEP with the finger.
+    // Opacity stays on the raw depth value so the new back card's fade-in
+    // remains a post-release moment, never a mid-drag preview.
+    const effective = Math.min(Math.max(progress.value - dragProgress.value, 0), 2);
     return {
       transform: [
-        { translateX: interpolate(clamped, [0, 1, 2], SLOT_X) },
-        { translateY: interpolate(clamped, [0, 1, 2], SLOT_Y) },
-        { rotate: `${interpolate(clamped, [0, 1, 2], SLOT_R)}deg` },
+        { translateX: interpolate(effective, [0, 1, 2], SLOT_X) },
+        { translateY: interpolate(effective, [0, 1, 2], SLOT_Y) },
+        { rotate: `${interpolate(effective, [0, 1, 2], SLOT_R)}deg` },
       ],
-      opacity: interpolate(
-        progress.value,
-        [1, 2, VISIBLE_CARDS],
-        [SLOT_FADE[1]!, SLOT_FADE[2]!, 0],
-        Extrapolation.CLAMP,
-      ),
+      opacity:
+        mountFade.value *
+        interpolate(
+          progress.value,
+          [1, 2, VISIBLE_CARDS],
+          [SLOT_FADE[1]!, SLOT_FADE[2]!, 0],
+          Extrapolation.CLAMP,
+        ),
     };
   });
 
@@ -314,6 +395,20 @@ export function CardStack({
   // Bumped on every dismiss: remounts the keyed top card (fresh zeroed
   // shared values), including the single-card self-wrap where the id repeats.
   const [cycle, setCycle] = useState(0);
+  // Live 0→1 off-screen progress of the top card's drag — owned here so the
+  // stacked cards can ride it; reset once a drag advance has committed.
+  const dragProgress = useSharedValue(0);
+  const dragAdvance = useRef(false);
+
+  // Runs AFTER the children's effects in the same commit: the stacked cards
+  // snap their progress to the new depth first, then this reset lands in the
+  // same UI-thread batch — the deck never paints an intermediate slot.
+  useEffect(() => {
+    if (dragAdvance.current) {
+      dragProgress.value = 0;
+      dragAdvance.current = false;
+    }
+  }, [cycle, dragProgress]);
 
   const topIndex = useMemo(() => {
     const index = tasks.findIndex((task) => task.id === topTaskId);
@@ -353,6 +448,9 @@ export function CardStack({
     if (skipped) {
       currentOnSwipe?.(skipped);
     }
+    // Drag-driven: the promoted card is already square on top and the fan has
+    // already risen — children snap depths, no entrance replay (2026-08-11).
+    dragAdvance.current = true;
     const next = currentTasks[(currentIndex + 1) % currentTasks.length];
     if (next) {
       setTopTaskId(next.id);
@@ -374,6 +472,12 @@ export function CardStack({
   }
 
   const topTask = stackWindow[0]?.task;
+  // Band-aware corner offset for the a11y tap targets (mirrors the gesture
+  // routing inside SwipeableTopCard).
+  const topCornerTop =
+    topTask && ((getBadge?.(topTask) ?? null) || (getTopOfDeck?.(topTask) ?? false))
+      ? BAND_HEIGHT
+      : 0;
 
   // Health flag in the top card's a11y label (Story 7.2, AC6): the card is an
   // accessible container, so the visual chip must be announced here too.
@@ -423,6 +527,8 @@ export function CardStack({
                 onReview={
                   task.hasCheckNeeded && onReviewPress ? () => onReviewPress(task) : undefined
                 }
+                dragProgress={dragProgress}
+                entrance={!dragAdvance.current}
               />
             ) : (
               <StackedCard
@@ -432,6 +538,8 @@ export function CardStack({
                 badge={getBadge?.(task) ?? null}
                 topOfDeck={getTopOfDeck?.(task) ?? false}
                 depth={depth}
+                dragProgress={dragProgress}
+                snap={dragAdvance.current}
               />
             ),
           )}
@@ -447,7 +555,8 @@ export function CardStack({
             aria-label={`Edit task: ${topTask.title}`}
             hitSlop={8}
             onPress={() => onEditPress(topTask)}
-            className="absolute left-0 top-0 h-14 w-14"
+            className="absolute left-0 h-14 w-14"
+            style={{ top: topCornerTop }}
           />
         ) : null}
         {topTask?.hasCheckNeeded && onReviewPress ? (
@@ -456,7 +565,8 @@ export function CardStack({
             aria-label="Needs review"
             hitSlop={8}
             onPress={() => onReviewPress(topTask)}
-            className="absolute right-0 top-0 h-14 w-14"
+            className="absolute right-0 h-14 w-14"
+            style={{ top: topCornerTop }}
           />
         ) : null}
       </Box>

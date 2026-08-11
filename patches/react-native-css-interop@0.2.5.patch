@@ -1,0 +1,57 @@
+diff --git a/dist/runtime/native/render-component.js b/dist/runtime/native/render-component.js
+index eba25ece1cf3fe3170cd55134df6b70c7aabd70e..30050d10cf2c8b8107c54b9ef4ab20c01af7b307 100644
+--- a/dist/runtime/native/render-component.js
++++ b/dist/runtime/native/render-component.js
+@@ -121,22 +121,37 @@ function printUpgradeWarning(warning, originalProps) {
+     console.log(`CssInterop upgrade warning.\n\n${warning}.\n\nThis warning was caused by a component with the props:\n${stringify(originalProps)}\n\nIf adding or removing sibling components caused this warning you should add a unique "key" prop to your components. https://react.dev/learn/rendering-lists#keeping-list-items-in-order-with-key\n`);
+ }
+ function stringify(object) {
++    // PATCHED (one-down): the debug walk must never throw. Object.entries()
++    // invokes getters, and objects like react-navigation's context default
++    // have getters that THROW by design — the original code turned a benign
++    // dev warning into a render crash. Object.keys() + per-key guarded reads
++    // salvage everything readable instead.
+     const seen = new WeakSet();
+-    return JSON.stringify(object, function replace(_, value) {
+-        if (!(value !== null && typeof value === "object")) {
+-            return value;
+-        }
+-        if (seen.has(value)) {
+-            return "[Circular]";
+-        }
+-        seen.add(value);
+-        const newValue = Array.isArray(value) ? [] : {};
+-        for (const entry of Object.entries(value)) {
+-            newValue[entry[0]] = replace(entry[0], entry[1]);
+-        }
+-        seen.delete(value);
+-        return newValue;
+-    }, 2);
++    try {
++        return JSON.stringify(object, function replace(_, value) {
++            if (!(value !== null && typeof value === "object")) {
++                return value;
++            }
++            if (seen.has(value)) {
++                return "[Circular]";
++            }
++            seen.add(value);
++            const newValue = Array.isArray(value) ? [] : {};
++            for (const key of Object.keys(value)) {
++                try {
++                    newValue[key] = replace(key, value[key]);
++                }
++                catch {
++                    newValue[key] = "[Throws]";
++                }
++            }
++            seen.delete(value);
++            return newValue;
++        }, 2);
++    }
++    catch {
++        return "[Unserializable]";
++    }
+ }
+ function getDebugReplacer() {
+     const seen = new WeakSet();

@@ -68,8 +68,8 @@ export function deadlineCopy(deadline: Date | null, now: Date): string {
 function ValuePill({ starValue }: { starValue: number }) {
   return (
     <HStack className="h-[30px] flex-none items-baseline gap-[3px] rounded-full border border-outline-100 bg-background-0 px-[11px]">
-      <Text className="font-mono text-[17px] leading-[28px] text-typography-900">{starValue}</Text>
-      <Text className="text-[11px] text-tertiary-500">★</Text>
+      <Text className="font-mono text-lg leading-[28px] text-typography-900">{starValue}</Text>
+      <Text className="text-xs text-tertiary-500">★</Text>
     </HStack>
   );
 }
@@ -124,11 +124,11 @@ export function TaskCard({
           <HStack className="h-[52px] items-center justify-between gap-3 border-b border-tertiary-300 bg-tertiary-100 px-5">
             <HStack className="min-w-0 flex-none items-center gap-[9px]">
               <HStack className="h-6 items-center rounded-full bg-tertiary-200 px-[7px]">
-                <Text className="font-mono text-[14px] text-tertiary-700">{`+${badge.amount}`}</Text>
+                <Text className="font-mono text-sm text-tertiary-700">{`+${badge.amount}`}</Text>
               </HStack>
               <Text
                 numberOfLines={1}
-                className="min-w-0 font-mono text-[11px] tracking-caps text-tertiary-700"
+                className="min-w-0 font-mono text-xs tracking-caps text-tertiary-700"
               >
                 {badge.reason}
               </Text>
@@ -138,7 +138,7 @@ export function TaskCard({
         ) : null}
         {band === 'top' ? (
           <HStack className="h-[52px] items-center justify-between gap-3 border-b border-primary-200 bg-primary-50 px-5">
-            <Text className="font-mono text-[11px] tracking-caps text-primary-600">
+            <Text className="font-mono text-xs tracking-caps text-primary-600">
               TOP OF THE DECK
             </Text>
             <ValuePill starValue={starValue} />
@@ -160,10 +160,10 @@ export function TaskCard({
               ) : null}
               {band === null ? (
                 <>
-                  <Text className="font-mono text-[21px] leading-none text-tertiary-500">
+                  <Text className="font-mono text-xl leading-none text-tertiary-500">
                     {starValue}
                   </Text>
-                  <Text className="text-[11px] text-tertiary-500">★</Text>
+                  <Text className="text-xs text-tertiary-500">★</Text>
                 </>
               ) : null}
             </HStack>
@@ -172,7 +172,7 @@ export function TaskCard({
               title must truncate rather than push the rail out of the card. */}
           <Text
             numberOfLines={3}
-            className="font-heading text-[30px] leading-[36px] tracking-tight text-typography-900"
+            className="font-heading text-3xl leading-[36px] tracking-tight text-typography-900"
           >
             {task.title}
           </Text>
@@ -182,16 +182,14 @@ export function TaskCard({
               {inProgress ? (
                 <HStack className="h-[27px] items-center gap-[7px] self-start rounded-[9px] bg-success-100 px-[11px]">
                   <Box className="h-1.5 w-1.5 rounded-full bg-success-500" />
-                  <Text className="font-body-semibold text-[11.5px] text-success-700">
-                    In progress
-                  </Text>
+                  <Text className="font-body-semibold text-xs text-success-700">In progress</Text>
                 </HStack>
               ) : null}
               {/* Health indicator (Story 7.2, AC6) — kept from the previous
                   design as a quiet muted chip (ambiguity #20), never red. */}
               {healthFlag ? (
                 <HStack className="h-[27px] items-center self-start rounded-[9px] bg-background-200 px-[11px]">
-                  <Text className="font-body-semibold text-[11.5px] text-typography-600">
+                  <Text className="font-body-semibold text-xs text-typography-600">
                     {HEALTH_LABELS[healthFlag]}
                   </Text>
                 </HStack>
@@ -201,10 +199,7 @@ export function TaskCard({
           {/* The one-line reason (spec §4): details' first line fills what
               used to be dead space — why this is worth doing, kept short. */}
           {reason ? (
-            <Text
-              numberOfLines={3}
-              className="font-body text-[13.5px] leading-5 text-typography-500"
-            >
+            <Text numberOfLines={3} className="font-body text-sm leading-5 text-typography-500">
               {reason}
             </Text>
           ) : null}
@@ -220,12 +215,12 @@ export function TaskCard({
         >
           <VStack className="min-w-0 flex-1 gap-[5px]">
             {task.size ? (
-              <Text className="font-mono text-[11px] tracking-caps-tight text-typography-500">
+              <Text className="font-mono text-xs tracking-caps-tight text-typography-500">
                 {SIZE_CAPS[task.size]}
               </Text>
             ) : null}
             <Text
-              className={`text-[12.5px] ${
+              className={`text-xs ${
                 band === 'badge'
                   ? 'font-body-bold text-tertiary-700'
                   : band === 'top'

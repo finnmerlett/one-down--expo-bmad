@@ -1,23 +1,22 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { randomUUID } from 'expo-crypto';
 
-import { STAR_WEIGHTS, type StarAction, type SubtaskData, type TaskData } from '@one-down/shared';
-import { starActivityLog, subtasks, taskOffers, tasks } from '@one-down/shared/schema-local';
+import { STAR_WEIGHTS, type StarAction, type TaskData } from '@one-down/shared';
+import { starActivityLog, taskOffers, tasks } from '@one-down/shared/schema-local';
 
 import { track } from '@/lib/analytics/track';
-import {
-  bankedForCount,
-  calculateCompletionStars,
-  type StarBreakdown,
-} from '@/services/star-calculator';
+import { calculateCompletionStars, type StarBreakdown } from '@/services/star-calculator';
 import type { TasksDb } from '@/services/tasks-repository';
 
 /**
  * Star award persistence — writes signed transactions to the local
- * `star_activity_log` ledger. v1.5 economy (spec §3): steps BANK hollow
- * stars out of the card's value (1 quick win / 2 big time, capped so the
- * indicator fills exactly at the value); completing converts the lot — the
- * completion row is the remainder (value + live badge − banked, floored 0).
+ * `star_activity_log` ledger. Banked stars are COSMETIC (2026-08-11 item 7):
+ * step ticks write nothing here — the banked indicator derives live from
+ * completed-step counts (useBankedStars/bankedForCount) — and the pot pays
+ * in full (value + live badge) only when a task completes. LEGACY
+ * subtask rows from the earlier bank-as-you-go economy still convert at
+ * completion (value + badge − banked, floored 0), so no device is ever
+ * double-credited.
  *
  * db injected like tasks-repository so integration tests run the real
  * schema. Persistence failures never block the task action (4.1 AC7): warn,
@@ -106,44 +105,6 @@ export async function awardCompletionStars(
     console.warn('Star award insert failed', error);
   }
   return breakdown;
-}
-
-/**
- * Banking delta for a subtask state change (tick, untick, delete-completed).
- * Order-free accounting: banked(task) ≡ bankedForCount(completedCount), so
- * every change writes the signed DIFFERENCE between the new and old counts —
- * caps fall out naturally (a step past the cap writes a 0-delta = no row).
- * `direction` is +1 for a tick, −1 for an untick/removal of a completed step.
- * The ledger stays append-only — reversals are new signed rows, never edits.
- */
-export async function awardSubtaskStars(
-  db: TasksDb,
-  task: Pick<TaskData, 'id' | 'size'>,
-  subtask: Pick<SubtaskData, 'title'>,
-  action: 'subtask_completed' | 'subtask_deleted',
-  direction: 1 | -1,
-): Promise<number> {
-  let amount = 0;
-  try {
-    const [row] = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(subtasks)
-      .where(and(eq(subtasks.taskId, task.id), eq(subtasks.completed, true)));
-    const countAfter = row?.count ?? 0;
-    const countBefore = countAfter - direction;
-    amount = bankedForCount(task, countAfter) - bankedForCount(task, countBefore);
-    if (amount === 0) return 0;
-    await insertAward(
-      db,
-      { taskId: task.id, taskTitle: subtask.title, action },
-      { ...zeroBreakdown(amount) },
-      new Date(),
-    );
-  } catch (error) {
-    // oxlint-disable-next-line no-console
-    console.warn('Star award insert failed', error);
-  }
-  return amount;
 }
 
 /**

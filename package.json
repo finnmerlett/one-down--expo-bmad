@@ -39,5 +39,8 @@
     "oxfmt": "^0.54.0",
     "oxlint": "^1.49.0",
     "typescript": "~6.0.3"
+  },
+  "patchedDependencies": {
+    "react-native-css-interop@0.2.5": "patches/react-native-css-interop@0.2.5.patch"
   }
 }

@@ -124,7 +124,7 @@ export function StepsEditor({
     <VStack className="gap-2.5">
       <HStack className="min-h-6 items-center gap-2">
         <Icon as={EditIcon} size="2xs" className="text-primary-600" />
-        <Text className="font-mono text-[11px] uppercase tracking-caps text-primary-600">
+        <Text className="font-mono text-xs uppercase tracking-caps text-primary-600">
           {`Editing ${count} step${count === 1 ? '' : 's'}`}
         </Text>
         <Box className="flex-1" />
@@ -135,7 +135,7 @@ export function StepsEditor({
           onPress={onDone}
           className="rounded-full bg-primary-50 px-[13px] py-[4px] active:bg-primary-100"
         >
-          <Text className="font-body-semibold text-[12px] text-primary-700">Done</Text>
+          <Text className="font-body-semibold text-xs text-primary-700">Done</Text>
         </Pressable>
       </HStack>
       <Box className="relative">

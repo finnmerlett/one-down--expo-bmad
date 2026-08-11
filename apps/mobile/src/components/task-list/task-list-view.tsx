@@ -127,7 +127,7 @@ function TaskRow({
       <HStack className="items-center gap-3">
         {selecting ? <SelectionIndicator selected={selected} /> : null}
         <VStack className="flex-1 gap-1">
-          <Text numberOfLines={1} className="font-body-semibold text-[14.5px] text-typography-900">
+          <Text numberOfLines={1} className="font-body-semibold text-sm text-typography-900">
             {task.title}
           </Text>
           {metaCaps || contexts.length > 0 ? (
@@ -143,7 +143,7 @@ function TaskRow({
               {metaCaps ? (
                 <Text
                   numberOfLines={1}
-                  className={`font-mono text-[11.5px] tracking-caps-tight ${
+                  className={`font-mono text-xs tracking-caps-tight ${
                     bonus ? 'text-[#B08F3E]' : 'text-typography-400'
                   }`}
                 >
@@ -157,13 +157,13 @@ function TaskRow({
           <HStack className="flex-none items-center gap-2">
             {bonus ? (
               <Box className="rounded-full bg-tertiary-200 px-[7px] py-[2px]">
-                <Text className="font-mono text-[11px] text-tertiary-700">{`+${badge.amount}`}</Text>
+                <Text className="font-mono text-xs text-tertiary-700">{`+${badge.amount}`}</Text>
               </Box>
             ) : null}
             {starValue !== undefined ? (
               <HStack className="items-baseline gap-[2px]">
-                <Text className="font-mono text-[13px] text-tertiary-600">{starValue}</Text>
-                <Text className="text-[10px] text-tertiary-500">★</Text>
+                <Text className="font-mono text-sm text-tertiary-600">{starValue}</Text>
+                <Text className="text-2xs text-tertiary-500">★</Text>
               </HStack>
             ) : null}
             <Icon as={ChevronRightIcon} size="sm" className="text-typography-200" />
@@ -221,7 +221,7 @@ function DoneRow({
             <Text numberOfLines={1} className="font-body text-sm text-typography-400">
               {task.title}
             </Text>
-            <Text className="font-mono text-[10.5px] uppercase tracking-caps-tight text-typography-300">
+            <Text className="font-mono text-2xs uppercase tracking-caps-tight text-typography-300">
               {task.updatedAt
                 .toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
                 .toUpperCase()}
@@ -435,11 +435,11 @@ export function TaskListView({
       renderSectionHeader={({ section }) =>
         section.title ? (
           <HStack className="items-center justify-between pb-1.5 pt-3">
-            <Text className="font-mono text-[11px] uppercase tracking-caps text-typography-400">
+            <Text className="font-mono text-xs uppercase tracking-caps text-typography-400">
               {section.title}
             </Text>
             {section.key === 'done' ? (
-              <Text className="font-mono text-[11px] uppercase tracking-caps text-typography-300">
+              <Text className="font-mono text-xs uppercase tracking-caps text-typography-300">
                 {`${doneThisWeek} this week`}
               </Text>
             ) : null}

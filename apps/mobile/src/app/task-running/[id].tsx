@@ -190,14 +190,14 @@ export default function TaskRunningScreen() {
         >
           <HStack className="h-8 items-center gap-1.5 rounded-full border border-tertiary-300 bg-tertiary-100 px-[13px]">
             <Text className="text-xs text-tertiary-500">★</Text>
-            <Text className="font-mono text-[13px] leading-none text-tertiary-700">{prize}</Text>
-            <Text className="font-body-semibold text-[12.5px] text-tertiary-700">when done</Text>
+            <Text className="font-mono text-sm leading-none text-tertiary-700">{prize}</Text>
+            <Text className="font-body-semibold text-xs text-tertiary-700">when done</Text>
           </HStack>
           {banked > 0 ? (
             <HStack className="items-center gap-1">
               <Icon as={StarIcon} size="2xs" className="text-tertiary-500" />
-              <Text className="font-mono text-[13px] leading-none text-tertiary-700">{banked}</Text>
-              <Text className="font-body-semibold text-[12.5px] text-tertiary-700">banked</Text>
+              <Text className="font-mono text-sm leading-none text-tertiary-700">{banked}</Text>
+              <Text className="font-body-semibold text-xs text-tertiary-700">banked</Text>
             </HStack>
           ) : null}
         </HStack>
@@ -208,7 +208,7 @@ export default function TaskRunningScreen() {
           accessibilityRole="button"
           aria-label={`Edit task: ${task.title}`}
           hitSlop={8}
-          onPress={() => router.push(`/task/${task.id}`)}
+          onPress={() => router.push(`/task/${task.id}?flat=1`)}
           className="h-11 w-11 items-center justify-center rounded-full active:bg-background-100"
         >
           <Icon as={EditIcon} size="lg" className="text-typography-700" />

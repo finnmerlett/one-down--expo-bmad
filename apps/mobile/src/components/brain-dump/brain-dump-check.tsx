@@ -104,7 +104,7 @@ export function BrainDumpCheck({
                       onSubmitEditing={() => commitRename(index)}
                       onBlur={() => commitRename(index)}
                       returnKeyType="done"
-                      className="flex-1 font-body-semibold text-[14.5px] text-typography-900"
+                      className="flex-1 font-body-semibold text-sm text-typography-900"
                     />
                   ) : (
                     <Pressable
@@ -116,7 +116,7 @@ export function BrainDumpCheck({
                       }}
                       className="min-h-6 flex-1 justify-center"
                     >
-                      <Text className="font-body-semibold text-[14.5px] text-typography-900">
+                      <Text className="font-body-semibold text-sm text-typography-900">
                         {task.title}
                       </Text>
                     </Pressable>
@@ -134,7 +134,7 @@ export function BrainDumpCheck({
                 {task.evidence.length > 0 ? (
                   <VStack className="ml-[3px] gap-1 border-l-2 border-outline-100 pl-3">
                     {task.evidence.map((quote) => (
-                      <Text key={quote} className="font-body text-[13px] text-typography-400">
+                      <Text key={quote} className="font-body text-sm text-typography-400">
                         {quote}
                       </Text>
                     ))}
@@ -148,7 +148,7 @@ export function BrainDumpCheck({
                 className="items-center gap-2.5 rounded-[15px] border-[1.5px] border-dashed border-primary-300 bg-primary-50/60 px-4 py-3"
               >
                 <VStack className="min-w-0 flex-1 border-l-2 border-primary-200 pl-3">
-                  <Text className="font-body text-[13px] text-typography-500">{line}</Text>
+                  <Text className="font-body text-sm text-typography-500">{line}</Text>
                 </VStack>
                 <Pressable
                   accessibilityRole="button"
@@ -183,7 +183,7 @@ export function BrainDumpCheck({
       </Box>
       {changeOpen ? (
         <VStack className="gap-2 rounded-[15px] border-[1.5px] border-dashed border-primary-300 bg-background-0 px-[15px] py-3">
-          <Text className="font-mono text-[11px] uppercase tracking-caps text-primary-600">
+          <Text className="font-mono text-xs uppercase tracking-caps text-primary-600">
             What should be different
           </Text>
           <TextInput
@@ -203,7 +203,7 @@ export function BrainDumpCheck({
             className="h-9 flex-row items-center justify-center gap-1.5 self-start rounded-full bg-primary-500 px-4 active:bg-primary-600"
           >
             <Icon as={CheckIcon} size="xs" className="text-typography-0" />
-            <Text className="font-body-bold text-[13px] text-typography-0">Change</Text>
+            <Text className="font-body-bold text-sm text-typography-0">Change</Text>
           </Pressable>
         </VStack>
       ) : null}
@@ -219,7 +219,7 @@ export function BrainDumpCheck({
           <Text className="font-body-semibold text-sm text-typography-600">Change these</Text>
         </Pressable>
         {unclaimed.length > 0 ? (
-          <Text className="font-mono text-[11px] uppercase tracking-caps text-typography-400">
+          <Text className="font-mono text-xs uppercase tracking-caps text-typography-400">
             {`${unclaimed.length} ${unclaimed.length === 1 ? 'entry' : 'entries'} not added`}
           </Text>
         ) : null}

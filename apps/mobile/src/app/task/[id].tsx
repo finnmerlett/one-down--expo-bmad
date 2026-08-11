@@ -26,7 +26,11 @@ cssInterop(SafeAreaView, { className: 'style' });
 // Isolated full-screen card back, reached from the task list (Story 1.5 AC).
 // Reuses CardBack directly — it is overlay-agnostic (1.4 design note).
 export default function TaskDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  // `flat=1` (2026-08-11 item 9): entered from the DOING screen — render as
+  // a plain full-bleed editor. Without it (pencil on the stack card) the
+  // editor keeps its floating-card chrome.
+  const { id, flat } = useLocalSearchParams<{ id: string; flat?: string }>();
+  const frameless = flat === '1';
   const router = useRouter();
   const navigation = useNavigation();
   const toast = useToast();
@@ -93,9 +97,13 @@ export default function TaskDetailScreen() {
   }
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right', 'bottom']} className="flex-1 bg-background-100">
-      <Box className="flex-1 p-3">
+    <SafeAreaView
+      edges={['top', 'left', 'right', 'bottom']}
+      className={frameless ? 'flex-1 bg-background-0' : 'flex-1 bg-background-100'}
+    >
+      <Box className={frameless ? 'flex-1' : 'flex-1 p-3'}>
         <CardBack
+          frameless={frameless}
           ref={cardBackRef}
           task={task}
           onPatch={(patch) => applyTaskPatch(task, patch)}
@@ -127,7 +135,7 @@ export default function TaskDetailScreen() {
             // above is the backstop.
             close();
           }}
-          backLabel="Back to task list"
+          backLabel={frameless ? 'Back to task' : 'Back to task list'}
         />
       </Box>
     </SafeAreaView>
