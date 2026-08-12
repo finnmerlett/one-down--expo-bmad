@@ -1,6 +1,8 @@
 # 9.5 — Further alterations & other items (2026-08-12 autonomous session)
 
-Finn's raw notes (2026-08-11) reworded into a task list. Run ground rules: Finn is away —
+Finn's raw notes (2026-08-11) reworded into a task list. ALL ITEMS SHIPPED
+2026-08-12; suite effectively 34/34 on the final state; OTA published
+(group c75e2552, runtime 2026-08-11-expo-blur). Run ground rules: Finn is away —
 best-guess every ambiguity, record the guess here, add/adjust e2e flows, work all the way
 through, commit per coherent chunk.
 
@@ -8,7 +10,7 @@ through, commit per coherent chunk.
 
 | # | Item | Status |
 |---|------|--------|
-| 1 | E2E seeding via sync accounts (runtime optimization) | DONE (suite verifying) |
+| 1 | E2E seeding via sync accounts (runtime optimization) | DONE |
 | 2 | Bonus-aura ripple: restore the design maths (negative pause clips the cycle) | code DONE |
 | 3 | Bonus-aura ripple: remove the hard inner edge | code DONE |
 | 4 | AI general learnings → editable notes section in settings + prompt updates | code DONE |
@@ -202,6 +204,13 @@ keyboard instead.
 - Flow 23 re-run after the fix: green. Manual argent repro confirmed the toast
   renders correctly (screenshot in run notes) plus items 6 (standing triage
   button) and 15 (criticality chips on blueprint + card back) visually.
+- Suite run 3 (final committed state): **33/34 + 06 green on isolated re-run =
+  effectively 34/34.** 06's one failure was an ANR dialog ("One Down isn't
+  responding") — the concurrent `eas update` export pegged the CPU and starved
+  the emulator mid-sign-in. Lesson: never run bundling/exports (OTA publish,
+  builds) while the suite is running — CPU starvation ANRs aside, a published
+  OTA can also be downloaded mid-suite by plain-relaunch flows and boot a
+  bundle with baked tailnet URLs.
 
 ## Runtime debugging findings
 
