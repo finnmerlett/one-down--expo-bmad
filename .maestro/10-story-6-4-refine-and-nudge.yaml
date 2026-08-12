@@ -115,6 +115,10 @@ appId: com.onedown.mobile
 - waitForAnimationToEnd
 - tapOn: 'Open settings'
 - waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      text: 'AI notes about you'
+    direction: DOWN
 - assertVisible: 'AI notes about you'
 - assertVisible: '.*Learned: I prefer physical actions I can tick off.*'
 - takeScreenshot: .maestro/screenshots/10-95-ai-notes-learning

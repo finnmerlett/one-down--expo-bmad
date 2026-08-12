@@ -44,12 +44,25 @@ appId: com.onedown.mobile
 - takeScreenshot: .maestro/screenshots/23-story-6-2-triage-blueprint
 
 # 9-5 item 15: the criticality chips are live on the blueprint card —
-# picking one rides the same Save and next commit.
+# picking one rides the same Save and next commit. The new group makes the
+# card taller, so scroll each lower control into view before tapping.
+- scrollUntilVisible:
+    element:
+      text: 'Criticality: Important'
+    direction: DOWN
 - tapOn: 'Criticality: Important'
 
 # Answer the deadline gap with None, then save the card AS SHOWN — the
 # remaining guesses (size, contexts) confirm in one go (AC4/AC6)
+- scrollUntilVisible:
+    element:
+      text: 'No deadline needed'
+    direction: DOWN
 - tapOn: 'No deadline needed'
+- scrollUntilVisible:
+    element:
+      text: 'Save and next'
+    direction: DOWN
 - tapOn: 'Save and next'
 
 # 9-5 item 11: the queue-clear +5 pays through the reward toast now —

@@ -109,6 +109,15 @@ Requires a running emulator. Check if there is one running. If not, start window
 
 - E2E runs against **release APK** — no Metro needed
 - `scripts/maestro-test.sh` dumps all app console.logs after each run
+- **Seeded fixture accounts** (9.5): most flows sign in as a per-flow
+  supabase-local account (`e2e-<slug>@test.local`) and pull their fixtures
+  instead of tapping tasks in through the UI. `maestro-test.sh` reseeds all
+  accounts before every run (`bun run seed:e2e`; bypass with
+  `SKIP_E2E_SEED=1`). Fixture sets live in
+  `apps/server/scripts/seed-e2e-accounts.ts` — keep them in lockstep with
+  their flow files, and never give fixtures deadlines outside the `bonus`
+  account (a live badge extends card a11y labels and breaks full-string
+  selectors). Requires the supabase-local stack + the fake-AI server.
 
 ### Debugging
 

@@ -4,6 +4,7 @@ import { ArrowRight } from 'lucide-react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
@@ -28,20 +29,23 @@ const REVEAL_EASE = Easing.inOut(Easing.quad);
  * exit so the card fades out as it collapses.
  */
 export function NudgeReveal({ visible, children }: { visible: boolean; children: ReactNode }) {
+  const reduceMotion = useReducedMotion();
   const contentHeight = useSharedValue(0);
   const progress = useSharedValue(0);
   const [mounted, setMounted] = useState(visible);
 
   useEffect(() => {
+    // Reduce Motion: same reveal, no glide.
+    const duration = reduceMotion ? 0 : REVEAL_MS;
     if (visible) {
       setMounted(true);
-      progress.value = withTiming(1, { duration: REVEAL_MS, easing: REVEAL_EASE });
+      progress.value = withTiming(1, { duration, easing: REVEAL_EASE });
       return;
     }
-    progress.value = withTiming(0, { duration: REVEAL_MS, easing: REVEAL_EASE }, (finished) => {
+    progress.value = withTiming(0, { duration, easing: REVEAL_EASE }, (finished) => {
       if (finished) scheduleOnRN(setMounted, false);
     });
-  }, [visible, progress]);
+  }, [visible, progress, reduceMotion]);
 
   const frameStyle = useAnimatedStyle(() => ({
     height: contentHeight.value * progress.value,

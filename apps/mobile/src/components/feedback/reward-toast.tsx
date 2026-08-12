@@ -222,11 +222,20 @@ export function showRewardToast(
     total,
     celebrate,
     onUndo,
-  }: { title: string; stars: number; total?: number; celebrate?: boolean; onUndo?: () => void },
+    durationMs,
+  }: {
+    title: string;
+    stars: number;
+    total?: number;
+    celebrate?: boolean;
+    onUndo?: () => void;
+    /** Override the default lifetime (undoable 5000 / plain 2000). */
+    durationMs?: number;
+  },
 ): void {
   toast.show({
     placement: 'top',
-    duration: onUndo ? 5000 : 2000,
+    duration: durationMs ?? (onUndo ? 5000 : 2000),
     render: ({ id }) => (
       <RewardToast
         nativeID={`toast-${id}`}

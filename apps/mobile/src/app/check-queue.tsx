@@ -106,6 +106,10 @@ export default function CheckQueueScreen() {
       stars: amount,
       total: starTotals.total + amount,
       celebrate: true,
+      // Once-a-day celebration firing over the queue-clear transition — the
+      // default 2s died inside the fly-up/mount churn (and inside Maestro's
+      // tap-settle window). Same 5s beat as the undoable completion toast.
+      durationMs: 5000,
     });
   };
 

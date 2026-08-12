@@ -192,6 +192,17 @@ keyboard instead.
 - Item 15 compat: `taskUpsertSchema.criticality` is `.default(null)` so pre-criticality
   clients (Finn's phone until next OTA) keep pushing successfully.
 
+## E2E verification (2026-08-12)
+
+- Suite run 1 (old APK + converted flows): **32/33** — all 13 seeded conversions
+  green first try; the only failure was self-inflicted (see findings).
+- Suite run 2 (9.5 APK, 34 flows incl. new 28): **33/34** — new coverage green
+  (28 bonus-window/urgency/cap, 10 learning→settings, 53 recovered); only fail
+  was 23's 'Triage cleared' assert (see findings; fixed via 5s duration).
+- Flow 23 re-run after the fix: green. Manual argent repro confirmed the toast
+  renders correctly (screenshot in run notes) plus items 6 (standing triage
+  button) and 15 (criticality chips on blueprint + card back) visually.
+
 ## Runtime debugging findings
 
 - (2026-08-12) `parseReviewFlags` silently nulls unknown keys — `seed-test-account.ts`'s
@@ -212,3 +223,13 @@ keyboard instead.
 - (2026-08-12) tasks-repository's migration-0008 backfill test selected through the
   CURRENT drizzle schema against a DB frozen at 0008 — broke when 0010 added a column.
   Now reads via raw SQL (future-proof).
+- (2026-08-12) Release APKs swallow `console.log` entirely — nothing reaches logcat's
+  ReactNativeJS tag, so maestro-test.sh's log dump only helps on debug builds.
+  Instrument release-build debugging via UI-observable state (star counter, labels)
+  or Maestro's failure screenshots (`~/.maestro/tests/<run>/`), which is what cracked
+  the toast case.
+- (2026-08-12) The 'Triage cleared' toast WORKED all along — Maestro's tap on
+  'Save and next' spent 5.8s waiting for the screen to settle (fly-up + fade + toast
+  burst), and the default 2s toast lived and died entirely inside that window. Fix:
+  the once-a-day celebration now runs 5s (same beat as the undoable completion
+  toast) — defensible UX and assertable.
