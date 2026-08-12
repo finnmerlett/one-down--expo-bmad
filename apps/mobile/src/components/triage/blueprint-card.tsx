@@ -6,8 +6,10 @@ import {
   parseReviewFlags,
   parseTaskContexts,
   TASK_CONTEXTS,
+  TASK_CRITICALITIES,
   TASK_SIZES,
   type TaskContext,
+  type TaskCriticality,
   type TaskData,
   type TaskSize,
 } from '@one-down/shared';
@@ -19,7 +21,7 @@ import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 
-import { CONTEXT_LABELS, SIZE_LABELS } from '@/components/card-stack/task-card';
+import { CONTEXT_LABELS, CRITICALITY_LABELS, SIZE_LABELS } from '@/components/card-stack/task-card';
 import { taskValue } from '@/services/star-calculator';
 
 /** What Save and next commits — drafts live HERE, nothing writes until then. */
@@ -27,6 +29,8 @@ export interface BlueprintDraft {
   title: string;
   details: string;
   size: TaskSize | null;
+  /** How bad missing the deadline would be (9-5 item 15); null = chill. */
+  criticality: TaskCriticality | null;
   contexts: TaskContext[];
   deadline: Date | null;
   /** The user answered the missing-deadline gap with `None`. */
@@ -60,6 +64,7 @@ export function BlueprintCard({
   const [title, setTitle] = useState(task.title);
   const [details, setDetails] = useState(task.details ?? '');
   const [size, setSize] = useState<TaskSize | null>(task.size);
+  const [criticality, setCriticality] = useState<TaskCriticality | null>(task.criticality);
   const [contexts, setContexts] = useState<TaskContext[]>(() =>
     parseTaskContexts(task.contexts).filter((context): context is TaskContext =>
       (TASK_CONTEXTS as readonly string[]).includes(context),
@@ -210,6 +215,21 @@ export function BlueprintCard({
           </HStack>
         </VStack>
         <VStack className="gap-2">
+          {/* 9-5 item 15: criticality — never AI-guessed, always the user's call. */}
+          {groupLabel('How critical?', null)}
+          <HStack className="flex-wrap gap-2">
+            {TASK_CRITICALITIES.map((candidate) =>
+              chip(
+                CRITICALITY_LABELS[candidate],
+                `Criticality: ${CRITICALITY_LABELS[candidate]}`,
+                (criticality ?? 'chill') === candidate,
+                false,
+                () => setCriticality((previous) => (previous === candidate ? null : candidate)),
+              ),
+            )}
+          </HStack>
+        </VStack>
+        <VStack className="gap-2">
           {groupLabel('Requires', inferred.includes('contexts') ? 'guessed' : null)}
           <HStack className="flex-wrap gap-2">
             {TASK_CONTEXTS.map((candidate) =>
@@ -254,6 +274,13 @@ export function BlueprintCard({
             <DateTimePicker
               value={deadline ?? new Date()}
               mode="date"
+              // Triage-blue theming (9-5 item 9): Android's dialog chrome
+              // follows the native theme; the per-instance levers are the
+              // dialog buttons (Android) and the accent (iOS) — both take
+              // the blueprint teal/ink so the picker reads as triage's own.
+              accentColor="#49BAB9"
+              positiveButton={{ textColor: '#49BAB9' }}
+              negativeButton={{ textColor: '#8FB4E0' }}
               onChange={(event, picked) => {
                 setShowPicker(false);
                 if (event.type === 'set' && picked) {
@@ -270,7 +297,9 @@ export function BlueprintCard({
           <Pressable
             accessibilityRole="button"
             aria-label="Save and next"
-            onPress={() => onSave({ title, details, size, contexts, deadline, answeredNone })}
+            onPress={() =>
+              onSave({ title, details, size, criticality, contexts, deadline, answeredNone })
+            }
             className="h-[54px] flex-row items-center justify-center gap-[9px] rounded-full"
             style={{ backgroundColor: '#49BAB9' }}
           >

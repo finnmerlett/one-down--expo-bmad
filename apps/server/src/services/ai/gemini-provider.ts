@@ -3,6 +3,7 @@ import {
   GEMINI_MODEL,
   MAX_BREAKDOWN_STEP_CHARS,
   MAX_BREAKDOWN_STEPS,
+  MAX_GENERAL_LEARNING_CHARS,
   MAX_NOTES_DISTILLATION_CHARS,
   MAX_PARSED_TASKS,
   TASK_CONTEXTS,
@@ -250,10 +251,13 @@ function buildBreakdownSystemInstruction(mode: BreakdownMode): string {
 }
 
 /** Assemble the user content from the task fields (details/notes optional). */
-function buildTaskContents({ title, details, notes }: TaskPromptContext): string {
+function buildTaskContents({ title, details, notes, generalNotes }: TaskPromptContext): string {
   const parts = [`Task: ${title}`];
   if (details) parts.push(`Details: ${details}`);
   if (notes) parts.push(`Working notes so far: ${notes}`);
+  // 9-5 item 4: the user's own editable notes about how they like their
+  // tasks — durable preferences, not task state.
+  if (generalNotes) parts.push(`About this user (their general notes):\n${generalNotes}`);
   return parts.join('\n');
 }
 
@@ -323,6 +327,12 @@ const refineResponseSchema: Schema = {
       description:
         'One line of durable facts distilled from the user feedback, or null when there are none.',
     },
+    generalLearning: {
+      type: Type.STRING,
+      nullable: true,
+      description:
+        'One durable fact about the USER IN GENERAL (not this task), or null — see the rules.',
+    },
   },
   required: ['steps'],
 };
@@ -336,7 +346,8 @@ function buildRefineSystemInstruction(): string {
     '- Each step is one short imperative sentence, self-contained, no numbering or bullet prefixes.',
     `- Keep every step under ${MAX_BREAKDOWN_STEP_CHARS} characters.`,
     `- notesDistillation: distill DURABLE facts from the feedback (constraints, preferences, context worth remembering) into one line under ${MAX_NOTES_DISTILLATION_CHARS} characters — or null when the feedback carries none.`,
-    '- Output a JSON object with "steps" (array of strings) and "notesDistillation" (string or null), nothing else.',
+    `- generalLearning: ONE fact about the USER IN GENERAL (how they like tasks framed, standing constraints) under ${MAX_GENERAL_LEARNING_CHARS} characters. There does NOT have to be a learning: return null unless the feedback reveals something OUTSIDE what you would know or do by default, and that is not already in their general notes. Task-specific feedback belongs in notesDistillation, never here.`,
+    '- Output a JSON object with "steps" (array of strings), "notesDistillation" (string or null) and "generalLearning" (string or null), nothing else.',
   ].join('\n');
 }
 
@@ -360,12 +371,19 @@ function buildRefineContents(input: RefineBreakdownInput): string {
 const rawRefineSchema = z.object({
   steps: z.array(z.unknown()),
   notesDistillation: z.unknown().optional(),
+  generalLearning: z.unknown().optional(),
 });
 
 function coerceDistillation(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const distilled = truncateChars(value.trim(), MAX_NOTES_DISTILLATION_CHARS).trimEnd();
   return distilled.length > 0 ? distilled : null;
+}
+
+function coerceGeneralLearning(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const learning = truncateChars(value.trim(), MAX_GENERAL_LEARNING_CHARS).trimEnd();
+  return learning.length > 0 ? learning : null;
 }
 
 /**
@@ -384,6 +402,7 @@ export function mapRefineResponse(raw: unknown): RefineBreakdownOutput {
   return {
     steps: mapBreakdownResponse(parsed.data.steps),
     notesDistillation: coerceDistillation(parsed.data.notesDistillation),
+    generalLearning: coerceGeneralLearning(parsed.data.generalLearning),
   };
 }
 

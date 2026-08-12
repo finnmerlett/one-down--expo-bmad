@@ -8,27 +8,25 @@ import { Text } from '@/components/ui/text';
 /**
  * Standing bottom actions (v1.5 frames 01/02): a 1:1 plus circle for a single
  * task and a Brain dump pill taking the width — two separate pills, no FAB.
- * While the "Right now" sheet is expanded, a dashed blueprint triage button
- * with a count badge joins on the left (spec §4, chosen D1 entry).
+ * Whenever the check queue is non-empty, a dashed blueprint triage button
+ * with a count badge joins on the left (9-5 item 6 — it used to appear only
+ * while the Right-now sheet was expanded, which buried the queue).
  */
 export function BottomActions({
   onAddPress,
   onBrainDumpPress,
   triageCount = 0,
   onTriagePress,
-  showTriage = false,
 }: {
   onAddPress: () => void;
   onBrainDumpPress: () => void;
   /** Cards awaiting a guess-check; the badge carries the count. */
   triageCount?: number;
   onTriagePress?: () => void;
-  /** Only the expanded Right-now sheet carries the triage entry. */
-  showTriage?: boolean;
 }) {
   return (
     <HStack className="gap-2.5 px-[22px] pb-6">
-      {showTriage && triageCount > 0 && onTriagePress ? (
+      {triageCount > 0 && onTriagePress ? (
         <Pressable
           accessibilityRole="button"
           aria-label={`Check ${triageCount} guessed ${triageCount === 1 ? 'task' : 'tasks'}`}

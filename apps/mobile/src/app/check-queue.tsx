@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Dimensions, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, { Easing, FadeIn, withTiming } from 'react-native-reanimated';
 import Svg, { Line } from 'react-native-svg';
 import { cssInterop } from 'nativewind';
 
@@ -12,15 +13,21 @@ import {
   type TaskData,
 } from '@one-down/shared';
 
+import { showRewardToast } from '@/components/feedback/reward-toast';
+import { SIZE_LABELS } from '@/components/card-stack/task-card';
 import { BlueprintCard, type BlueprintDraft } from '@/components/triage/blueprint-card';
 import { Box } from '@/components/ui/box';
 import { ArrowLeftIcon, Icon } from '@/components/ui/icon';
 import { HStack } from '@/components/ui/hstack';
 import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
+import { useToast } from '@/components/ui/toast';
 import { VStack } from '@/components/ui/vstack';
+import { useStarTotals } from '@/hooks/use-star-totals';
 import { useTasks } from '@/hooks/use-tasks';
 import { track } from '@/lib/analytics/track';
+import { db } from '@/lib/local-db';
+import { appendAiLearning } from '@/services/ai-notes';
 import { applyTaskPatch, confirmReviewItem, confirmReviewItems } from '@/services/task-edits';
 import type { UpdateTaskPatch } from '@/services/tasks-repository';
 
@@ -29,6 +36,28 @@ cssInterop(SafeAreaView, { className: 'style' });
 
 const GROUND = '#16283F';
 const RAIL_DONE = '#A6C8EE';
+
+/** Card exit (9-5 item 10): the saved blueprint flies straight up and away,
+ *  revealing the next card mounting beneath. Also plays on skip — one
+ *  coherent exit for every departure keeps the queue feeling mechanical. */
+const CARD_EXIT_MS = 380;
+const SCREEN_HEIGHT = Dimensions.get('window').height;
+const blueprintFlyUp = () => {
+  'worklet';
+  return {
+    initialValues: { transform: [{ translateY: 0 }] },
+    animations: {
+      transform: [
+        {
+          translateY: withTiming(-SCREEN_HEIGHT, {
+            duration: CARD_EXIT_MS,
+            easing: Easing.in(Easing.quad),
+          }),
+        },
+      ],
+    },
+  };
+};
 
 /** 26px blueprint grid (spec §9) — one static SVG under everything. */
 function GridGround() {
@@ -65,6 +94,20 @@ function GridGround() {
 export default function CheckQueueScreen() {
   const router = useRouter();
   const tasks = useTasks();
+  const toast = useToast();
+  const starTotals = useStarTotals();
+
+  // 9-5 item 11: the queue-clear +5 pays through the standard reward toast —
+  // same anatomy as "One down!", triage wording. Fired by the edit services
+  // only when the award actually lands (self-gated: queue empty + once/day).
+  const handleQueueCleared = (amount: number) => {
+    showRewardToast(toast, {
+      title: 'Triage cleared',
+      stars: amount,
+      total: starTotals.total + amount,
+      celebrate: true,
+    });
+  };
 
   // Session-local ordering: saved cards leave, skipped cards sink to the end.
   const [handledIds, setHandledIds] = useState<ReadonlySet<string>>(new Set());
@@ -113,6 +156,7 @@ export default function CheckQueueScreen() {
       patch.details = trimmedDetails || null;
     }
     if (draft.size !== task.size) patch.size = draft.size;
+    if (draft.criticality !== task.criticality) patch.criticality = draft.criticality;
     if (JSON.stringify(draft.contexts) !== JSON.stringify(parseTaskContexts(task.contexts))) {
       patch.contexts = draft.contexts;
     }
@@ -120,7 +164,22 @@ export default function CheckQueueScreen() {
       patch.deadline = draft.deadline;
     }
     const editedFields = Object.keys(patch);
-    if (editedFields.length > 0) applyTaskPatch(task, patch);
+    if (editedFields.length > 0) applyTaskPatch(task, patch, handleQueueCleared);
+
+    // 9-5 item 8: correcting an AI-guessed size teaches the AI what kind of
+    // task is a quick win vs big time — one compact bullet in the general
+    // notes (local, PII-free analytics).
+    const guessedSize = (parseReviewFlags(task.reviewFlags)?.inferred ?? []).includes('size');
+    if (patch.size !== undefined && guessedSize) {
+      const label = (size: typeof task.size) => (size ? SIZE_LABELS[size] : 'unsized');
+      void appendAiLearning(
+        db,
+        `Sized "${task.title}" as ${label(patch.size ?? null)} (we guessed ${label(task.size)})`,
+        'triage',
+      )
+        // oxlint-disable-next-line no-console
+        .catch((error: unknown) => console.warn('AI learning save failed', error));
+    }
 
     // 2. Everything still flagged is confirmed AS SHOWN — sequentially (the
     //    per-item flag writes race otherwise). A missing deadline clears
@@ -132,8 +191,11 @@ export default function CheckQueueScreen() {
     if (draft.answeredNone && flags?.missingDeadline === true && patch.deadline === undefined) {
       remaining.push('missingDeadline');
     }
-    if (remaining.length === 1 && remaining[0]) confirmReviewItem(task, remaining[0]);
-    else if (remaining.length > 1) confirmReviewItems(task, remaining);
+    if (remaining.length === 1 && remaining[0]) {
+      confirmReviewItem(task, remaining[0], handleQueueCleared);
+    } else if (remaining.length > 1) {
+      confirmReviewItems(task, remaining, handleQueueCleared);
+    }
 
     track('triage_card_saved', {
       edited_fields: editedFields.length,
@@ -200,12 +262,15 @@ export default function CheckQueueScreen() {
       </VStack>
       {current ? (
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerClassName="px-6 pb-10">
-          <BlueprintCard
-            key={current.id}
-            task={current}
-            onSave={(draft) => handleSave(current, draft)}
-            onSkip={() => handleSkip(current)}
-          />
+          {/* Key swap advances the queue; the departing card plays the
+              fly-up exit while the next one fades in beneath (item 10). */}
+          <Animated.View key={current.id} entering={FadeIn.duration(180)} exiting={blueprintFlyUp}>
+            <BlueprintCard
+              task={current}
+              onSave={(draft) => handleSave(current, draft)}
+              onSkip={() => handleSkip(current)}
+            />
+          </Animated.View>
         </ScrollView>
       ) : (
         <VStack className="flex-1 items-center justify-center gap-3 px-8">

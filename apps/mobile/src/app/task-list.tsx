@@ -1,5 +1,5 @@
 import { useNavigation, useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { cssInterop } from 'nativewind';
 
@@ -17,8 +17,9 @@ import { useToast } from '@/components/ui/toast';
 import { useTasks } from '@/hooks/use-tasks';
 import { useTaskOffers } from '@/hooks/use-task-offers';
 import { db } from '@/lib/local-db';
+import { assignBadges } from '@/services/curation';
 import { netStarsByTask } from '@/services/star-awards';
-import { liveBadge, taskValue } from '@/services/star-calculator';
+import { taskValue } from '@/services/star-calculator';
 import {
   archiveSelection,
   deleteSelection,
@@ -46,6 +47,9 @@ export default function TaskListScreen() {
   const toast = useToast();
   const tasks = useTasks();
   const offers = useTaskOffers();
+  // Global assignment (9-5 item 16): rows show exactly the badges the deck
+  // shows — urgency-ranked, capped at MAX_LIVE_BONUSES.
+  const badges = useMemo(() => assignBadges(tasks, offers, new Date()), [tasks, offers]);
 
   // Tab + multi-select state live HERE (component state, no router tabs) —
   // Story 7.1. `selectedIds === null` means not selecting.
@@ -231,7 +235,7 @@ export default function TaskListScreen() {
         onRestore={handleRestore}
         onUndoComplete={handleUndoComplete}
         getStarValue={taskValue}
-        getBadge={(task) => liveBadge(task, offers.get(task.id), new Date())}
+        getBadge={(task) => badges.get(task.id) ?? null}
         // Viewing, not editing (2026-08-11 item 8): rows open the task's
         // working screen in its looking state — status only flips on the
         // first meaningful action. Editing lives behind the pencil there.

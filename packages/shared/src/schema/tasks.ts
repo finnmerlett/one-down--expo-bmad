@@ -9,7 +9,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 
-import type { TaskData, TaskSize, TaskStatus } from '../types/task';
+import type { TaskCriticality, TaskData, TaskSize, TaskStatus } from '../types/task';
 
 // Server-side mirror of the local tasks table (schema-local). Same canonical
 // TaskData shape — the Postgres copy is a 1:1 backup of local data — plus
@@ -27,6 +27,8 @@ export const tasks = pgTable(
     notes: text('notes'),
     status: text('status').$type<TaskStatus>().notNull().default('pending'),
     size: text('size').$type<TaskSize>(),
+    // How bad missing the deadline would be (9-5 item 15) — mirrors schema-local.
+    criticality: text('criticality').$type<TaskCriticality>(),
     contexts: text('contexts'),
     deadline: timestamp('deadline', { withTimezone: true, mode: 'date' }),
     hasCheckNeeded: boolean('has_check_needed').notNull().default(false),

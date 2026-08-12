@@ -215,7 +215,19 @@ describe('mapRefineResponse', () => {
     expect(result).toEqual({
       steps: ['Clear the desk', 'Open the folder'],
       notesDistillation: 'Prefers physical actions over planning',
+      generalLearning: null,
     });
+  });
+
+  it('maps a general learning when present, coercing junk to null (9-5 item 4)', () => {
+    const withLearning = mapRefineResponse({
+      steps: ['Clear the desk'],
+      generalLearning: '  Likes steps framed as physical actions  ',
+    });
+    expect(withLearning.generalLearning).toBe('Likes steps framed as physical actions');
+
+    const junk = mapRefineResponse({ steps: ['Clear the desk'], generalLearning: 42 });
+    expect(junk.generalLearning).toBeNull();
   });
 
   it('runs steps through the breakdown tolerance layer (drop/truncate/clamp)', () => {
@@ -278,7 +290,11 @@ describe('decodeRefineResponse', () => {
   it('decodes a valid JSON object body', () => {
     const result = decodeRefineResponse('{"steps":["Clear the desk"],"notesDistillation":null}');
 
-    expect(result).toEqual({ steps: ['Clear the desk'], notesDistillation: null });
+    expect(result).toEqual({
+      steps: ['Clear the desk'],
+      notesDistillation: null,
+      generalLearning: null,
+    });
   });
 
   it('replaces JSON parse failures with a generic message that never embeds the body (NFR-S3)', () => {

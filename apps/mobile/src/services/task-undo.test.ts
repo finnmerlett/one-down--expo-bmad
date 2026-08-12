@@ -21,6 +21,7 @@ function makeTask(overrides: Partial<TaskData> = {}): TaskData {
     notes: null,
     status: 'completed',
     size: null,
+    criticality: null,
     contexts: null,
     deadline: null,
     hasCheckNeeded: false,

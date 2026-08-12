@@ -7,6 +7,7 @@ import { cssInterop } from 'nativewind';
 
 import { useAuth } from '@/components/auth/auth-provider';
 import { AccountSection } from '@/components/settings/account-section';
+import { AiNotesSection } from '@/components/settings/ai-notes-section';
 import { AppearanceSection } from '@/components/settings/appearance-section';
 import {
   NotificationPreferencesSection,
@@ -25,6 +26,7 @@ import {
   type ChallengeCadence,
   type NotificationPrefs,
 } from '@/services/notifications/notification-prefs';
+import { getAiGeneralNotes, setAiGeneralNotes } from '@/services/ai-notes';
 import { getAppearance, setAppearance, type AppearanceMode } from '@/services/appearance';
 
 // Third-party component — NativeWind only auto-interops react-native core.
@@ -47,6 +49,8 @@ export default function SettingsScreen() {
   const [permission, setPermission] = useState<NotificationPermissionState>('undetermined');
   // null until loaded — same early-toggle guard as the notification prefs.
   const [appearance, setAppearanceState] = useState<AppearanceMode | null>(null);
+  // null until loaded (9-5 item 4) — an early edit can't clobber stored notes.
+  const [aiNotes, setAiNotes] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -55,6 +59,9 @@ export default function SettingsScreen() {
     });
     void getAppearance(db).then((stored) => {
       if (!cancelled) setAppearanceState(stored);
+    });
+    void getAiGeneralNotes(db).then((stored) => {
+      if (!cancelled) setAiNotes(stored);
     });
     const checkPermission = () =>
       void Notifications.getPermissionsAsync().then((response) => {
@@ -138,6 +145,19 @@ export default function SettingsScreen() {
           // failures are silent by design — the section simply stays signed in.
           onSignOut={() => void signOut()}
         />
+        {aiNotes !== null ? (
+          <AiNotesSection
+            notes={aiNotes}
+            onChange={setAiNotes}
+            onBlur={() => {
+              // Persist on blur — per-keystroke writes would spam the row.
+              void setAiGeneralNotes(db, aiNotes)
+                // oxlint-disable-next-line no-console
+                .catch((error: unknown) => console.warn('AI notes save failed', error));
+              track('ai_notes_edited', { length: aiNotes.length });
+            }}
+          />
+        ) : null}
         {prefs ? (
           <NotificationPreferencesSection
             permission={permission}

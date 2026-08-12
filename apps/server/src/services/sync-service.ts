@@ -72,11 +72,16 @@ export async function pushTasks(
             notes: row.notes,
             status: row.status,
             size: row.size,
+            criticality: row.criticality,
             contexts: row.contexts,
             deadline: row.deadline,
             hasCheckNeeded: row.hasCheckNeeded,
             reviewFlags: row.reviewFlags,
             skipCount: row.skipCount,
+            // 9-5 session fix: these two were missing — server-side updates
+            // silently dropped pushed skip-window/engagement state.
+            skipWindowStartedAt: row.skipWindowStartedAt,
+            lastEngagedAt: row.lastEngagedAt,
             createdAt: row.createdAt,
             updatedAt: row.updatedAt,
             syncedAt,

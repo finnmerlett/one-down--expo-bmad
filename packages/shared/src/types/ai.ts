@@ -64,10 +64,14 @@ export interface BreakdownResult {
  * the refined proposal (completed subtasks are never touched — UX-DR7).
  * `notesDistillation` is durable info distilled from the user's feedback —
  * the client appends it to the task's notes immediately, accept or reject.
+ * `generalLearning` (9-5 item 4) is ONE durable fact about the USER in
+ * general — null unless the feedback reveals something the AI wouldn't
+ * assume; the client appends it to the editable general AI notes.
  */
 export interface RefineBreakdownResult {
   steps: string[];
   notesDistillation: string | null;
+  generalLearning: string | null;
   provider: AiProviderName;
 }
 

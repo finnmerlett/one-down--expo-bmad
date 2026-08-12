@@ -118,6 +118,9 @@ export const aiRouter = router({
         title: taskTitleField,
         details: breakdownContextField,
         notes: breakdownContextField,
+        // 9-5 item 4: the user's editable general AI notes ride along as
+        // prompt context — truncate, never reject, like the other fields.
+        generalNotes: breakdownContextField,
         mode: z.enum(BREAKDOWN_MODES),
       }),
     )
@@ -129,6 +132,7 @@ export const aiRouter = router({
         title: input.title,
         details: input.details,
         notes: input.notes,
+        generalNotes: input.generalNotes,
         mode: input.mode,
       });
 
@@ -168,6 +172,8 @@ export const aiRouter = router({
         title: taskTitleField,
         details: breakdownContextField,
         notes: breakdownContextField,
+        // 9-5 item 4: general AI notes as prompt context (truncate, never reject).
+        generalNotes: breakdownContextField,
         // Feedback comes from a BOUNDED client-owned input (unlike the
         // unbounded task fields) — empty and over-length are both client
         // bugs, so they are REJECTED rather than truncated.
@@ -189,10 +195,11 @@ export const aiRouter = router({
       const { provider, name } = createAiProvider(ctx.env);
 
       const startedAt = Date.now();
-      const { steps, notesDistillation } = await provider.refineBreakdown({
+      const { steps, notesDistillation, generalLearning } = await provider.refineBreakdown({
         title: input.title,
         details: input.details,
         notes: input.notes,
+        generalNotes: input.generalNotes,
         feedback: input.feedback,
         subtasks: input.subtasks,
       });
@@ -205,12 +212,13 @@ export const aiRouter = router({
           stepCount: steps.length,
           subtaskCount: input.subtasks.length,
           hasDistillation: notesDistillation !== null,
+          hasGeneralLearning: generalLearning !== null,
           durationMs: Date.now() - startedAt,
         },
         'breakdown refined',
       );
 
-      return { steps, notesDistillation, provider: name };
+      return { steps, notesDistillation, generalLearning, provider: name };
     }),
 
   /**
@@ -227,6 +235,8 @@ export const aiRouter = router({
         title: taskTitleField,
         details: breakdownContextField,
         notes: breakdownContextField,
+        // 9-5 item 4: general AI notes as prompt context (truncate, never reject).
+        generalNotes: breakdownContextField,
         subtasks: z
           .array(
             z.object({
@@ -248,6 +258,7 @@ export const aiRouter = router({
         title: input.title,
         details: input.details,
         notes: input.notes,
+        generalNotes: input.generalNotes,
         subtasks: input.subtasks,
       });
 
@@ -279,6 +290,8 @@ export const aiRouter = router({
         title: taskTitleField,
         details: breakdownContextField,
         notes: breakdownContextField,
+        // 9-5 item 4: general AI notes as prompt context (truncate, never reject).
+        generalNotes: breakdownContextField,
       }),
     )
     .mutation(async ({ ctx, input }): Promise<MicroTaskResult> => {
@@ -289,6 +302,7 @@ export const aiRouter = router({
         title: input.title,
         details: input.details,
         notes: input.notes,
+        generalNotes: input.generalNotes,
       });
 
       // NFR-S3: provider + duration only — never the task text or the step.

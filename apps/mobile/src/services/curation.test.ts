@@ -1,6 +1,13 @@
 import { TASK_CONTEXTS, type TaskData } from '@one-down/shared';
 
-import { availableContexts, curateTasks, urgentContexts } from './curation';
+import {
+  assignBadges,
+  availableContexts,
+  curateTasks,
+  MAX_LIVE_BONUSES,
+  urgencyScore,
+  urgentContexts,
+} from './curation';
 
 function makeTask(overrides: Partial<TaskData> = {}): TaskData {
   return {
@@ -10,6 +17,7 @@ function makeTask(overrides: Partial<TaskData> = {}): TaskData {
     notes: null,
     status: 'pending',
     size: null,
+    criticality: null,
     contexts: null,
     deadline: null,
     hasCheckNeeded: false,
@@ -349,5 +357,75 @@ describe('urgentContexts', () => {
     ];
 
     expect(urgentContexts(tasks, NOW)).toEqual(new Set());
+  });
+});
+
+describe('urgencyScore + assignBadges (9-5 items 15+16)', () => {
+  const NOW = new Date('2026-06-10T12:00:00Z');
+  const DAY_MS = 86_400_000;
+  const daysFromNow = (days: number) => new Date(NOW.getTime() + days * DAY_MS);
+
+  it('critical three days out beats chill one day out (the design anchor)', () => {
+    const critical = makeTask({ criticality: 'critical', deadline: daysFromNow(3) });
+    const chill = makeTask({ criticality: null, deadline: daysFromNow(1) });
+    expect(urgencyScore(critical, NOW)).toBeGreaterThan(urgencyScore(chill, NOW));
+  });
+
+  it('chill/legacy-null tasks score exactly plain deadline proximity', () => {
+    const chill = makeTask({ criticality: 'chill', deadline: daysFromNow(3) });
+    const legacy = makeTask({ criticality: null, deadline: daysFromNow(3) });
+    expect(urgencyScore(chill, NOW)).toBe(urgencyScore(legacy, NOW));
+    expect(urgencyScore(makeTask({ criticality: 'critical' }), NOW)).toBe(0);
+  });
+
+  it('window badges go to the most urgent eligible cards, capped at MAX_LIVE_BONUSES', () => {
+    const tasks = [
+      makeTask({ id: 'crit', criticality: 'critical', deadline: daysFromNow(3) }),
+      makeTask({ id: 'imp', criticality: 'important', deadline: daysFromNow(3) }),
+      makeTask({ id: 'chill', criticality: null, deadline: daysFromNow(3) }),
+    ];
+    const badges = assignBadges(tasks, new Map(), NOW);
+    expect(badges.size).toBe(MAX_LIVE_BONUSES);
+    expect(badges.has('crit')).toBe(true);
+    expect(badges.has('imp')).toBe(true);
+    expect(badges.has('chill')).toBe(false);
+  });
+
+  it('a live offer fills a remaining slot but never displaces a window badge', () => {
+    const tasks = [
+      makeTask({ id: 'windowed', deadline: daysFromNow(3) }),
+      makeTask({ id: 'offered' }),
+    ];
+    const badges = assignBadges(tasks, new Map([['offered', 3]]), NOW);
+    expect(badges.get('windowed')).toMatchObject({ kind: 'window' });
+    expect(badges.get('offered')).toMatchObject({ kind: 'offer', amount: 3 });
+  });
+
+  it('with both slots taken by windows, the offer stays hidden (hard cap)', () => {
+    const tasks = [
+      makeTask({ id: 'w1', criticality: 'critical', deadline: daysFromNow(3) }),
+      makeTask({ id: 'w2', criticality: 'important', deadline: daysFromNow(4) }),
+      makeTask({ id: 'offered' }),
+    ];
+    const badges = assignBadges(tasks, new Map([['offered', 3]]), NOW);
+    expect(badges.size).toBe(2);
+    expect(badges.has('offered')).toBe(false);
+  });
+
+  it('the window wins on a card that also holds an offer', () => {
+    const tasks = [makeTask({ id: 'both', deadline: daysFromNow(3) })];
+    const badges = assignBadges(tasks, new Map([['both', 10]]), NOW);
+    expect(badges.get('both')).toMatchObject({ kind: 'window' });
+    expect(badges.size).toBe(1);
+  });
+
+  it('non-browsable tasks never take a slot', () => {
+    const tasks = [
+      makeTask({ id: 'done', status: 'completed', deadline: daysFromNow(3) }),
+      makeTask({ id: 'live', deadline: daysFromNow(3) }),
+    ];
+    const badges = assignBadges(tasks, new Map(), NOW);
+    expect(badges.has('done')).toBe(false);
+    expect(badges.has('live')).toBe(true);
   });
 });

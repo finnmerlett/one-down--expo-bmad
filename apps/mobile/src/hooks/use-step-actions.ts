@@ -10,6 +10,7 @@ import { db } from '@/lib/local-db';
 import { trpc } from '@/lib/trpc';
 import { appendDiff, diffSteps, type StepDiff } from '@/services/step-diff';
 import { createSubtasks, replaceUncompletedSubtasks } from '@/services/subtasks-repository';
+import { appendAiLearning, getAiGeneralNotes } from '@/services/ai-notes';
 import { appendDistillationToNotes, applyTaskPatch } from '@/services/task-edits';
 
 /** Floor on the working state so the button's spinner never flickers. */
@@ -102,6 +103,8 @@ export function useStepActions(
       .map((subtask) => subtask.title);
 
     const run = async () => {
+      // 9-5 item 4: the user's general AI notes ride along as prompt context.
+      const generalNotes = (await getAiGeneralNotes(db).catch(() => '')) || null;
       if (existing.length === 0) {
         // First ask: the classic 3 starters — same server contract as 6.3.
         const [result] = await Promise.all([
@@ -109,6 +112,7 @@ export function useStepActions(
             title: current.title,
             details: current.details,
             notes: current.notes,
+            generalNotes,
             mode: 'first_steps',
           }),
           delay(MIN_WORKING_MS),
@@ -133,6 +137,7 @@ export function useStepActions(
           title: current.title,
           details: current.details,
           notes: current.notes,
+          generalNotes,
           subtasks: existing.map((subtask) => ({
             title: subtask.title,
             completed: subtask.completed,
@@ -200,11 +205,14 @@ export function useStepActions(
         .map((subtask) => subtask.title);
 
       const run = async () => {
+        // 9-5 item 4: general AI notes as prompt context.
+        const generalNotes = (await getAiGeneralNotes(db).catch(() => '')) || null;
         const [result] = await Promise.all([
           changeAsync({
             title: current.title,
             details: current.details,
             notes: current.notes,
+            generalNotes,
             feedback: trimmed,
             subtasks: existing.map((subtask) => ({
               title: subtask.title,
@@ -220,6 +228,13 @@ export function useStepActions(
           applyTaskPatch(latest, {
             notes: appendDistillationToNotes(latest.notes, result.notesDistillation),
           });
+        }
+        // 9-5 item 4: a durable fact about the USER lands in the general AI
+        // notes (fire-and-forget — never blocks the step swap).
+        if (result.generalLearning) {
+          void appendAiLearning(db, result.generalLearning, 'refine')
+            // oxlint-disable-next-line no-console
+            .catch((error: unknown) => console.warn('AI learning save failed', error));
         }
         await replaceUncompletedSubtasks(db, current.id, result.steps, 'ai');
         undoPlanRef.current = {

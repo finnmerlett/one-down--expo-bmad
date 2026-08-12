@@ -5,7 +5,12 @@ import { STAR_WEIGHTS, type StarAction, type TaskData } from '@one-down/shared';
 import { starActivityLog, taskOffers, tasks } from '@one-down/shared/schema-local';
 
 import { track } from '@/lib/analytics/track';
-import { calculateCompletionStars, type StarBreakdown } from '@/services/star-calculator';
+import { assignBadges } from '@/services/curation';
+import {
+  calculateCompletionStars,
+  type StarBadge,
+  type StarBreakdown,
+} from '@/services/star-calculator';
 import type { TasksDb } from '@/services/tasks-repository';
 
 /**
@@ -81,16 +86,23 @@ export async function awardCompletionStars(
   now = new Date(),
 ): Promise<StarBreakdown> {
   let banked = 0;
-  let offerAmount = 0;
+  let badge: StarBadge | null = null;
   try {
     banked = await bankedNetForTask(db, task.id);
-    const [offer] = await db.select().from(taskOffers).where(eq(taskOffers.taskId, task.id));
-    offerAmount = offer?.amount ?? 0;
+    // 9-5 item 16: the payout follows the GLOBAL badge assignment — a card
+    // that lost the urgency race displayed no badge, so it pays none. The
+    // completing task rides in as its pre-completion snapshot (the status
+    // write may already have landed, which would drop it from eligibility).
+    const allTasks = await db.select().from(tasks);
+    const offerRows = await db.select().from(taskOffers);
+    const offersMap = new Map(offerRows.map((row) => [row.taskId, row.amount]));
+    const snapshot = [...allTasks.filter((row) => row.id !== task.id), task];
+    badge = assignBadges(snapshot, offersMap, now).get(task.id) ?? null;
   } catch (error) {
     // oxlint-disable-next-line no-console
     console.warn('Star award context read failed', error);
   }
-  const breakdown = calculateCompletionStars(task, { bankedStars: banked, offerAmount, now });
+  const breakdown = calculateCompletionStars(task, { bankedStars: banked, badge, now });
   try {
     await insertAward(
       db,

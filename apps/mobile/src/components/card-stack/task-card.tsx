@@ -1,6 +1,7 @@
 import {
   parseTaskContexts,
   type TaskContext,
+  type TaskCriticality,
   type TaskData,
   type TaskSize,
 } from '@one-down/shared';
@@ -18,6 +19,14 @@ import { evaluateTaskHealth, type TaskHealthFlag } from '@/services/task-health'
 export const SIZE_LABELS: Record<TaskSize, string> = {
   quick_win: 'Quick win',
   big_time: 'Big time',
+};
+
+// Criticality chips (9-5 item 15) — shared by the card back and the
+// blueprint triage card.
+export const CRITICALITY_LABELS: Record<TaskCriticality, string> = {
+  chill: 'Chill',
+  important: 'Important',
+  critical: 'Critical',
 };
 
 // Bottom-rail caps variants (v1.5 — DM Mono caps, letterspaced).

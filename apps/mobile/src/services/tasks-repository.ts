@@ -13,6 +13,7 @@ import {
   type TaskContext,
   type TaskData,
   type TaskReviewFlags,
+  type TaskCriticality,
   type TaskSize,
   type TaskStatus,
 } from '@one-down/shared';
@@ -119,6 +120,8 @@ export interface UpdateTaskPatch {
   details?: string | null;
   notes?: string | null;
   size?: TaskSize | null;
+  /** How bad missing the deadline would be (9-5 item 15); null = chill. */
+  criticality?: TaskCriticality | null;
   contexts?: TaskContext[];
   /** Editable on the card back from Story 6.2 (chips + native picker). */
   deadline?: Date | null;
@@ -175,6 +178,9 @@ export async function updateTask(
   }
   if (patch.size !== undefined) {
     values.size = patch.size;
+  }
+  if (patch.criticality !== undefined) {
+    values.criticality = patch.criticality;
   }
   if (patch.contexts !== undefined) {
     values.contexts = patch.contexts.length > 0 ? JSON.stringify(patch.contexts) : null;

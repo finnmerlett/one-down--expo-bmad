@@ -14,6 +14,9 @@ export interface TaskPromptContext {
   title: string;
   details: string | null;
   notes: string | null;
+  /** The user's editable general AI notes (9-5 item 4) — durable facts about
+   *  how they like their tasks, sent with every task-scoped call. */
+  generalNotes?: string | null;
 }
 
 /** Provider-level input for a brain-dump parse (v1.5 D6): `feedback` set =
@@ -51,6 +54,9 @@ export interface RefineBreakdownInput extends TaskPromptContext {
 export interface RefineBreakdownOutput {
   steps: string[];
   notesDistillation: string | null;
+  /** ONE durable fact about the USER in general (9-5 item 4) — null unless
+   *  the feedback reveals something outside what the AI would assume. */
+  generalLearning: string | null;
 }
 
 /** Provider-level input for Get more steps (v1.5 D4) — refine sans feedback. */

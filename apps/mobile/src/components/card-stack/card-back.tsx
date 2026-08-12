@@ -6,9 +6,11 @@ import {
   parseReviewFlags,
   parseTaskContexts,
   TASK_CONTEXTS,
+  TASK_CRITICALITIES,
   TASK_SIZES,
   type ReviewItem,
   type TaskContext,
+  type TaskCriticality,
   type TaskData,
   type TaskSize,
 } from '@one-down/shared';
@@ -27,7 +29,7 @@ import { CONTEXT_ICONS } from '@/components/stack-filters/context-icons';
 import { taskValue } from '@/services/star-calculator';
 import { evaluateTaskHealth } from '@/services/task-health';
 import type { UpdateTaskPatch } from '@/services/tasks-repository';
-import { CONTEXT_LABELS, SIZE_LABELS } from './task-card';
+import { CONTEXT_LABELS, CRITICALITY_LABELS, SIZE_LABELS } from './task-card';
 import { TaskHealthPrompt } from './task-health-prompt';
 
 export interface CardBackHandle {
@@ -247,6 +249,11 @@ export function CardBack({
     // Tapping the selected size again clears it back to unset. The header
     // star pill follows on the next render (value = f(size)).
     onPatch({ size: task.size === size ? null : size });
+  };
+
+  const selectCriticality = (criticality: TaskCriticality) => {
+    // Same toggle semantics as size; null reads as chill (9-5 item 15).
+    onPatch({ criticality: task.criticality === criticality ? null : criticality });
   };
 
   // Flush-then-act (Story 2.4, AC4): released/started tasks keep their
@@ -508,6 +515,21 @@ export function CardBack({
                 {sizeGuessed && onConfirm ? (
                   <GroupTick label="Confirm size" onPress={() => onConfirm('size')} />
                 ) : null}
+              </HStack>
+            </Group>
+            {/* 9-5 item 15: how bad missing the deadline would be — feeds the
+                hidden urgency metric that ranks bonus assignment. */}
+            <Group label="How critical?">
+              <HStack className="flex-1 flex-wrap gap-2">
+                {TASK_CRITICALITIES.map((criticality) => (
+                  <Chip
+                    key={criticality}
+                    label={CRITICALITY_LABELS[criticality]}
+                    accessibilityLabel={`Criticality: ${CRITICALITY_LABELS[criticality]}`}
+                    selected={(task.criticality ?? 'chill') === criticality}
+                    onPress={() => selectCriticality(criticality)}
+                  />
+                ))}
               </HStack>
             </Group>
             {/* Task-health prompt (Story 7.2): inline and ignorable. Its

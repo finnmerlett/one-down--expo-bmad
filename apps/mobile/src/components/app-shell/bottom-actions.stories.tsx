@@ -17,10 +17,10 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
-/** Expanded Right-now sheet state — the dashed triage entry joins on the left. */
+/** Non-empty check queue — the dashed triage entry joins on the left
+ *  (9-5 item 6: it stands whenever there are cards to triage). */
 export const WithTriageEntry: Story = {
   args: {
-    showTriage: true,
     triageCount: 8,
     onTriagePress: () => {},
   },

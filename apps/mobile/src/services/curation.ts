@@ -2,11 +2,12 @@ import {
   parseTaskContexts,
   TASK_CONTEXTS,
   type TaskContext,
+  type TaskCriticality,
   type TaskData,
   type TaskSize,
 } from '@one-down/shared';
 
-import { isTopOfDeck, liveBadge } from '@/services/star-calculator';
+import { bonusWindow, isTopOfDeck, type StarBadge } from '@/services/star-calculator';
 
 function isBrowsable(task: TaskData): boolean {
   return task.status === 'pending' || task.status === 'in_progress';
@@ -58,6 +59,70 @@ export function deadlineUrgency(deadline: Date | null, now: Date): number {
   if (!deadline) return 0;
   const daysUntil = (deadline.getTime() - now.getTime()) / MS_PER_DAY;
   return clamp01(1 - daysUntil / URGENCY_HORIZON_DAYS);
+}
+
+// --- 9-5 items 15+16: hidden urgency metric + global bonus assignment ---
+
+/** How much a task's criticality amplifies its deadline proximity. Tuning
+ *  dial — the anchor from the design note: critical @3 days out (≈2.75)
+ *  must beat chill @1 day out (≈0.93). */
+export const CRITICALITY_WEIGHT: Record<TaskCriticality, number> = {
+  chill: 1,
+  important: 2,
+  critical: 3.5,
+};
+
+/** No more than this many cards carry a live bonus at any time (item 16). */
+export const MAX_LIVE_BONUSES = 2;
+
+/**
+ * The hidden urgency metric (9-5 item 16): deadline proximity amplified by
+ * criticality. Chill (and legacy null) tasks score exactly the old
+ * `deadlineUrgency`, so pre-criticality behaviour is unchanged; important /
+ * critical tasks pull ahead. No deadline → 0 (criticality measures how bad
+ * missing the DEADLINE would be).
+ */
+export function urgencyScore(task: Pick<TaskData, 'deadline' | 'criticality'>, now: Date): number {
+  return CRITICALITY_WEIGHT[task.criticality ?? 'chill'] * deadlineUrgency(task.deadline, now);
+}
+
+/**
+ * Global badge assignment (9-5 item 16): which cards actually carry a badge
+ * right now. Window-eligible browsable tasks ranked by `urgencyScore` take
+ * the slots first ("in ideal window takes priority"); a live don't-skip
+ * offer fills a remaining slot (never on a card that already won a window
+ * badge — the window wins on the same card). Hard cap: MAX_LIVE_BONUSES.
+ * Deterministic: ties break by soonest deadline, then id.
+ */
+export function assignBadges(
+  tasks: readonly TaskData[],
+  offers: ReadonlyMap<string, number>,
+  now: Date,
+): Map<string, StarBadge> {
+  const result = new Map<string, StarBadge>();
+  const eligible = tasks
+    .filter(isBrowsable)
+    .map((task) => ({ task, badge: bonusWindow(task, now) }))
+    .filter((entry): entry is { task: TaskData; badge: StarBadge } => entry.badge !== null)
+    .sort(
+      (a, b) =>
+        urgencyScore(b.task, now) - urgencyScore(a.task, now) ||
+        (a.task.deadline?.getTime() ?? 0) - (b.task.deadline?.getTime() ?? 0) ||
+        (a.task.id < b.task.id ? -1 : a.task.id > b.task.id ? 1 : 0),
+    );
+  for (const { task, badge } of eligible.slice(0, MAX_LIVE_BONUSES)) {
+    result.set(task.id, badge);
+  }
+  if (result.size < MAX_LIVE_BONUSES) {
+    for (const [taskId, amount] of offers) {
+      if (result.size >= MAX_LIVE_BONUSES) break;
+      if (!amount || amount <= 0 || result.has(taskId)) continue;
+      const task = tasks.find((candidate) => candidate.id === taskId);
+      if (!task || !isBrowsable(task)) continue;
+      result.set(taskId, { kind: 'offer', amount, reason: 'TO START IT NOW' });
+    }
+  }
+  return result;
 }
 
 // Controlled randomness (FNV-1a over `${seed}:${id}`, mapped to [0,1)):
@@ -131,9 +196,12 @@ export function attentionContexts(
   now: Date,
 ): Set<TaskContext> {
   const attention = new Set<TaskContext>();
+  // Same selection the cards render (9-5 item 16) — a dot never points at a
+  // context whose card lost the badge race.
+  const badges = assignBadges(tasks, offers, now);
   for (const task of tasks) {
     if (!isBrowsable(task)) continue;
-    const hot = isTopOfDeck(task, now) || liveBadge(task, offers.get(task.id), now) !== null;
+    const hot = isTopOfDeck(task, now) || badges.has(task.id);
     if (!hot) continue;
     for (const context of parseTaskContexts(task.contexts)) {
       if ((TASK_CONTEXTS as readonly string[]).includes(context)) {
@@ -222,8 +290,10 @@ export function curateTasks(
   const ordered = matching
     .map((task) => ({
       task,
+      // Urgency dimension is the criticality-amplified metric (9-5 item 16):
+      // identical to plain deadline proximity for chill/legacy tasks.
       score:
-        WEIGHT_URGENCY * deadlineUrgency(task.deadline, now) +
+        WEIGHT_URGENCY * urgencyScore(task, now) +
         WEIGHT_IMPORTANCE * SIZE_IMPORTANCE[sizeKey(task)] +
         WEIGHT_JITTER * jitter(seed, task.id),
     }))

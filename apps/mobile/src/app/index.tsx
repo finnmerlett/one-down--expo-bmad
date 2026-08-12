@@ -15,7 +15,7 @@ import { AppShell } from '@/components/app-shell/app-shell';
 import { BottomActions } from '@/components/app-shell/bottom-actions';
 import { CardBackOverlay } from '@/components/card-stack/card-back-overlay';
 import { CardStack } from '@/components/card-stack/card-stack';
-import { MicroTaskNudge } from '@/components/card-stack/micro-task-nudge';
+import { MicroTaskNudge, NudgeReveal } from '@/components/card-stack/micro-task-nudge';
 import { UpdateReadyBanner } from '@/components/app-shell/update-ready-banner';
 import { ConnectionStatus } from '@/components/connection-status/connection-status';
 import { EmptyState } from '@/components/empty-state/empty-state';
@@ -38,9 +38,14 @@ import { useTaskOffers } from '@/hooks/use-task-offers';
 import { useTasks } from '@/hooks/use-tasks';
 import { track } from '@/lib/analytics/track';
 import { db } from '@/lib/local-db';
-import { attentionContexts, availableContexts, curateTasks } from '@/services/curation';
+import {
+  assignBadges,
+  attentionContexts,
+  availableContexts,
+  curateTasks,
+} from '@/services/curation';
 import { awardCutLooseStars } from '@/services/star-awards';
-import { isTopOfDeck, liveBadge, potentialStars } from '@/services/star-calculator';
+import { isTopOfDeck, potentialStars } from '@/services/star-calculator';
 import { erodeOffer, maybeStartOffer } from '@/services/star-offers';
 import { recordTaskSkipped } from '@/services/task-activity';
 import { undoTaskCutLoose } from '@/services/task-undo';
@@ -226,10 +231,10 @@ export default function HomeScreen() {
   // v1.5 economy: the card shows its size value; badges render separately
   // (gold band) and never fold into the number (spec §2).
   const getStarValue = useCallback((task: TaskData) => potentialStars(task), []);
-  const getBadge = useCallback(
-    (task: TaskData) => liveBadge(task, offers.get(task.id), new Date()),
-    [offers],
-  );
+  // Global assignment (9-5 item 16): urgency-ranked window badges + the live
+  // offer, hard-capped at MAX_LIVE_BONUSES across the whole deck.
+  const badges = useMemo(() => assignBadges(tasks, offers, new Date()), [tasks, offers]);
+  const getBadge = useCallback((task: TaskData) => badges.get(task.id) ?? null, [badges]);
   const getTopOfDeck = useCallback(
     (task: TaskData) => getBadge(task) === null && isTopOfDeck(task, new Date()),
     [getBadge],
@@ -275,13 +280,13 @@ export default function HomeScreen() {
       onStarPress={overlayUp ? undefined : () => router.push('/star-log')}
       onSettingsPress={overlayUp ? undefined : () => router.push('/settings')}
       // Standing actions (v1.5): plus = quick add, Brain dump pill; the
-      // dashed triage entry joins while the Right-now sheet is expanded.
+      // dashed triage entry stands whenever the check queue is non-empty
+      // (9-5 item 6).
       footer={
         overlayUp ? undefined : (
           <BottomActions
             onAddPress={open}
             onBrainDumpPress={() => router.push('/brain-dump')}
-            showTriage={barExpanded}
             triageCount={reviewCards.length}
             onTriagePress={() => {
               collapseBar();
@@ -363,9 +368,11 @@ export default function HomeScreen() {
               onSwipe={handleSwipe}
               onTopChange={handleTopChange}
             />
-            {showNudge ? (
+            {/* Height-reveal (9-5 item 5): the deck eases up/down instead of
+                jumping when the nudge appears or the next card drops it. */}
+            <NudgeReveal visible={showNudge}>
               <MicroTaskNudge state={micro.state} onGo={handleNudgeGo} onRetry={handleNudgeGo} />
-            ) : null}
+            </NudgeReveal>
           </>
         )}
       </BlurTargetView>

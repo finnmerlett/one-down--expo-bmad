@@ -29,7 +29,9 @@ function ContextTile({
   context: TaskContext;
   active: boolean;
   available: boolean;
-  /** E7: this UNSELECTED context hides a live bonus or an overdue card. */
+  /** E7: this context holds a live bonus or an overdue card. Shown even
+   *  while the context is selected (9-5 item 7) — the dot means "cards here
+   *  need attention", not "hidden behind the filter". */
   attention: boolean;
   onToggle: (context: TaskContext) => void;
 }) {
@@ -67,7 +69,7 @@ function ContextTile({
       >
         {CONTEXT_LABELS[context]}
       </Text>
-      {attention && !active ? (
+      {attention ? (
         <Box className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border-2 border-background-0 bg-primary-500" />
       ) : null}
     </Pressable>

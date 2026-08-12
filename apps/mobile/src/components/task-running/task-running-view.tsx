@@ -80,6 +80,10 @@ export function TaskRunningView({
 }) {
   const [keyboardUp, setKeyboardUp] = useState(false);
   const [notesFocused, setNotesFocused] = useState(false);
+  // 9-5 item 14: the dashed "What should be different" box has its own
+  // keyboard choreography — it must be the element that lands on the
+  // keyboard, not the notes box below it.
+  const [changeFocused, setChangeFocused] = useState(false);
   useEffect(() => {
     const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardUp(true));
     const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardUp(false));
@@ -239,6 +243,11 @@ export function TaskRunningView({
   };
 
   const choreographed = keyboardUp && notesFocused;
+  // 9-5 item 14: while the refine box owns the keyboard, everything below it
+  // (notes, spacer, terminal actions) hides so ITS bottom lands on the
+  // keyboard — the steps list keeps its natural size instead of being
+  // squished by the notes box riding the keyboard padding.
+  const changeChoreographed = keyboardUp && changeFocused;
 
   // Collapsed step window (2026-08-11 item 6): show the current step and one
   // either side, with ellipsis rows marking the hidden rest. Everything above
@@ -345,6 +354,8 @@ export function TaskRunningView({
               placeholder="Say what's off in your own words"
               value={changeText}
               onChangeText={setChangeText}
+              onFocus={() => setChangeFocused(true)}
+              onBlur={() => setChangeFocused(false)}
               editable={!changeWorking}
               maxLength={MAX_REFINE_FEEDBACK_CHARS}
               className="px-0"
@@ -456,17 +467,29 @@ export function TaskRunningView({
         </FadedScrollView>
         {/* The AI action row sits between steps and notes (05b) — hidden
             while the notes field owns the keyboard (like the terminal) and
-            while the editor owns the list. */}
-        {choreographed || editMode ? null : actionsBlock}
+            while the editor owns the list. While the CHANGE box owns the
+            keyboard (item 14), a spacer above pins its bottom to the
+            keyboard; the slot stays positional so the box never remounts
+            mid-focus (D3). */}
+        {choreographed || editMode ? null : (
+          <>
+            {changeChoreographed ? <Box className="flex-1" /> : null}
+            {actionsBlock}
+          </>
+        )}
         {/* Edit mode recedes everything below the list to 62% (05a) — and
-            makes it inert so a mistap can't complete the task mid-edit. */}
-        <Box
-          className={editMode ? 'opacity-[0.62]' : ''}
-          pointerEvents={editMode ? 'none' : 'auto'}
-        >
-          {notesBlock}
-        </Box>
-        {choreographed ? null : (
+            makes it inert so a mistap can't complete the task mid-edit.
+            Hidden entirely while the change box owns the keyboard (item 14):
+            the notes box was what used to land on the keyboard instead. */}
+        {changeChoreographed ? null : (
+          <Box
+            className={editMode ? 'opacity-[0.62]' : ''}
+            pointerEvents={editMode ? 'none' : 'auto'}
+          >
+            {notesBlock}
+          </Box>
+        )}
+        {choreographed || changeChoreographed ? null : (
           <>
             <Box className="flex-1" />
             <VStack

@@ -21,7 +21,9 @@ export type AnalyticsEventMap = EnforceFlatProps<{
   /** Story 1.2 — a task is saved from the quick-add sheet. */
   task_created: { source: 'quick_add'; has_details: boolean };
   /** Story 1.4 — a field was edited inline on the card back (field NAME only, never the value). */
-  task_edited: { field: 'title' | 'details' | 'notes' | 'contexts' | 'size' | 'deadline' };
+  task_edited: {
+    field: 'title' | 'details' | 'notes' | 'contexts' | 'size' | 'criticality' | 'deadline';
+  };
   /** Story 2.1 — first pending → in_progress transition (Continue taps don't re-emit). */
   task_started: { via: 'card_back_overlay' | 'list_detail' | 'task_running' };
   /** Story 2.3 — task marked completed (star earning is Epic 4's `stars_awarded`). */
@@ -76,6 +78,10 @@ export type AnalyticsEventMap = EnforceFlatProps<{
   offer_eroded: { from: number; to: number };
   /** v1.5 D7 — the appearance setting changed. */
   appearance_changed: { value: 'system' | 'light' | 'dark' };
+  /** 9-5 item 4 — an automatic learning landed in the general AI notes (source only, never the text). */
+  ai_learning_saved: { via: 'refine' | 'triage' };
+  /** 9-5 item 4 — the user edited their general AI notes in settings (fact of edit only). */
+  ai_notes_edited: { length: number };
   /** Story 8.1 — a notification preference changed (new SETTING value only, never task content). */
   notification_pref_changed: { pref: 'deadline_urgency' | 'challenges'; value: string };
   /** Story 8.1 — the system notification permission request resolved. */

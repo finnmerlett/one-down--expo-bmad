@@ -254,8 +254,23 @@ describe('ai.refineBreakdown (fake mode)', () => {
         'Refined: Set a 10-minute timer and keep going',
       ],
       notesDistillation: 'Approach note: Too vague, give me physical actions',
+      // No 'prefer' in the feedback → no general learning (9-5 item 4).
+      generalLearning: null,
       provider: 'fake',
     });
+  });
+
+  it("feedback containing 'prefer' yields the deterministic general learning (9-5 item 4)", async () => {
+    const response = await refineBreakdown({
+      ...e2eInput,
+      feedback: 'I prefer steps I can physically tick off',
+    });
+
+    expect(response.statusCode).toBe(200);
+    const { result } = response.json();
+    expect(result.data.json.generalLearning).toBe(
+      'Learned: I prefer steps I can physically tick off',
+    );
   });
 
   it('accepts an empty subtasks array and optional details/notes', async () => {

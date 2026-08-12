@@ -25,48 +25,63 @@ export interface StarBadge {
 
 const WEEKDAY = new Intl.DateTimeFormat(undefined, { weekday: 'short' });
 
+/** Whole calendar days from `now`'s date to the deadline's date — deadline
+ *  today = 0, tomorrow = 1, overdue negative (9-5 item 12 day semantics). */
+export function daysUntilDeadline(deadline: Date, now: Date): number {
+  const from = new Date(now);
+  from.setHours(0, 0, 0, 0);
+  const to = new Date(deadline);
+  to.setHours(0, 0, 0, 0);
+  return Math.round((to.getTime() - from.getTime()) / DAY_MS);
+}
+
 /**
- * Deadline bonus window (Row E "why the window opens early"): aiming to land
- * work three days early, the window opens 4 days out and runs 2 — gone from
- * 2 days out (placement takes over). Short notice (created <4 days before
- * the deadline) opens immediately and still gets the full length, capped at
- * the deadline. Derived entirely from deadline+createdAt — a fresh deadline
- * gets a fresh window (ambiguity #8).
+ * Deadline bonus window (Row E, revised 9-5 item 12): the badge is live
+ * while the deadline is 2–4 calendar days away (today = 0 days). Under 2
+ * days there is no bonus — placement takes over (isTopOfDeck). Purely a
+ * function of the deadline date: created-inside-the-window tasks get only
+ * whatever window days remain, and under-2-day notice earns nothing.
  */
 export function bonusWindow(
-  task: Pick<TaskData, 'size' | 'deadline' | 'createdAt'>,
+  task: Pick<TaskData, 'size' | 'deadline'>,
   now: Date,
 ): StarBadge | null {
   if (!task.deadline) return null;
-  const deadline = task.deadline.getTime();
-  const normalOpen = deadline - BONUS_WINDOW.opensDaysBeforeDeadline * DAY_MS;
-  // Short notice: the window starts at creation. Normal: 4 days out.
-  const start = Math.max(normalOpen, task.createdAt.getTime());
-  const close = Math.min(start + BONUS_WINDOW.lengthDays * DAY_MS, deadline);
-  const t = now.getTime();
-  if (t < start || t >= close) return null;
+  const daysLeft = daysUntilDeadline(task.deadline, now);
+  if (daysLeft < BONUS_WINDOW.closesDaysBeforeDeadline) return null;
+  if (daysLeft > BONUS_WINDOW.opensDaysBeforeDeadline) return null;
+  // The badge dies at midnight entering the (closes − 1)-days-out day.
+  const closeMoment = new Date(now);
+  closeMoment.setHours(0, 0, 0, 0);
+  closeMoment.setDate(
+    closeMoment.getDate() + (daysLeft - BONUS_WINDOW.closesDaysBeforeDeadline) + 1,
+  );
   return {
     kind: 'window',
     amount: STAR_WEIGHTS.bonusBadge[sizeKeyOf(task.size)],
-    reason: `BONUS UNTIL ${WEEKDAY.format(new Date(close)).toUpperCase()}`,
+    reason: `BONUS UNTIL ${WEEKDAY.format(closeMoment).toUpperCase()}`,
   };
 }
 
-/** From 2 days out the badge is gone and the card is dealt first instead
- *  (clay TOP OF THE DECK band; still subject to filters — dots mark it when
- *  a filter hides it). Overdue cards keep the placement. */
+/** Under 2 calendar days out the badge is gone and the card is dealt first
+ *  instead (clay TOP OF THE DECK band; still subject to filters — dots mark
+ *  it when a filter hides it). Overdue cards keep the placement. */
 export function isTopOfDeck(task: Pick<TaskData, 'deadline'>, now: Date): boolean {
   if (!task.deadline) return false;
-  return task.deadline.getTime() - now.getTime() <= BONUS_WINDOW.topOfDeckDays * DAY_MS;
+  return daysUntilDeadline(task.deadline, now) < BONUS_WINDOW.closesDaysBeforeDeadline;
 }
 
 /**
  * The single live badge for a card: deadline window vs don't-skip offer —
- * two reasons never stack, the larger badge wins (spec §2). `offerAmount`
- * comes from the local task_offers table (0/undefined = none).
+ * two reasons never stack, and the ideal window beats the do-it-now offer
+ * when both apply (9-5 item 16). `offerAmount` comes from the local
+ * task_offers table (0/undefined = none). NOTE: which cards get a badge at
+ * all is decided globally by curation's `assignBadges` (urgency-ranked, hard
+ * cap) — this per-card helper is its same-card tiebreak and the completion
+ * fallback for callers without the full deck.
  */
 export function liveBadge(
-  task: Pick<TaskData, 'size' | 'deadline' | 'createdAt'>,
+  task: Pick<TaskData, 'size' | 'deadline'>,
   offerAmount: number | undefined,
   now: Date,
 ): StarBadge | null {
@@ -75,7 +90,6 @@ export function liveBadge(
     offerAmount && offerAmount > 0
       ? { kind: 'offer', amount: offerAmount, reason: 'TO START IT NOW' }
       : null;
-  if (window && offer) return window.amount >= offer.amount ? window : offer;
   return window ?? offer;
 }
 
@@ -113,12 +127,15 @@ export interface StarBreakdown {
  * 0: banking past the value (possible on legacy data) is never clawed back.
  */
 export function calculateCompletionStars(
-  task: Pick<TaskData, 'size' | 'deadline' | 'createdAt'>,
-  options: { bankedStars: number; offerAmount?: number; now?: Date },
+  task: Pick<TaskData, 'size' | 'deadline'>,
+  options: { bankedStars: number; badge?: StarBadge | null; offerAmount?: number; now?: Date },
 ): StarBreakdown {
   const now = options.now ?? new Date();
   const value = taskValue(task);
-  const badge = liveBadge(task, options.offerAmount, now);
+  // `badge` (from curation's global assignBadges) wins when provided — the
+  // payout must match what the card actually displayed (9-5 item 16).
+  const badge =
+    options.badge !== undefined ? options.badge : liveBadge(task, options.offerAmount, now);
   const bonus = badge?.amount ?? 0;
   const banked = Math.max(0, options.bankedStars);
   return {

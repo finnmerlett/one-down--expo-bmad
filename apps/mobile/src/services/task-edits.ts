@@ -36,8 +36,14 @@ function reviewItemField(item: ReviewItem): 'size' | 'contexts' | 'deadline' | '
  * item. The confirmation star lands only when the LAST flag on the card
  * clears (owner decision 2026-07-27: per-item awards racked up too fast);
  * the repository reports `reviewCleared` exactly once, so it can't double.
+ * `onQueueCleared` (9-5 item 11) fires with the amount when the queue-clear
+ * award actually pays, so the surface can show the "Triage cleared" toast.
  */
-export function applyTaskPatch(task: TaskData, patch: UpdateTaskPatch): void {
+export function applyTaskPatch(
+  task: TaskData,
+  patch: UpdateTaskPatch,
+  onQueueCleared?: (amount: number) => void,
+): void {
   void updateTask(db, task.id, patch)
     .then(async ({ confirmedItems, reviewCleared }) => {
       for (const field of Object.keys(patch) as (keyof UpdateTaskPatch)[]) {
@@ -49,7 +55,8 @@ export function applyTaskPatch(task: TaskData, patch: UpdateTaskPatch): void {
       if (reviewCleared) {
         // v1.5 economy: per-card confirms pay nothing — the queue-clear
         // award self-gates on the queue being empty + once per day.
-        await maybeAwardTriageQueueCleared(db);
+        const amount = await maybeAwardTriageQueueCleared(db);
+        if (amount > 0) onQueueCleared?.(amount);
         track('review_completed', {});
       }
     })
@@ -63,14 +70,19 @@ export function applyTaskPatch(task: TaskData, patch: UpdateTaskPatch): void {
  * (owner decision 2026-07-27 — see applyTaskPatch). Fire-and-forget like
  * startTask; a double tap reports `confirmed: false` and awards nothing.
  */
-export function confirmReviewItem(task: TaskData, item: ReviewItem): void {
+export function confirmReviewItem(
+  task: TaskData,
+  item: ReviewItem,
+  onQueueCleared?: (amount: number) => void,
+): void {
   void repoConfirmReviewItem(db, task.id, item)
     .then(async ({ confirmed, reviewCleared }) => {
       if (!confirmed) return;
       track('review_item_confirmed', { field: reviewItemField(item), via: 'tick' });
       if (reviewCleared) {
         // Same queue-clear gate as applyTaskPatch (v1.5 economy).
-        await maybeAwardTriageQueueCleared(db);
+        const amount = await maybeAwardTriageQueueCleared(db);
+        if (amount > 0) onQueueCleared?.(amount);
         track('review_completed', {});
       }
     })
@@ -84,14 +96,19 @@ export function confirmReviewItem(task: TaskData, item: ReviewItem): void {
  * them concurrently loses updates (last write resurrects the other flags;
  * found on-device).
  */
-export function confirmReviewItems(task: TaskData, items: ReviewItem[]): void {
+export function confirmReviewItems(
+  task: TaskData,
+  items: ReviewItem[],
+  onQueueCleared?: (amount: number) => void,
+): void {
   void (async () => {
     for (const item of items) {
       const { confirmed, reviewCleared } = await repoConfirmReviewItem(db, task.id, item);
       if (!confirmed) continue;
       track('review_item_confirmed', { field: reviewItemField(item), via: 'tick' });
       if (reviewCleared) {
-        await maybeAwardTriageQueueCleared(db);
+        const amount = await maybeAwardTriageQueueCleared(db);
+        if (amount > 0) onQueueCleared?.(amount);
         track('review_completed', {});
       }
     }

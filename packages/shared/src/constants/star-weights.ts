@@ -39,14 +39,17 @@ export const STAR_WEIGHTS = {
   triageQueueCleared: 5,
 } as const;
 
-/** Deadline bonus window (Row E "why the window opens early"): opens 4 days
- *  out, runs 2 — gone from 2 days out, when placement takes over. Short
- *  notice opens immediately and still gets 2 days, capped at the deadline. */
+/** Deadline bonus window (Row E, revised 9-5 item 12): the badge is live
+ *  while the deadline is 2–4 CALENDAR days away (deadline today = 0 days) —
+ *  under 2 days there is no bonus, the card is dealt first instead
+ *  (placement takes over exactly where the badge stops). Short notice earns
+ *  nothing: a task created inside the window simply has whatever window
+ *  days remain. */
 export const BONUS_WINDOW = {
+  /** First calendar day (counting back from the deadline) with the badge. */
   opensDaysBeforeDeadline: 4,
-  lengthDays: 2,
-  /** From this close to the deadline the card is dealt first instead. */
-  topOfDeckDays: 2,
+  /** Last calendar day with the badge; below this, placement takes over. */
+  closesDaysBeforeDeadline: 2,
 } as const;
 
 /** Don't-skip offer mechanics (Row E "skipping, and what it costs"). */

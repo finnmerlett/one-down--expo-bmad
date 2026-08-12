@@ -25,6 +25,7 @@ function makeTask(overrides: Partial<TaskData> = {}): TaskData {
     notes: null,
     status: 'pending',
     size: null,
+    criticality: null,
     contexts: null,
     deadline: null,
     hasCheckNeeded: false,
@@ -55,8 +56,8 @@ describe('bonusWindow', () => {
     expect(bonusWindow(makeTask(), NOW)).toBeNull();
   });
 
-  it('opens 4 days out and runs 2 — closed at 2 days out', () => {
-    // Deadline 3 days out: inside the window (opened at −4d, closes at −2d).
+  it('live while the deadline is 2–4 calendar days away (9-5 item 12)', () => {
+    // Deadline 3 days out: inside the window.
     const inside = makeTask({ size: 'big_time', deadline: daysFromNow(3) });
     expect(bonusWindow(inside, NOW)).toEqual({
       kind: 'window',
@@ -64,25 +65,40 @@ describe('bonusWindow', () => {
       reason: expect.stringMatching(/^BONUS UNTIL /),
     });
 
+    // The boundary days themselves carry the badge.
+    expect(bonusWindow(makeTask({ deadline: daysFromNow(2) }), NOW)).not.toBeNull();
+    expect(bonusWindow(makeTask({ deadline: daysFromNow(4) }), NOW)).not.toBeNull();
+
     // Deadline 5 days out: the window hasn't opened yet.
     expect(bonusWindow(makeTask({ deadline: daysFromNow(5) }), NOW)).toBeNull();
 
-    // Deadline 1.5 days out: the window has closed (placement takes over).
-    expect(bonusWindow(makeTask({ deadline: daysFromNow(1.5) }), NOW)).toBeNull();
+    // Deadline tomorrow / today: no bonus — placement takes over.
+    expect(bonusWindow(makeTask({ deadline: daysFromNow(1) }), NOW)).toBeNull();
+    expect(bonusWindow(makeTask({ deadline: NOW }), NOW)).toBeNull();
   });
 
-  it('short notice opens immediately, capped at the deadline', () => {
-    // Created now-ish with a deadline tomorrow: window = [created, deadline).
+  it('day granularity: an evening 2 calendar days from a midday deadline still counts as 2', () => {
+    // Hour-math said 1.5 days (closed); calendar-day semantics say 2 (live).
+    expect(bonusWindow(makeTask({ deadline: daysFromNow(1.5) }), NOW)).not.toBeNull();
+  });
+
+  it('short notice earns nothing under 2 days — no created-at anchor (9-5 item 12)', () => {
+    // Created now with a deadline tomorrow: the old rule opened a window at
+    // creation; the new rule pays no bonus this close to the deadline.
     const shortNotice = makeTask({
       size: 'quick_win',
       createdAt: new Date(NOW.getTime() - 60_000),
       deadline: daysFromNow(1),
     });
-    expect(bonusWindow(shortNotice, NOW)).toEqual({
-      kind: 'window',
-      amount: 3,
-      reason: expect.stringMatching(/^BONUS UNTIL /),
+    expect(bonusWindow(shortNotice, NOW)).toBeNull();
+
+    // Created inside the window: whatever window days remain still pay.
+    const midWindow = makeTask({
+      size: 'quick_win',
+      createdAt: new Date(NOW.getTime() - 60_000),
+      deadline: daysFromNow(3),
     });
+    expect(bonusWindow(midWindow, NOW)).toMatchObject({ kind: 'window', amount: 3 });
   });
 });
 
@@ -95,7 +111,7 @@ describe('isTopOfDeck', () => {
   });
 });
 
-describe('liveBadge (two reasons never stack — the larger wins)', () => {
+describe('liveBadge (two reasons never stack — the window wins, 9-5 item 16)', () => {
   it('returns the offer when no window applies', () => {
     expect(liveBadge(makeTask({ size: 'quick_win' }), 3, NOW)).toEqual({
       kind: 'offer',
@@ -109,9 +125,9 @@ describe('liveBadge (two reasons never stack — the larger wins)', () => {
     expect(liveBadge(task, 2, NOW)).toMatchObject({ kind: 'window', amount: 10 });
   });
 
-  it('a larger offer wins over the window', () => {
+  it('the ideal window beats even a larger do-it-now offer (item 16)', () => {
     const task = makeTask({ size: 'quick_win', deadline: daysFromNow(3) });
-    expect(liveBadge(task, 10, NOW)).toMatchObject({ kind: 'offer', amount: 10 });
+    expect(liveBadge(task, 10, NOW)).toMatchObject({ kind: 'window', amount: 3 });
   });
 
   it('null with neither', () => {

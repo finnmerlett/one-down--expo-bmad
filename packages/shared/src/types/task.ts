@@ -14,6 +14,10 @@ export type TaskStatus = (typeof TASK_STATUSES)[number];
 export const TASK_SIZES = ['quick_win', 'big_time'] as const;
 export type TaskSize = (typeof TASK_SIZES)[number];
 
+/** How bad it would be to miss the deadline (9-5 item 15). Null = chill. */
+export const TASK_CRITICALITIES = ['chill', 'important', 'critical'] as const;
+export type TaskCriticality = (typeof TASK_CRITICALITIES)[number];
+
 export const TASK_CONTEXTS = ['home', 'out_and_about', 'phone', 'laptop', 'internet'] as const;
 export type TaskContext = (typeof TASK_CONTEXTS)[number];
 
@@ -48,6 +52,12 @@ export interface TaskData {
   notes: string | null;
   status: TaskStatus;
   size: TaskSize | null;
+  /**
+   * How bad missing the deadline would be (9-5 item 15) — feeds the hidden
+   * urgency metric that picks which window-eligible cards carry a bonus.
+   * Null reads as 'chill' everywhere.
+   */
+  criticality: TaskCriticality | null;
   /** JSON-encoded array of TaskContext values, e.g. '["home","phone"]'. */
   contexts: string | null;
   deadline: Date | null;

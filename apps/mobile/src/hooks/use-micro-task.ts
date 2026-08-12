@@ -5,6 +5,7 @@ import type { TaskData } from '@one-down/shared';
 import { track } from '@/lib/analytics/track';
 import { db } from '@/lib/local-db';
 import { trpc } from '@/lib/trpc';
+import { getAiGeneralNotes } from '@/services/ai-notes';
 import { createSubtasks } from '@/services/subtasks-repository';
 import { resetTaskSkips } from '@/services/task-activity';
 
@@ -48,7 +49,17 @@ export function useMicroTask(task: TaskData | null): MicroTaskController {
     const current = taskRef.current;
     if (!current || snapshotRef.current.state === 'loading') return;
     setSnapshot({ state: 'loading', step: null });
-    void mutateAsync({ title: current.title, details: current.details, notes: current.notes })
+    // 9-5 item 4: general AI notes ride along as prompt context.
+    void getAiGeneralNotes(db)
+      .catch(() => '')
+      .then((generalNotes) =>
+        mutateAsync({
+          title: current.title,
+          details: current.details,
+          notes: current.notes,
+          generalNotes: generalNotes || null,
+        }),
+      )
       .then((result) => {
         track('micro_task_suggested', { skip_count: current.skipCount });
         setSnapshot({ state: 'proposal', step: result.step });

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { TASK_SIZES, TASK_STATUSES, type TaskData } from '../types/task';
+import { TASK_CRITICALITIES, TASK_SIZES, TASK_STATUSES, type TaskData } from '../types/task';
 
 // Server-side input validation for sync upserts (Story 5.3). Hand-written to
 // match TaskData exactly — the `satisfies` check below fails to compile if
@@ -15,6 +15,9 @@ export const taskUpsertSchema = z.object({
   notes: z.string().nullable(),
   status: z.enum(TASK_STATUSES),
   size: z.enum(TASK_SIZES).nullable(),
+  // default(null): pre-criticality clients (9-5 item 15) omit the key —
+  // their pushes must keep validating until every install is updated.
+  criticality: z.enum(TASK_CRITICALITIES).nullable().default(null),
   contexts: z.string().nullable(),
   deadline: z.date().nullable(),
   hasCheckNeeded: z.boolean(),

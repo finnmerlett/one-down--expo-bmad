@@ -44,6 +44,13 @@ export const MAX_REFINE_SUBTASKS = 20;
 /** Notes distillations longer than this are truncated server-side (Story 6.4). */
 export const MAX_NOTES_DISTILLATION_CHARS = 200;
 
+/** General-learning lines longer than this are truncated server-side (9-5 item 4). */
+export const MAX_GENERAL_LEARNING_CHARS = 200;
+
+/** The user's editable general AI notes are clamped to this length locally
+ *  (9-5 item 4) — oldest bullets fall off first when a learning lands. */
+export const MAX_AI_GENERAL_NOTES_CHARS = 2000;
+
 /**
  * Swipes-past before the micro-task nudge appears (Story 6.4, FR39). Starting
  * the task or answering the nudge resets the count. Epic 7 avoidance

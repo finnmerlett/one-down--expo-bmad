@@ -71,6 +71,13 @@
       "when": 1785905116067,
       "tag": "0009_sturdy_red_skull",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1786493635993,
+      "tag": "0010_peaceful_wolf_cub",
+      "breakpoints": true
     }
   ]
 }

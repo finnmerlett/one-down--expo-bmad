@@ -419,9 +419,17 @@ describe('tasks-repository (integration, real migration SQL)', () => {
 
       legacyDb.sqlite.exec(allMigrations[backfillIndex] ?? '');
 
-      const [row] = await legacyDb.db.select().from(tasks).where(eq(tasks.id, 'legacy-1'));
-      expect(row?.lastEngagedAt.getTime()).toBe(2000);
-      expect(row?.skipWindowStartedAt).toBeNull();
+      // Raw SQL, not the drizzle schema: the DB here is frozen at 0008, so
+      // selecting through the CURRENT schema breaks every time a later
+      // migration adds a column (bit us when 0010 added criticality).
+      const row = legacyDb.sqlite
+        .prepare(
+          'SELECT last_engaged_at AS lastEngagedAt, skip_window_started_at AS skipWindowStartedAt' +
+            " FROM tasks WHERE id = 'legacy-1'",
+        )
+        .get() as { lastEngagedAt: number; skipWindowStartedAt: number | null };
+      expect(row.lastEngagedAt).toBe(2000);
+      expect(row.skipWindowStartedAt).toBeNull();
       legacyDb.close();
     });
   });

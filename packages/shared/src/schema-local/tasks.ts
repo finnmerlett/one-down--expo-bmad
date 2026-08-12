@@ -1,6 +1,6 @@
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
-import type { TaskData, TaskSize, TaskStatus } from '../types/task';
+import type { TaskCriticality, TaskData, TaskSize, TaskStatus } from '../types/task';
 
 // SQLite stores dates as epoch-ms integers ({ mode: 'timestamp_ms' } → Date in TS),
 // booleans as 0/1 integers, and contexts as a JSON-encoded string array.
@@ -11,6 +11,8 @@ export const tasks = sqliteTable('tasks', {
   notes: text('notes'),
   status: text('status').$type<TaskStatus>().notNull().default('pending'),
   size: text('size').$type<TaskSize>(),
+  // How bad missing the deadline would be (9-5 item 15); null = chill.
+  criticality: text('criticality').$type<TaskCriticality>(),
   contexts: text('contexts'),
   deadline: integer('deadline', { mode: 'timestamp_ms' }),
   hasCheckNeeded: integer('has_check_needed', { mode: 'boolean' }).notNull().default(false),
