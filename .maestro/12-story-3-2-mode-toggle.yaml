@@ -3,39 +3,19 @@
 # clears the mode and both sizes return (AC4 — v1.5: re-pressing an active
 # mode no longer deactivates it), and mode combines with the context filter
 # with AND semantics (AC5).
-# Updated for Story 3.3: curation order is seed-jittered, so 'Tiny chore' is
-# sized while it is the only card — the momentum rule then pins it as the top
-# card and one swipe deterministically reaches 'Giant project'.
+# Seeded (9-5 item 1): 'Tiny chore' (quick win — momentum pins it on top) and
+# 'Giant project' (big time) arrive pre-sized via the e2e-modes account pull;
+# the Home tag for AC5 is still applied in-flow (context editing is cheap).
 appId: com.onedown.mobile
 ---
 - runFlow: common/launch-app.yaml
-
-# Seed 'Tiny chore' and size it Quick win via the card back while alone
 - runFlow:
-    file: common/add-task.yaml
+    file: common/sign-in-seeded.yaml
     env:
-      TITLE: 'Tiny chore'
-- tapOn: 'Edit task: Tiny chore'
-- waitForAnimationToEnd
-- tapOn: 'Size: Quick win'
-- tapOn: 'Back to card front'
-- waitForAnimationToEnd
-
-# Seed 'Giant project'; momentum keeps the quick win on top, so one swipe
-# reaches it to set Big time (its star value rises to 15)
-- runFlow:
-    file: common/add-task.yaml
-    env:
-      TITLE: 'Giant project'
-- swipe:
-    start: 80%, 45%
-    end: 5%, 45%
-- waitForAnimationToEnd
-- tapOn: 'Edit task: Giant project'
-- waitForAnimationToEnd
-- tapOn: 'Size: Big time'
-- tapOn: 'Back to card front'
-- waitForAnimationToEnd
+      EMAIL: 'e2e-modes@test.local'
+- extendedWaitUntil:
+    visible: 'Task: Tiny chore. Worth 5 stars. Card 1 of 2'
+    timeout: 15000
 
 # AC2: Quick wins mode leaves only the quick-win task
 - tapOn: 'Mode: Quick wins'

@@ -1,31 +1,26 @@
-# Story 6.2 → v1.5 D6b — the check queue: brain-dumped tasks with AI guesses
-# carry the info marker (AC1); 'Needs review' opens the blueprint Triage
-# screen (review MODE is retired); the flagged card shows WE GUESSED groups
-# and the NOTHING TO GO ON deadline gap; None + Save and next confirms it as
-# shown; emptying the queue pays the +5 (once per local day).
-# Fake-provider contract for the dump below (fake-provider.ts):
-#   'Call the dentist soon'  → phone context + quick_win (≤5 words) inferred,
-#                              'soon' → timeSensitive with no date → missingDeadline
-#   'Ponder the universe quietly for a while' → nothing inferred (unflagged)
-# Prereq (batched wave-end run): local server running WITHOUT GEMINI_API_KEY
-# (fake mode) and the APK built with EXPO_PUBLIC_API_URL=http://10.0.2.2:3000.
+# Story 6.2 → v1.5 D6b — the check queue: tasks with AI guesses carry the
+# info marker (AC1); 'Needs review' opens the blueprint Triage screen (review
+# MODE is retired); the flagged card shows WE GUESSED groups and the NOTHING
+# TO GO ON deadline gap; None + Save and next confirms it as shown; emptying
+# the queue pays the +5 (once per local day).
+# Seeded (9-5 item 1): the flagged card arrives via the e2e-triage account
+# pull with the same flags the brain-dump inference used to produce —
+# size + contexts guessed, deadline missing. Brain-dump inference itself is
+# covered end-to-end by 08-story-6-1; this flow no longer needs the AI leg.
 appId: com.onedown.mobile
 ---
 - runFlow: common/launch-app.yaml
+- runFlow:
+    file: common/sign-in-seeded.yaml
+    env:
+      EMAIL: 'e2e-triage@test.local'
+- extendedWaitUntil:
+    visible: 'Task: (Call the dentist soon|Ponder the universe quietly for a while)\..*'
+    timeout: 15000
 
-# Seed via brain dump (6.1 surface + D6a gate)
-- tapOn: 'Brain dump'
-- waitForAnimationToEnd
-- tapOn: "What's on your mind?"
-- inputText: 'Call the dentist soon. Ponder the universe quietly for a while'
-- tapOn: 'Parse my tasks'
-- extendedWaitUntil:
-    visible: 'Check these 2'
-    timeout: 15000
-- tapOn: 'Add 2 tasks'
-- extendedWaitUntil:
-    visible: 'Task: (Call the dentist soon|Ponder the universe quietly for a while)\..* Card . of 2.*'
-    timeout: 15000
+# 9-5 item 6: the dashed triage entry stands beside the plus button whenever
+# the queue is non-empty — no longer gated on the Right-now sheet.
+- assertVisible: 'Check 1 guessed task'
 
 # The review entry only exists on a flagged TOP card — cycle once if the
 # unflagged card happened to surface first (3.3's curation order is seeded).
@@ -48,10 +43,20 @@ appId: com.onedown.mobile
 - assertVisible: 'Nothing to go on'
 - takeScreenshot: .maestro/screenshots/23-story-6-2-triage-blueprint
 
+# 9-5 item 15: the criticality chips are live on the blueprint card —
+# picking one rides the same Save and next commit.
+- tapOn: 'Criticality: Important'
+
 # Answer the deadline gap with None, then save the card AS SHOWN — the
 # remaining guesses (size, contexts) confirm in one go (AC4/AC6)
 - tapOn: 'No deadline needed'
 - tapOn: 'Save and next'
+
+# 9-5 item 11: the queue-clear +5 pays through the reward toast now —
+# same anatomy as "One down!", triage wording (auto-dismisses ~2 s).
+- extendedWaitUntil:
+    visible: 'Triage cleared'
+    timeout: 5000
 
 # Last card saved → the queue-clear state; +5 landed (once/day, Row E)
 - extendedWaitUntil:

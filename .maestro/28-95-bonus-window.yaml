@@ -1,0 +1,68 @@
+# 9-5 items 12/13/15/16 — the deadline-bonus economy end to end:
+# - item 12: a due-today card carries NO bonus badge (window closed under 2
+#   days) but is dealt FIRST (placement takeover) — its full-string label
+#   with no ". Plus N bonus" suffix proves both at once.
+# - items 15+16: three window-eligible cards (3 days out) with distinct
+#   criticalities — the hidden urgency metric hands the two badge slots to
+#   critical + important; chill goes without (MAX_LIVE_BONUSES = 2).
+# - item 13 (9.4 regression guard): the pencil on a BADGED card opens the
+#   editor, not the doing page (corner zones shift down by the band).
+# Band texts (TOP OF THE DECK / BONUS UNTIL) live INSIDE the accessible card
+# container and are invisible to Maestro — every assert here reads the
+# card's a11y label, where the badge is announced as '. Plus N bonus right
+# now'.
+appId: com.onedown.mobile
+---
+- runFlow: common/launch-app.yaml
+- runFlow:
+    file: common/sign-in-seeded.yaml
+    env:
+      EMAIL: 'e2e-bonus@test.local'
+
+# Placement takeover: the due-today card is dealt first, and its FULL label
+# (no badge suffix) pins item 12's "no bonus under 2 days".
+- extendedWaitUntil:
+    visible: 'Task: Due today task. Worth 5 stars. Card 1 of 4'
+    timeout: 15000
+
+# Urgency winner: the critical card carries a window badge (+3 quick win).
+- swipe:
+    start: 80%, 45%
+    end: 5%, 45%
+- waitForAnimationToEnd
+- assertVisible: 'Task: Critical mission. Worth 5 stars. Card 2 of 4. Plus 3 bonus right now'
+- takeScreenshot: .maestro/screenshots/28-95-bonus-badge
+
+# Item 13 guard: the pencil on this BADGED card opens the editor overlay.
+- tapOn: 'Edit task: Critical mission'
+- waitForAnimationToEnd
+- assertVisible: 'Editing card'
+# The criticality chips are live on the card back (item 15) — the seeded
+# value renders selected.
+- scrollUntilVisible:
+    element:
+      text: 'Criticality: Critical'
+    direction: DOWN
+- assertVisible:
+    text: 'Criticality: Critical'
+    selected: true
+- back
+- waitForAnimationToEnd
+
+# Second slot: the important card also carries a badge.
+- swipe:
+    start: 80%, 45%
+    end: 5%, 45%
+- waitForAnimationToEnd
+- assertVisible: 'Task: Important errand. Worth 5 stars. Card 3 of 4. Plus 3 bonus right now'
+
+# Cap enforced: the chill card is window-ELIGIBLE but got no slot — its
+# full-string label has no badge suffix (item 16).
+- swipe:
+    start: 80%, 45%
+    end: 5%, 45%
+- waitForAnimationToEnd
+- assertVisible: 'Task: Chill chore. Worth 5 stars. Card 4 of 4'
+
+- assertNotVisible: 'Unhandled'
+- assertNotVisible: 'error occurred'

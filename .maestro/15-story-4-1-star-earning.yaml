@@ -1,17 +1,23 @@
 # Story 4.1 — star earning system: completing a task persists a star
-# transaction and the toast shows the ACTUAL calculated amount (a task with
-# no size and no deadline earns exactly the base 10 — AC6, deterministic);
-# cutting loose awards the smaller flat amount (AC3).
+# transaction and the toast shows the ACTUAL calculated amount (a quick win
+# with no deadline earns exactly the base 5 — AC6, deterministic); cutting
+# loose awards the smaller flat amount (AC3).
+# Seeded (9-5 item 1): both subjects arrive via the e2e-stars account pull
+# (stars themselves are local — they are still earned in-app, which IS the
+# story under test). The quick win pins leg 1's subject on top.
 appId: com.onedown.mobile
 ---
 - runFlow: common/launch-app.yaml
-
-# --- Leg 1: completion award (base amount, no size/deadline) ---
 - runFlow:
-    file: common/add-task.yaml
+    file: common/sign-in-seeded.yaml
     env:
-      TITLE: 'Earn stars task'
-- tapOn: 'Task: Earn stars task. Worth 5 stars. Card 1 of 1'
+      EMAIL: 'e2e-stars@test.local'
+
+# --- Leg 1: completion award (base amount, no deadline) ---
+- extendedWaitUntil:
+    visible: 'Task: Earn stars task. Worth 5 stars. Card 1 of 2'
+    timeout: 15000
+- tapOn: 'Task: Earn stars task. Worth 5 stars. Card 1 of 2'
 - waitForAnimationToEnd
 # Assert the toast fast — it auto-dismisses after ~2 s
 - tapOn: 'Mark as complete'
@@ -20,10 +26,9 @@ appId: com.onedown.mobile
 - takeScreenshot: .claude/run-notes/screenshots/4-1-star-toast
 
 # --- Leg 2: cut-loose award (flat, smaller than completion) ---
-- runFlow:
-    file: common/add-task.yaml
-    env:
-      TITLE: 'Let go task'
+- extendedWaitUntil:
+    visible: 'Task: Let go task. Worth 5 stars. Card 1 of 1'
+    timeout: 5000
 - tapOn: 'Task: Let go task. Worth 5 stars. Card 1 of 1'
 - waitForAnimationToEnd
 - tapOn: 'Cut it loose'

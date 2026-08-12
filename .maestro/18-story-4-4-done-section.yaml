@@ -1,125 +1,26 @@
 # Story 4.4 — done section in the task list: completed tasks fill a "Done"
-# section at the TOP (headers hidden entirely while nothing is completed),
-# done rows are display-only plain-text rows (todo rows keep the `Open task:`
-# label — full-string selectors can't collide), and the entry scroll parks
-# "To do" near the top with the latest completions peeking above.
+# section at the TOP (headers hidden entirely while nothing is completed —
+# that leg lives in flow 06), done rows are display-only plain-text rows
+# (todo rows keep the `Open task:` label — full-string selectors can't
+# collide), and the entry scroll parks "To do" near the top with the latest
+# completions peeking above.
+# Seeded (9-5 item 1): Alpha/Beta/Gamma arrive PRE-COMPLETED with staggered
+# updatedAt (done section sorts updatedAt ASC — Gamma newest peeks just above
+# "To do") via the e2e-done account pull; Delta stays pending. The old
+# 90-step complete-three-cards-from-the-deck choreography is gone.
 appId: com.onedown.mobile
 ---
 - runFlow: common/launch-app.yaml
+- runFlow:
+    file: common/sign-in-seeded.yaml
+    env:
+      EMAIL: 'e2e-done@test.local'
 
-# Seed four tasks
-- runFlow:
-    file: common/add-task.yaml
-    env:
-      TITLE: 'Alpha task'
-- runFlow:
-    file: common/add-task.yaml
-    env:
-      TITLE: 'Beta task'
-- runFlow:
-    file: common/add-task.yaml
-    env:
-      TITLE: 'Gamma task'
-- runFlow:
-    file: common/add-task.yaml
-    env:
-      TITLE: 'Delta task'
+# Delta is the only browsable card — its arrival proves the pull landed
+- extendedWaitUntil:
+    visible: 'Task: Delta task\..*'
+    timeout: 15000
 
-# Nothing completed yet: no Done header, rows are plain To do rows (AC3)
-- tapOn: 'Open task list'
-- waitForAnimationToEnd
-- assertNotVisible: 'Done'
-- assertVisible: 'Open task: Alpha task'
-- tapOn: 'Back to home'
-- waitForAnimationToEnd
-
-# Complete Alpha, Beta, Gamma IN ORDER from the deck (v1.5 D5: the list
-# detail is edit-only). Conditional swipes bring each card to the top no
-# matter how the seed-jittered curation ordered the stack.
-- runFlow:
-    when:
-      notVisible: 'Task: Alpha task\..*'
-    commands:
-      - swipe:
-          start: 80%, 45%
-          end: 5%, 45%
-      - waitForAnimationToEnd
-- runFlow:
-    when:
-      notVisible: 'Task: Alpha task\..*'
-    commands:
-      - swipe:
-          start: 80%, 45%
-          end: 5%, 45%
-      - waitForAnimationToEnd
-- runFlow:
-    when:
-      notVisible: 'Task: Alpha task\..*'
-    commands:
-      - swipe:
-          start: 80%, 45%
-          end: 5%, 45%
-      - waitForAnimationToEnd
-- tapOn: 'Task: Alpha task\..*'
-- waitForAnimationToEnd
-- tapOn: 'Mark as complete'
-- waitForAnimationToEnd
-- runFlow:
-    when:
-      notVisible: 'Task: Beta task\..*'
-    commands:
-      - swipe:
-          start: 80%, 45%
-          end: 5%, 45%
-      - waitForAnimationToEnd
-- runFlow:
-    when:
-      notVisible: 'Task: Beta task\..*'
-    commands:
-      - swipe:
-          start: 80%, 45%
-          end: 5%, 45%
-      - waitForAnimationToEnd
-- runFlow:
-    when:
-      notVisible: 'Task: Beta task\..*'
-    commands:
-      - swipe:
-          start: 80%, 45%
-          end: 5%, 45%
-      - waitForAnimationToEnd
-- tapOn: 'Task: Beta task\..*'
-- waitForAnimationToEnd
-- tapOn: 'Mark as complete'
-- waitForAnimationToEnd
-- runFlow:
-    when:
-      notVisible: 'Task: Gamma task\..*'
-    commands:
-      - swipe:
-          start: 80%, 45%
-          end: 5%, 45%
-      - waitForAnimationToEnd
-- runFlow:
-    when:
-      notVisible: 'Task: Gamma task\..*'
-    commands:
-      - swipe:
-          start: 80%, 45%
-          end: 5%, 45%
-      - waitForAnimationToEnd
-- runFlow:
-    when:
-      notVisible: 'Task: Gamma task\..*'
-    commands:
-      - swipe:
-          start: 80%, 45%
-          end: 5%, 45%
-      - waitForAnimationToEnd
-- tapOn: 'Task: Gamma task\..*'
-- waitForAnimationToEnd
-- tapOn: 'Mark as complete'
-- waitForAnimationToEnd
 - tapOn: 'Open task list'
 - waitForAnimationToEnd
 
@@ -133,9 +34,7 @@ appId: com.onedown.mobile
 - assertNotVisible: 'Completed tasks will land here.'
 - takeScreenshot: .claude/run-notes/screenshots/4-4-done-section
 
-# Home is intact afterwards. Delta racked up skips while we cycled past it,
-# so a coin-flip don't-skip offer may have added a badge segment — match the
-# prefix only.
+# Home is intact afterwards — Delta is the whole deck
 - tapOn: 'Back to home'
 - waitForAnimationToEnd
 - assertVisible: 'Task: Delta task\. Worth 5 stars\. Card 1 of 1.*'

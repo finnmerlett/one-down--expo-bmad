@@ -3,6 +3,8 @@
 # the list (AC3); with no tasks an empty state guides adding some (AC4).
 # Updated for Story 4.4: with no completed tasks the section headers are
 # hidden entirely — the done section (and its flow coverage) lives in 18.
+# Seeded (9-5 item 1): the two listed tasks arrive via the e2e-list account
+# pull instead of two quick-add passes.
 appId: com.onedown.mobile
 ---
 - runFlow: common/launch-app.yaml
@@ -15,23 +17,14 @@ appId: com.onedown.mobile
 - tapOn: 'Back to home'
 - waitForAnimationToEnd
 
-# Seed two tasks via quick add (v1.5: the plus circle opens the sheet directly)
-- tapOn: 'Add a task'
-- waitForAnimationToEnd
-- tapOn: 'Task title'
-- inputText: 'First listed task'
-- tapOn: 'Save task'
+# Sign in — the pull delivers both fixture tasks
+- runFlow:
+    file: common/sign-in-seeded.yaml
+    env:
+      EMAIL: 'e2e-list@test.local'
 - extendedWaitUntil:
-    visible: 'What needs doing?'
-    timeout: 3000
-- tapOn: 'Task title'
-- inputText: 'Second listed task'
-- tapOn: 'Save task'
-- extendedWaitUntil:
-    visible: 'What needs doing?'
-    timeout: 3000
-- tapOn: 'Close add task'
-- waitForAnimationToEnd
+    visible: 'Task: (First|Second) listed task\..*'
+    timeout: 15000
 
 # Every active task appears in the list (AC1); headers stay hidden with
 # nothing completed (4.4 AC3)

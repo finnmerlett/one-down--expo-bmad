@@ -1,0 +1,35 @@
+# Shared subflow — sign in as a pre-seeded e2e fixture account and land back
+# on home. The pull that follows sign-in delivers the account's fixtures, so
+# callers wait for their first expected card AFTER this subflow returns.
+# Accounts are provisioned by `bun run seed:e2e` (scripts/maestro-test.sh
+# reseeds before every run); the password is shared across fixture accounts.
+# Sheet note: home consumes its Right-now auto-open 4 s after mount — this
+# journey always takes longer, so the sheet never pops when the pull lands.
+# Usage:
+#   - runFlow:
+#       file: common/sign-in-seeded.yaml
+#       env:
+#         EMAIL: 'e2e-<slug>@test.local'
+appId: com.onedown.mobile
+---
+- tapOn: 'Open settings'
+- waitForAnimationToEnd
+- tapOn: 'Sign in'
+- tapOn: 'Email'
+- inputText: ${EMAIL}
+- tapOn: 'Password'
+- inputText: 'seed-password-123'
+- hideKeyboard
+# 'Sign in' matches BOTH the screen header and the submit button — index 1
+# targets the button (the header renders first in the tree).
+- tapOn:
+    text: 'Sign in'
+    index: 1
+- extendedWaitUntil:
+    visible: 'Signed in as ${EMAIL}'
+    timeout: 10000
+# The signed-in label appears while the auth→settings redirect is still
+# settling — a tap fired mid-transition gets swallowed (flow 53 finding).
+- waitForAnimationToEnd
+- tapOn: 'Back to home'
+- waitForAnimationToEnd

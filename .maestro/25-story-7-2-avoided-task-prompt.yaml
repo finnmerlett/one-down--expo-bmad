@@ -1,38 +1,34 @@
-# Story 7.2 — avoided-task detection: 5 swipe-pasts within the window flag a
-# task "avoided" (front indicator chip + a11y label suffix), the card back
+# Story 7.2 — avoided-task detection: threshold skips within the window flag
+# a task "avoided" (front indicator chip + a11y label suffix), the card back
 # shows the gentle three-option prompt, and "Keep it" clears the flag by
 # registering engagement (skip counter restarts). The stale path (7 days)
 # cannot elapse in E2E — covered by unit/integration tests.
-# With a 2-card cycling stack each card accrues a skip on alternating swipes:
-# 10 swipes = 5 skips each, with the seeded quick win back on top.
+# Seeded (9-5 item 1): 'Skip target' (quick win — momentum pins it on top)
+# arrives ONE skip below the threshold (skipCount 4 of 5) via the e2e-avoided
+# account pull — two swipes cross the line instead of the old ten.
 appId: com.onedown.mobile
 ---
 - runFlow: common/launch-app.yaml
-
-# Seed the subject and pin it to the top (quick-win momentum, flow 09 pattern)
 - runFlow:
-    file: common/add-task.yaml
+    file: common/sign-in-seeded.yaml
     env:
-      TITLE: 'Skip target'
-- tapOn: 'Edit task: Skip target'
-- waitForAnimationToEnd
-- tapOn: 'Size: Quick win'
-- tapOn: 'Back to card front'
-- waitForAnimationToEnd
-- runFlow:
-    file: common/add-task.yaml
-    env:
-      TITLE: 'Other card'
-- assertVisible: 'Task: Skip target\. Worth 5 stars\..*'
+      EMAIL: 'e2e-avoided@test.local'
+- extendedWaitUntil:
+    visible: 'Task: Skip target\. Worth 5 stars\..*'
+    timeout: 15000
 
-# --- 10 swipes = 5 skips per card (AC2 threshold) ---
-- repeat:
-    times: 10
-    commands:
-      - swipe:
-          start: 80%, 45%
-          end: 5%, 45%
-      - waitForAnimationToEnd
+# One below the threshold: not flagged yet
+- assertNotVisible: 'Task: Skip target\. Worth 5 stars\..* Skipped a lot'
+
+# --- Two swipes: Skip target takes its 5th skip, cycles back on top (AC2) ---
+- swipe:
+    start: 80%, 45%
+    end: 5%, 45%
+- waitForAnimationToEnd
+- swipe:
+    start: 80%, 45%
+    end: 5%, 45%
+- waitForAnimationToEnd
 
 # Front indicator + a11y label suffix on the flagged top card (AC6)
 - assertVisible: 'Task: Skip target\. Worth 5 stars\..* Skipped a lot'

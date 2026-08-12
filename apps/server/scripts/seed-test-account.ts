@@ -44,6 +44,7 @@ function defaultFixtures(now: Date): TaskData[] {
   const base = {
     details: null,
     notes: null,
+    criticality: null,
     contexts: null,
     deadline: null,
     hasCheckNeeded: false,
@@ -81,7 +82,8 @@ function defaultFixtures(now: Date): TaskData[] {
       size: 'quick_win',
       hasCheckNeeded: true,
       // Both columns are JSON-encoded strings on the wire (TaskData).
-      reviewFlags: JSON.stringify({ size: true, missingDeadline: true }),
+      // parseReviewFlags drops unknown keys — 'inferred' array is the shape.
+      reviewFlags: JSON.stringify({ inferred: ['size'], missingDeadline: true }),
       contexts: JSON.stringify(['phone']),
       lastEngagedAt: at(0.2),
       createdAt: at(0.2),

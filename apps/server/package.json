@@ -12,7 +12,8 @@
     "db:migrate": "drizzle-kit migrate",
     "test": "bun test src",
     "typecheck": "tsc --noEmit",
-    "seed:test-account": "bun scripts/seed-test-account.ts"
+    "seed:test-account": "bun scripts/seed-test-account.ts",
+    "seed:e2e": "bun scripts/seed-e2e-accounts.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.2.0",

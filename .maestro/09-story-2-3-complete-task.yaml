@@ -2,29 +2,18 @@
 # completed, a "One down!" reward toast shows the star amount (display-only
 # until Epic 4), the stack advances to the next card, and the task list shows
 # the completed task under Done (display-only) instead of To do.
-# Updated for Story 3.3: curation order is seed-jittered, so the completion
-# subject is sized Quick win while it is the only card — the momentum rule
-# then deterministically keeps it on top after the second task is added.
+# Seeded (9-5 item 1): the completion subject (quick win — momentum pins it
+# on top) + the follow-up arrive via the e2e-complete account pull.
 appId: com.onedown.mobile
 ---
 - runFlow: common/launch-app.yaml
-
-# Seed the completion subject and make it a quick win while it's alone
 - runFlow:
-    file: common/add-task.yaml
+    file: common/sign-in-seeded.yaml
     env:
-      TITLE: 'Finish me first'
-- tapOn: 'Edit task: Finish me first'
-- waitForAnimationToEnd
-- tapOn: 'Size: Quick win'
-- tapOn: 'Back to card front'
-- waitForAnimationToEnd
-
-# Seed the follow-up task; momentum keeps the quick win on top
-- runFlow:
-    file: common/add-task.yaml
-    env:
-      TITLE: 'Next in line'
+      EMAIL: 'e2e-complete@test.local'
+- extendedWaitUntil:
+    visible: 'Task: Finish me first. Worth 5 stars. Card 1 of 2'
+    timeout: 15000
 
 # Open the top card's back, start the task, land on the running screen
 - tapOn: 'Task: Finish me first. Worth 5 stars. Card 1 of 2'

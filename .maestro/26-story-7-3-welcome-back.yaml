@@ -3,40 +3,19 @@
 # the same quick-win promotion the absence check does). Pins the factual
 # summary counts, both CTAs (triage empty state + main deck), and the
 # quick-win-on-top promise after returning to the deck.
+# Seeded (9-5 item 1): 'Quick one' (quick win, older) and 'Big one' (big
+# time, newer) arrive pre-sized via the e2e-welcome account pull — the old
+# edit-and-size contortions are gone.
 appId: com.onedown.mobile
 ---
 - runFlow: common/launch-app.yaml
-
-# --- Seed: a quick win and a (newer) big-time task ---
 - runFlow:
-    file: common/add-task.yaml
+    file: common/sign-in-seeded.yaml
     env:
-      TITLE: 'Quick one'
-- tapOn: 'Edit task: Quick one'
-- waitForAnimationToEnd
-- tapOn: 'Size: Quick win'
-- tapOn: 'Back to card front'
-- waitForAnimationToEnd
-- runFlow:
-    file: common/add-task.yaml
-    env:
-      TITLE: 'Big one'
-# Size the second task from the list detail (it is not the top card).
-- tapOn: 'Open task list'
-- waitForAnimationToEnd
-# Row tap lands on the WORKING screen (2026-08-11); the editor is behind
-# the pencil, and its back button returns here first.
-- tapOn: 'Open task: Big one'
-- waitForAnimationToEnd
-- tapOn: 'Edit task: Big one'
-- waitForAnimationToEnd
-- tapOn: 'Size: Big time'
-- tapOn: 'Back to task'
-- waitForAnimationToEnd
-- tapOn: 'Pause and go back'
-- waitForAnimationToEnd
-- tapOn: 'Back to home'
-- waitForAnimationToEnd
+      EMAIL: 'e2e-welcome@test.local'
+- extendedWaitUntil:
+    visible: 'Task: Quick one. Worth 5 stars. Card 1 of 2'
+    timeout: 15000
 
 # --- Deep-link into the welcome-back screen: factual, guilt-free summary ---
 - openLink: onedown://welcome-back

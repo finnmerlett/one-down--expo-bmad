@@ -1,28 +1,35 @@
 # Story 6.4 → v1.5 D4 — 'Change' on the working screen opens the dashed
 # WHAT SHOULD BE DIFFERENT box, the submit rewrites only the UNCOMPLETED
 # steps DIRECTLY (no proposal), the distillation lands in the notes, and the
-# label line reports the change with Undo (AC1–AC4). Skipping a card 5+ times
+# label line reports the change with Undo (AC1–AC4). A skip-flagged card
 # surfaces the E9 nudge — one tap fetches the smallest step, saves it, and
 # opens the working screen (AC5–AC6). Deterministic fake provider (AC7).
 # Fake-provider contract (fake-provider.ts — lockstep with this flow):
 #   refine steps: the three first_steps starters prefixed 'Refined: '
 #   distillation: 'Approach note: ' + trimmed feedback (capped at 140 chars)
+#   learning:     feedback containing 'prefer' → 'Learned: ' + trimmed
+#                 feedback (9-5 item 4) — lands in the settings AI notes
 #   micro step:   Do just the very first minute of "<title>"
 # Prereq (batched wave-end run): local server running WITHOUT GEMINI_API_KEY
-# (fake mode) and the APK built with EXPO_PUBLIC_API_URL=http://10.0.2.2:3000
+# (fake mode) and the APK built with EXPO_PUBLIC_API_URL=http://10.0.2.2:3002
 # (Story 5.1).
-# 3.3-proofing: card taps use PREFIX regex ('Task: <title>\..*') and the two
-# tasks in the nudge leg have DISTINCT titles, so label extensions or
-# curation reordering cannot make a tap ambiguous.
+# Seeded (9-5 item 1): paperwork (quick win — momentum pins it on top) +
+# council pre-skipped to the nudge threshold (skipCount 5), so ONE swipe
+# surfaces the E9 nudge instead of the old ten-swipe loop.
+# 3.3-proofing: card taps use PREFIX regex ('Task: <title>\..*') — the
+# pre-skipped council card can carry a coin-flip offer badge suffix.
 appId: com.onedown.mobile
 ---
 - runFlow: common/launch-app.yaml
 - runFlow:
-    file: common/seed-task.yaml
+    file: common/sign-in-seeded.yaml
     env:
-      TASK_TITLE: 'Sort the paperwork mountain'
+      EMAIL: 'e2e-refine@test.local'
+- extendedWaitUntil:
+    visible: 'Task: Sort the paperwork mountain\..*'
+    timeout: 15000
 
-# --- Leg 1: Change these rewrites the uncompleted steps (AC1–AC4) ---
+# --- Leg 1: Change rewrites the uncompleted steps (AC1–AC4) ---
 
 # Open the working screen and land the first three steps (D4 direct)
 - tapOn: 'Task: Sort the paperwork mountain\..*'
@@ -43,7 +50,9 @@ appId: com.onedown.mobile
 - tapOn: 'Change'
 - assertVisible: "Say what's off in your own words"
 - tapOn: 'What should be different'
-- inputText: 'Too vague, give me physical actions'
+# 'prefer' triggers the fake provider's general learning (9-5 item 4) — the
+# distillation AND the settings-notes assert at the end both key off this.
+- inputText: 'I prefer physical actions I can tick off'
 - tapOn: 'Change'
 
 # The 'Working' spinner state is NOT asserted: even with its 500ms minimum
@@ -73,27 +82,15 @@ appId: com.onedown.mobile
 
 # The distillation was appended to the notes immediately (AC3 — visible via
 # the draft-or-stored resync; notes were empty, so it is the whole value)
-- assertVisible: 'Approach note: Too vague, give me physical actions'
+- assertVisible: 'Approach note: I prefer physical actions I can tick off'
 
-# --- Leg 2: skip-count nudge → one-tap smallest step (AC5–AC6) ---
+# --- Leg 2: pre-skipped card → one-tap smallest step (AC5–AC6) ---
 
 - tapOn: 'Pause and go back'
 - waitForAnimationToEnd
-- runFlow:
-    file: common/seed-task.yaml
-    env:
-      TASK_TITLE: 'Ring the council office'
 
-# Two cards cycle; ten committed swipes = five skips each. Curation ordering
-# is seed-jittered (3.3), so if the paperwork card (in_progress — no nudge)
-# ended on top, one more swipe brings the pending council task around.
-- repeat:
-    times: 10
-    commands:
-      - swipe:
-          start: 80%, 45%
-          end: 5%, 45%
-      - waitForAnimationToEnd
+# The council card was seeded AT the skip threshold — one swipe past the
+# paperwork card (in_progress — no nudge) surfaces it with the E9 nudge.
 - runFlow:
     when:
       notVisible: 'Task: Ring the council office\..*'
@@ -111,6 +108,16 @@ appId: com.onedown.mobile
 - extendedWaitUntil:
     visible: 'Subtask: Do just the very first minute of "Ring the council office"'
     timeout: 15000
+
+# --- Leg 3: the general learning landed in the editable settings notes (9-5 item 4) ---
+
+- tapOn: 'Pause and go back'
+- waitForAnimationToEnd
+- tapOn: 'Open settings'
+- waitForAnimationToEnd
+- assertVisible: 'AI notes about you'
+- assertVisible: '.*Learned: I prefer physical actions I can tick off.*'
+- takeScreenshot: .maestro/screenshots/10-95-ai-notes-learning
 
 - assertNotVisible: 'Unhandled'
 - assertNotVisible: 'error occurred'

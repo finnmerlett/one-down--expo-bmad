@@ -2,40 +2,19 @@
 # re-filters the stack (AC2), multi-select shows tasks matching ANY active
 # context (AC3), empty contexts grey out while OFF (AC4), and the selection
 # persists across an app restart (AC5).
-# Updated for Story 3.3: curation order is seed-jittered, so 'Water plants'
-# is sized Quick win while it is the only card — the momentum rule then pins
-# it as the top card and one swipe deterministically reaches the other task.
+# Seeded (9-5 item 1): 'Water plants' (Home + quick win — momentum pins it on
+# top) and 'Email plumber' (Phone) arrive pre-tagged via the e2e-contexts
+# account pull — the old edit-and-tag contortions are gone.
 appId: com.onedown.mobile
 ---
 - runFlow: common/launch-app.yaml
-
-# Seed 'Water plants' alone: tag it Home + make it a quick win
 - runFlow:
-    file: common/add-task.yaml
+    file: common/sign-in-seeded.yaml
     env:
-      TITLE: 'Water plants'
-- tapOn: 'Edit task: Water plants'
-- waitForAnimationToEnd
-- tapOn: 'Context: Home'
-- tapOn: 'Size: Quick win'
-- tapOn: 'Back to card front'
-- waitForAnimationToEnd
-
-# Seed 'Email plumber'; momentum keeps Water plants on top, so one swipe
-# reaches the new card to tag it Phone
-- runFlow:
-    file: common/add-task.yaml
-    env:
-      TITLE: 'Email plumber'
-- swipe:
-    start: 80%, 45%
-    end: 5%, 45%
-- waitForAnimationToEnd
-- tapOn: 'Edit task: Email plumber'
-- waitForAnimationToEnd
-- tapOn: 'Context: Phone'
-- tapOn: 'Back to card front'
-- waitForAnimationToEnd
+      EMAIL: 'e2e-contexts@test.local'
+- extendedWaitUntil:
+    visible: 'Task: Water plants. Worth 5 stars. Card 1 of 2'
+    timeout: 15000
 
 # AC2: filtering to Home leaves only the Home-tagged task, immediately
 # (v1.5: context chips live in the expandable Right-now sheet — open it,

@@ -4,27 +4,21 @@
 # both tasks to the Recycle bin tab with a toast, restore returns a task to
 # the active list, and bin multi-select + Delete permanently removes rows
 # after its own confirmation.
+# Seeded (9-5 item 1): A (quick win — momentum pins it on top) + B arrive via
+# the e2e-archive account pull. A is still completed IN-FLOW: the archive
+# warning keys off real star transactions, which never sync.
 appId: com.onedown.mobile
 ---
 - runFlow: common/launch-app.yaml
+- runFlow:
+    file: common/sign-in-seeded.yaml
+    env:
+      EMAIL: 'e2e-archive@test.local'
+- extendedWaitUntil:
+    visible: 'Task: Archive me A. Worth 5 stars. Card 1 of 2'
+    timeout: 15000
 
-# --- Seed: task A (completed, has stars) + task B (never started) ---
-- runFlow:
-    file: common/add-task.yaml
-    env:
-      TITLE: 'Archive me A'
-# Make A a quick win while it is the only card so it deterministically stays
-# on top after B arrives (3.3 momentum rule — flow 09 pattern).
-- tapOn: 'Edit task: Archive me A'
-- waitForAnimationToEnd
-- tapOn: 'Size: Quick win'
-- tapOn: 'Back to card front'
-- waitForAnimationToEnd
-- runFlow:
-    file: common/add-task.yaml
-    env:
-      TITLE: 'Archive me B'
-# Start + complete A so it has earned stars (2.1/2.3 flows).
+# Complete A so it has earned stars (2.1/2.3 flows).
 - tapOn: 'Task: Archive me A. Worth 5 stars. Card 1 of 2'
 - waitForAnimationToEnd
 - tapOn: 'Mark as complete'

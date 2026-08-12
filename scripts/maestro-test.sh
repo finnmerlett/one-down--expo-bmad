@@ -25,6 +25,18 @@ if ! "$ADB" -s "$ANDROID_SERIAL" get-state >/dev/null 2>&1; then
   exit 1
 fi
 
+# Reseed the per-flow e2e fixture accounts (9-5 item 1) so every run starts
+# from pristine server state — earlier runs push mutations into the accounts.
+# Requires supabase-local (:54321/:54322). SKIP_E2E_SEED=1 to bypass.
+if [ -z "${SKIP_E2E_SEED:-}" ]; then
+  SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+  if ! (cd "$SCRIPT_DIR/.." && bun run seed:e2e); then
+    echo "ERROR: e2e account seeding failed (is the supabase-local stack running?)." >&2
+    echo "       Bypass with SKIP_E2E_SEED=1 if you know the accounts are fresh." >&2
+    exit 1
+  fi
+fi
+
 "$ADB" -s "$ANDROID_SERIAL" logcat -c || true
 
 # Maestro/dadb quirk: when ANY extra device is attached to the adb server

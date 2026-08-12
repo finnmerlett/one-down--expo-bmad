@@ -3,31 +3,19 @@
 # (AC5). The top card is an accessible container, so assertions target its
 # full label ("Task: <title>. Worth N stars. Card X of Y"), not the inner
 # title text.
-# Updated for Story 3.3: curation order is seed-jittered, so 'Stack task
-# beta' is sized Quick win while it is the only card — the momentum rule then
-# deterministically pins it as the top card. Positions of the unsized tasks
-# vary by session seed and are matched by regex where needed.
+# Seeded (9-5 item 1): beta (quick win — the momentum rule pins it on top
+# despite the session seed) + alpha arrive via the e2e-stack account pull.
+# Gamma is still added through the UI below: mid-browse add IS the AC.
 appId: com.onedown.mobile
 ---
 - runFlow: common/launch-app.yaml
-
-# Seed beta and make it a quick win (only card -> deterministically on top)
 - runFlow:
-    file: common/add-task.yaml
+    file: common/sign-in-seeded.yaml
     env:
-      TITLE: 'Stack task beta'
-- tapOn: 'Edit task: Stack task beta'
-- waitForAnimationToEnd
-- tapOn: 'Size: Quick win'
-- tapOn: 'Back to card front'
-- waitForAnimationToEnd
-
-# Seed alpha; the momentum rule keeps the quick win beta as the top card
-- runFlow:
-    file: common/add-task.yaml
-    env:
-      TITLE: 'Stack task alpha'
-- assertVisible: 'Task: Stack task beta. Worth 5 stars. Card 1 of 2'
+      EMAIL: 'e2e-stack@test.local'
+- extendedWaitUntil:
+    visible: 'Task: Stack task beta. Worth 5 stars. Card 1 of 2'
+    timeout: 15000
 
 # Swipe left past the dismiss threshold -> alpha becomes top
 - swipe:
