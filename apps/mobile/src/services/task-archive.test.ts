@@ -157,10 +157,7 @@ describe('task-archive (integration, real migration SQL)', () => {
     expect(count).toBe(1);
     // Tombstoned, not SQL-deleted (Story 9.7) — invisible to live reads.
     expect(await testDb.db.select().from(tasks).where(isNull(tasks.deletedAt))).toHaveLength(0);
-    // The ledger survives task deletion by design (taskId is nullable-safe) —
-    // and stays LIVE: retraction history is not undone by deleting the task.
-    expect(
-      await testDb.db.select().from(starActivityLog).where(isNull(starActivityLog.deletedAt)),
-    ).toHaveLength(1);
+    // The ledger survives task deletion by design (taskId is nullable-safe).
+    expect(await testDb.db.select().from(starActivityLog)).toHaveLength(1);
   });
 });

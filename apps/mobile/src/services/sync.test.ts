@@ -364,28 +364,27 @@ describe('runSync (integration, real migration SQL)', () => {
 
   // --- Story 9.7: the two new entities --------------------------------------
 
-  it('pushes and pulls star-ledger rows on their own cursor pair', async () => {
+  it('pushes and pulls the immutable star ledger on its own createdAt cursor', async () => {
     const harness = makeTransport();
-    await testDb.db.insert(starActivityLog).values({
+    const local: StarActivityData = {
       id: 'aaaaaaaa-0000-4000-8000-000000000001',
       taskId: null,
       taskTitle: 'Earned locally',
       action: 'task_completed',
       amount: 10,
       createdAt: new Date('2026-07-01T09:00:00.000Z'),
-      updatedAt: new Date('2026-07-01T09:00:00.000Z'),
-    });
+    };
+    await testDb.db.insert(starActivityLog).values(local);
     const incoming: StarActivityData = {
       id: 'aaaaaaaa-0000-4000-8000-000000000002',
       taskId: null,
       taskTitle: 'Earned elsewhere',
       action: 'task_cut_loose',
       amount: 2,
-      deletedAt: null,
       createdAt: new Date('2026-07-02T09:00:00.000Z'),
-      updatedAt: new Date('2026-07-02T09:00:00.000Z'),
     };
-    harness.setPull('star_activity', { rows: [incoming], serverTime: SERVER_TIME });
+    // The overlap window re-delivers our own row too — an idempotent echo.
+    harness.setPull('star_activity', { rows: [incoming, local], serverTime: SERVER_TIME });
 
     const outcome = await runSync(testDb.db, harness.transport, alice);
 
@@ -394,6 +393,8 @@ describe('runSync (integration, real migration SQL)', () => {
     const rows = await testDb.db.select().from(starActivityLog);
     expect(rows).toHaveLength(2);
     const meta = await readMeta(testDb.db, 'star_activity');
+    // Push high-water = the row's createdAt (the ledger's content clock).
+    expect(meta?.lastPushedAt?.getTime()).toBe(local.createdAt.getTime());
     expect(meta?.pullCursor?.getTime()).toBe(SERVER_TIME.getTime() - 2000);
   });
 

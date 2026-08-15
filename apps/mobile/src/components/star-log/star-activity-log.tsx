@@ -24,7 +24,10 @@ const ACTION_LABELS: Record<StarAction, string> = {
   // Story 7.1 — negative retraction row; the amount renders neutral, not red.
   archive_retraction: 'Archived',
   // Undo-complete (2026-07-27) — negative row, renders neutral like archive.
+  // Only cross-day undos ever render: same-day pairs collapse in the feed
+  // (star-ledger-display.ts, 9.7 convention pass).
   completion_undone: 'Marked not done',
+  cut_loose_undone: 'Taken back',
 };
 
 // Today -> time only; older -> "12 Jun, 14:32" (task-list date conventions).

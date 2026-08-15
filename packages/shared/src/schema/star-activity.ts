@@ -6,7 +6,9 @@ import type { StarAction, StarActivityData } from '../types/star';
 // canonical StarActivityData shape plus `userId` / `syncedAt`, same
 // conventions as the tasks mirror. `taskId` is plain text, NOT uuid: local
 // rows use '' for queue-level awards (triage_confirmed) and null after task
-// deletion — it's a loose display reference, never a key.
+// deletion — it's a loose display reference, never a key. IMMUTABLE
+// (9.7 convention pass): rows are only ever inserted — undo is a
+// compensating row, so sync for this entity is insert-only.
 export const starActivityLog = pgTable(
   'star_activity_log',
   {
@@ -16,14 +18,7 @@ export const starActivityLog = pgTable(
     taskTitle: text('task_title').notNull(),
     action: text('action').$type<StarAction>().notNull(),
     amount: integer('amount').notNull(),
-    // Tombstone (Story 9.7) — the no-trace undo paths flip this, never DELETE.
-    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'date' }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull(),
-    // Content clock for sync LWW — only moves when deletedAt flips.
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .$defaultFn(() => new Date())
-      .$onUpdate(() => new Date()),
     // Server-clock write stamp — the pull cursor keys on this (see tasks).
     syncedAt: timestamp('synced_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   },

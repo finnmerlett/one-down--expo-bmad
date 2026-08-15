@@ -69,7 +69,6 @@ export async function bankedNetForTask(db: TasksDb, taskId: string): Promise<num
       and(
         eq(starActivityLog.taskId, taskId),
         inArray(starActivityLog.action, ['subtask_completed', 'subtask_deleted']),
-        isNull(starActivityLog.deletedAt),
       ),
     );
   return rows[0]?.net ?? 0;
@@ -146,9 +145,7 @@ export async function maybeAwardTriageQueueCleared(db: TasksDb, now = new Date()
     const todays = await db
       .select({ id: starActivityLog.id, createdAt: starActivityLog.createdAt })
       .from(starActivityLog)
-      .where(
-        and(eq(starActivityLog.action, 'triage_confirmed'), isNull(starActivityLog.deletedAt)),
-      );
+      .where(eq(starActivityLog.action, 'triage_confirmed'));
     if (todays.some((row) => row.createdAt.getTime() >= dayStart.getTime())) return 0;
 
     const amount = STAR_WEIGHTS.triageQueueCleared;
@@ -180,7 +177,7 @@ export async function netStarsByTask(db: TasksDb, taskIds: string[]): Promise<Ma
       net: sql<number>`sum(${starActivityLog.amount})`,
     })
     .from(starActivityLog)
-    .where(and(inArray(starActivityLog.taskId, taskIds), isNull(starActivityLog.deletedAt)))
+    .where(inArray(starActivityLog.taskId, taskIds))
     .groupBy(starActivityLog.taskId);
   const net = new Map<string, number>();
   for (const row of rows) {
@@ -216,88 +213,63 @@ export async function retractTaskStars(
 }
 
 /**
- * Remove a completion's award when a Done task is flipped back to To do
- * (undo-complete, revised same-day by owner decision): TOMBSTONE the award
- * row(s) instead of writing a negative `completion_undone` row, so an undone
- * completion leaves no trace in the activity log. This is a deliberate,
- * owner-requested exception to the append-only ledger rule — scoped to
- * completion awards only. (Tombstone, not DELETE, since Story 9.7: a hard
- * delete was invisible to sync, so the award resurrected — and double-counted
- * — on a fresh sign-in.) Banked step rows are untouched — undoing the
- * completion restores the banked state exactly (ambiguity #6).
+ * Reverse a completion's award when a Done task is flipped back to To do
+ * (undo-complete; 9.7 convention pass): write ONE negative
+ * `completion_undone` compensating row for the full outstanding credit —
+ * the ledger convention (append-only, corrections are new entries). The
+ * "undo leaves no trace" UX lives in the DISPLAY layer now: the activity
+ * feed collapses same-local-day do/undo pairs (star-ledger-display.ts);
+ * cross-day undos stay visible as honest history (owner ruling 2026-08-15).
+ * Banked step rows are untouched — undoing the completion restores the
+ * banked state exactly (ambiguity #6).
  *
- * Mechanics: the outstanding completion credit is the signed sum of live
- * `task_completed` + `completion_undone` rows (legacy negative rows from the
- * first undo iteration still count). Newest award rows are tombstoned first
- * until the credit is consumed; any residual mismatch (odd legacy states)
- * falls back to ONE negative row so totals stay exact no matter what.
- * Subtask/triage stars are untouched. Returns the amount removed for the
- * toast; failures are swallowed like every other ledger write (4.1 AC7).
+ * Outstanding credit = the signed sum of the task's completion-family rows,
+ * so a retried undo (after a failed status write) finds 0 and no-ops —
+ * totals stay exact no matter what. Subtask/triage stars are untouched.
+ * Returns the amount reversed for the toast; failures are swallowed like
+ * every other ledger write (4.1 AC7).
  */
 export async function removeCompletionAward(
   db: TasksDb,
   task: Pick<TaskData, 'id' | 'title'>,
 ): Promise<number> {
   const rows = await db
-    .select()
+    .select({ net: sql<number>`coalesce(sum(${starActivityLog.amount}), 0)` })
     .from(starActivityLog)
     .where(
       and(
         eq(starActivityLog.taskId, task.id),
         inArray(starActivityLog.action, ['task_completed', 'completion_undone']),
-        isNull(starActivityLog.deletedAt),
       ),
     );
-  const outstanding = rows.reduce((sum, row) => sum + row.amount, 0);
+  const outstanding = rows[0]?.net ?? 0;
   if (outstanding <= 0) return 0;
 
-  let remaining = outstanding;
-  const toRemove: string[] = [];
-  const completions = rows
-    .filter((row) => row.action === 'task_completed')
-    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-  for (const row of completions) {
-    if (remaining === 0) break;
-    if (row.amount > 0 && row.amount <= remaining) {
-      toRemove.push(row.id);
-      remaining -= row.amount;
-    }
-  }
-
   try {
-    if (toRemove.length > 0) {
-      await db
-        .update(starActivityLog)
-        .set({ deletedAt: new Date() })
-        .where(inArray(starActivityLog.id, toRemove));
-    }
-    if (remaining > 0) {
-      await insertAward(
-        db,
-        { taskId: task.id, taskTitle: task.title, action: 'completion_undone' },
-        zeroBreakdown(-remaining),
-        new Date(),
-      );
-    }
+    await insertAward(
+      db,
+      { taskId: task.id, taskTitle: task.title, action: 'completion_undone' },
+      zeroBreakdown(-outstanding),
+      new Date(),
+    );
   } catch (error) {
     // oxlint-disable-next-line no-console
-    console.warn('Star award removal failed', error);
+    console.warn('Star award reversal failed', error);
   }
   return outstanding;
 }
 
 /**
- * Remove a cut-loose award when the release is undone from its toast
- * (2026-07-27): TOMBSTONE the newest live positive `task_cut_loose` row —
- * the same owner-approved exception to the append-only ledger as
- * removeCompletionAward, scoped to accidental-action undo (and the same
- * 9.7 tombstone-over-DELETE conversion, so the removal syncs). Returns the
- * removed amount (0 when no award row exists); failures are swallowed like
+ * Reverse a cut-loose award when the release is undone from its toast —
+ * same compensating-entry pattern as removeCompletionAward (9.7 convention
+ * pass): one negative `cut_loose_undone` row for the outstanding release
+ * credit, display-layer collapse hides same-day pairs. Returns the amount
+ * reversed (0 when nothing is outstanding); failures are swallowed like
  * every other ledger write (4.1 AC7).
  */
 export async function removeCutLooseAward(
   db: TasksDb,
-  task: Pick<TaskData, 'id'>,
+  task: Pick<TaskData, 'id' | 'title'>,
 ): Promise<number> {
   try {
     const rows = await db
@@ -306,22 +278,29 @@ export async function removeCutLooseAward(
       .where(
         and(
           eq(starActivityLog.taskId, task.id),
-          eq(starActivityLog.action, 'task_cut_loose'),
-          isNull(starActivityLog.deletedAt),
+          inArray(starActivityLog.action, ['task_cut_loose', 'cut_loose_undone']),
         ),
       );
+    const outstanding = rows.reduce((sum, row) => sum + row.amount, 0);
+    if (outstanding <= 0) return 0;
+    // One release is undone at a time — reverse the NEWEST award's amount
+    // (what was actually paid, whatever the weights were), capped by the
+    // outstanding credit so weird legacy states can't overdraw.
     const newest = rows
-      .filter((row) => row.amount > 0)
+      .filter((row) => row.action === 'task_cut_loose' && row.amount > 0)
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
     if (!newest) return 0;
-    await db
-      .update(starActivityLog)
-      .set({ deletedAt: new Date() })
-      .where(eq(starActivityLog.id, newest.id));
-    return newest.amount;
+    const amount = Math.min(newest.amount, outstanding);
+    await insertAward(
+      db,
+      { taskId: task.id, taskTitle: task.title, action: 'cut_loose_undone' },
+      zeroBreakdown(-amount),
+      new Date(),
+    );
+    return amount;
   } catch (error) {
     // oxlint-disable-next-line no-console
-    console.warn('Star award removal failed', error);
+    console.warn('Star award reversal failed', error);
     return 0;
   }
 }

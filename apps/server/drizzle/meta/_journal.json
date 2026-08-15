@@ -43,6 +43,13 @@
       "when": 1786814862767,
       "tag": "0005_whole_golden_guardian",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786820965114,
+      "tag": "0006_eminent_marvex",
+      "breakpoints": true
     }
   ]
 }

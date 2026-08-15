@@ -45,18 +45,23 @@ type Tx = Parameters<Parameters<DbClient['transaction']>[0]>[0];
  * The per-entity seam: the shared core below owns the transaction, the LWW
  * comparison, and the cross-tenant rejection; adapters own the fully-typed
  * drizzle statements (which columns exist is an entity decision, not a sync
- * decision).
+ * decision) and the content clock (`updatedAt` for mutable entities;
+ * `createdAt` for the immutable star ledger — an existing ledger row always
+ * compares clock-equal, so re-pushes are stale echoes and the update arm
+ * never runs).
  */
-interface PushAdapter<T extends { updatedAt: Date }> {
+interface PushAdapter<T> {
   getId(row: T): string;
+  /** The row's content clock — what "newer wins" compares. */
+  clockOf(row: T): Date;
   /** Rows with this id ACROSS users (uuid entities) so a foreign owner
    *  rejects the push; preferences scope to the caller (keys collide by design). */
-  findExisting(tx: Tx, userId: string, row: T): Promise<{ userId: string; updatedAt: Date }[]>;
+  findExisting(tx: Tx, userId: string, row: T): Promise<{ userId: string; clock: Date }[]>;
   insert(tx: Tx, userId: string, row: T, syncedAt: SQL): Promise<void>;
   update(tx: Tx, userId: string, row: T, syncedAt: SQL): Promise<void>;
 }
 
-async function pushRows<T extends { updatedAt: Date }>(
+async function pushRows<T>(
   db: DbClient,
   userId: string,
   incoming: T[],
@@ -83,7 +88,7 @@ async function pushRows<T extends { updatedAt: Date }>(
       if (!own) {
         await adapter.insert(tx, userId, row, syncedAt);
         applied.push(id);
-      } else if (row.updatedAt > own.updatedAt) {
+      } else if (adapter.clockOf(row) > own.clock) {
         await adapter.update(tx, userId, row, syncedAt);
         applied.push(id);
       } else {
@@ -126,12 +131,13 @@ function toTaskData(row: typeof tasks.$inferSelect): TaskData {
 export function pushTasks(db: DbClient, userId: string, incoming: TaskUpsert[]) {
   return pushRows(db, userId, incoming, {
     getId: (row) => row.id,
+    clockOf: (row) => row.updatedAt,
     // Select by id ACROSS users deliberately: a row owned by someone else
     // must reject the push (composite PK would otherwise happily insert a
     // second copy under this user — an id-collision trap).
     findExisting: (tx, _userId, row) =>
       tx
-        .select({ userId: tasks.userId, updatedAt: tasks.updatedAt })
+        .select({ userId: tasks.userId, clock: tasks.updatedAt })
         .from(tasks)
         .where(eq(tasks.id, row.id)),
     // userId ALWAYS from the authenticated ctx — never a client value.
@@ -192,9 +198,10 @@ function toSubtaskData(row: typeof subtasks.$inferSelect): SubtaskData {
 export function pushSubtasks(db: DbClient, userId: string, incoming: SubtaskUpsert[]) {
   return pushRows(db, userId, incoming, {
     getId: (row) => row.id,
+    clockOf: (row) => row.updatedAt,
     findExisting: (tx, _userId, row) =>
       tx
-        .select({ userId: subtasks.userId, updatedAt: subtasks.updatedAt })
+        .select({ userId: subtasks.userId, clock: subtasks.updatedAt })
         .from(subtasks)
         .where(eq(subtasks.id, row.id)),
     insert: async (tx, uid, row, syncedAt) => {
@@ -243,12 +250,16 @@ function toStarActivityData(row: typeof starActivityLog.$inferSelect): StarActiv
   return data;
 }
 
+// Insert-only in practice: ledger rows are immutable, so an existing own row
+// always compares clock-equal → stale echo. The update arm is unreachable but
+// kept whole-row for seam symmetry.
 export function pushStarActivity(db: DbClient, userId: string, incoming: StarActivityUpsert[]) {
   return pushRows(db, userId, incoming, {
     getId: (row) => row.id,
+    clockOf: (row) => row.createdAt,
     findExisting: (tx, _userId, row) =>
       tx
-        .select({ userId: starActivityLog.userId, updatedAt: starActivityLog.updatedAt })
+        .select({ userId: starActivityLog.userId, clock: starActivityLog.createdAt })
         .from(starActivityLog)
         .where(eq(starActivityLog.id, row.id)),
     insert: async (tx, uid, row, syncedAt) => {
@@ -262,9 +273,7 @@ export function pushStarActivity(db: DbClient, userId: string, incoming: StarAct
           taskTitle: row.taskTitle,
           action: row.action,
           amount: row.amount,
-          deletedAt: row.deletedAt,
           createdAt: row.createdAt,
-          updatedAt: row.updatedAt,
           syncedAt,
         })
         .where(and(eq(starActivityLog.userId, uid), eq(starActivityLog.id, row.id)));
@@ -303,9 +312,10 @@ function toPreferenceData(row: typeof preferences.$inferSelect): PreferenceData 
 export function pushPreferences(db: DbClient, userId: string, incoming: PreferenceUpsert[]) {
   return pushRows(db, userId, incoming, {
     getId: (row) => row.key,
+    clockOf: (row) => row.updatedAt,
     findExisting: (tx, uid, row) =>
       tx
-        .select({ userId: preferences.userId, updatedAt: preferences.updatedAt })
+        .select({ userId: preferences.userId, clock: preferences.updatedAt })
         .from(preferences)
         .where(and(eq(preferences.userId, uid), eq(preferences.key, row.key))),
     insert: async (tx, uid, row, syncedAt) => {

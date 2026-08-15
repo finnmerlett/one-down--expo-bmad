@@ -1,4 +1,4 @@
-import { eq, isNull } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 
 import type { StarAction, TaskData } from '@one-down/shared';
 import { starActivityLog, tasks } from '@one-down/shared/schema-local';
@@ -6,6 +6,7 @@ import { starActivityLog, tasks } from '@one-down/shared/schema-local';
 import { createTestDb, type TestDb } from '../test-utils/db';
 import { loadLocalMigrationsSql } from '../test-utils/migrations';
 import { awardCompletionStars, awardCutLooseStars } from './star-awards';
+import { visibleLedgerRows } from './star-ledger-display';
 import { undoTaskCompletion, undoTaskCutLoose } from './task-undo';
 
 // expo-crypto is a native module; under Node the equivalent is node:crypto.
@@ -70,26 +71,44 @@ describe('undoTaskCompletion (integration, real migration SQL)', () => {
     await testDb.db.update(tasks).set({ status }).where(eq(tasks.id, id));
   }
 
-  /** What the user (and totals) see: tombstoned rows are out (Story 9.7). */
+  /** What the user's FEED shows (9.7 convention pass): the ledger is
+   *  append-only; same-local-day do/undo pairs collapse at render. */
   async function liveLedger() {
-    return testDb.db.select().from(starActivityLog).where(isNull(starActivityLog.deletedAt));
+    return visibleLedgerRows(await testDb.db.select().from(starActivityLog));
   }
 
-  it('returns the task to pending and TOMBSTONES the award — no trace in the log', async () => {
+  it('returns the task to pending and writes a compensating row — same-day churn leaves the feed', async () => {
     const task = makeTask();
     await seedTask(task);
-    await testDb.db.insert(starActivityLog).values(ledgerRow(task.id, 12, 'l1', 'task_completed'));
+    // Award stamped "now" so the undo (also now) is a same-day pair.
+    await testDb.db
+      .insert(starActivityLog)
+      .values(ledgerRow(task.id, 12, 'l1', 'task_completed', new Date()));
 
     const { starsRemoved } = await undoTaskCompletion(testDb.db, task);
 
     expect(starsRemoved).toBe(12);
     expect(await taskStatus(task.id)).toBe('pending');
-    // Owner decision: removal, not a negative pair — the LIVE log is empty.
-    expect(await liveLedger()).toHaveLength(0);
-    // ...but the row survives as a tombstone so the removal syncs (9.7).
+    // The append-only ledger keeps BOTH rows, netting zero...
     const all = await testDb.db.select().from(starActivityLog);
-    expect(all).toHaveLength(1);
-    expect(all[0]?.deletedAt).toBeInstanceOf(Date);
+    expect(all).toHaveLength(2);
+    expect(all.reduce((sum, row) => sum + row.amount, 0)).toBe(0);
+    expect(all.find((row) => row.action === 'completion_undone')?.amount).toBe(-12);
+    // ...while the same-day pair disappears from what the user sees.
+    expect(await liveLedger()).toHaveLength(0);
+  });
+
+  it('keeps a CROSS-day undo visible in the feed as honest history', async () => {
+    const task = makeTask();
+    await seedTask(task);
+    // Award from a past day; the undo lands today → no same-day collapse.
+    await testDb.db.insert(starActivityLog).values(ledgerRow(task.id, 12, 'l1', 'task_completed'));
+
+    const { starsRemoved } = await undoTaskCompletion(testDb.db, task);
+
+    expect(starsRemoved).toBe(12);
+    const feed = await liveLedger();
+    expect(feed.map((row) => row.action).sort()).toEqual(['completion_undone', 'task_completed']);
   });
 
   it('leaves subtask and triage stars untouched — only the completion award goes', async () => {
@@ -98,7 +117,7 @@ describe('undoTaskCompletion (integration, real migration SQL)', () => {
     await testDb.db
       .insert(starActivityLog)
       .values([
-        ledgerRow(task.id, 10, 'l1', 'task_completed'),
+        ledgerRow(task.id, 10, 'l1', 'task_completed', new Date()),
         ledgerRow(task.id, 1, 'l2', 'subtask_completed'),
         ledgerRow(task.id, 1, 'l3', 'triage_confirmed'),
       ]);
@@ -139,7 +158,9 @@ describe('undoTaskCompletion (integration, real migration SQL)', () => {
     const task = makeTask({ status: 'pending' });
     await seedTask(task);
     await setStatus(task.id, 'completed');
-    await testDb.db.insert(starActivityLog).values(ledgerRow(task.id, 10, 'l1', 'task_completed'));
+    await testDb.db
+      .insert(starActivityLog)
+      .values(ledgerRow(task.id, 10, 'l1', 'task_completed', new Date()));
 
     const { starsRemoved } = await undoTaskCompletion(testDb.db, task);
 
@@ -148,8 +169,9 @@ describe('undoTaskCompletion (integration, real migration SQL)', () => {
     expect(await liveLedger()).toHaveLength(0);
   });
 
-  it('deletes only the newest unmatched award; a balanced legacy pair stays intact', async () => {
-    // First-iteration undo wrote award+negative pairs — they net 0 and stay.
+  it('reverses only the outstanding credit; a balanced same-day legacy pair collapses from the feed', async () => {
+    // An old same-day award+undo pair nets 0 and hides; a later award still
+    // holds credit — undo reverses exactly that.
     const task = makeTask();
     await seedTask(task);
     await testDb.db
@@ -163,14 +185,20 @@ describe('undoTaskCompletion (integration, real migration SQL)', () => {
     const { starsRemoved } = await undoTaskCompletion(testDb.db, task);
 
     expect(starsRemoved).toBe(12);
-    const ledger = await liveLedger();
-    expect(ledger.map((row) => row.id).sort()).toEqual(['l1', 'l2']);
-    expect(ledger.reduce((sum, row) => sum + row.amount, 0)).toBe(0);
+    // Raw ledger: all four rows, netting zero.
+    const all = await testDb.db.select().from(starActivityLog);
+    expect(all).toHaveLength(4);
+    expect(all.reduce((sum, row) => sum + row.amount, 0)).toBe(0);
+    // Feed: the old same-day pair is churn (hidden); the cross-day undo of
+    // l3 stays visible as honest history.
+    const feed = await liveLedger();
+    expect(feed.map((row) => row.id).sort()).toEqual(
+      ['l3', all.find((r) => r.amount === -12)!.id].sort(),
+    );
   });
 
-  it('falls back to one negative row when no award row fits the outstanding credit', async () => {
+  it('writes ONE negative row for the outstanding credit (partial legacy retraction)', async () => {
     // Odd legacy state: award 12 but 2 already retracted — outstanding 10.
-    // Deleting the 12 would overshoot, so the remainder is cancelled instead.
     const task = makeTask();
     await seedTask(task);
     await testDb.db
@@ -183,9 +211,9 @@ describe('undoTaskCompletion (integration, real migration SQL)', () => {
     const { starsRemoved } = await undoTaskCompletion(testDb.db, task);
 
     expect(starsRemoved).toBe(10);
-    const ledger = await liveLedger();
     // Completion-family rows now net zero — totals stay exact.
-    expect(ledger.reduce((sum, row) => sum + row.amount, 0)).toBe(0);
+    const all = await testDb.db.select().from(starActivityLog);
+    expect(all.reduce((sum, row) => sum + row.amount, 0)).toBe(0);
     expect(await taskStatus(task.id)).toBe('pending');
   });
 
@@ -237,7 +265,7 @@ describe('undoTaskCompletion (integration, real migration SQL)', () => {
     expect(await liveLedger()).toHaveLength(1);
   });
 
-  it('cut-loose undo removes only the NEWEST release row (cut → undo → cut again)', async () => {
+  it('cut-loose undo reverses ONE release (cut → undo → cut again nets a single award)', async () => {
     const task = makeTask({ status: 'pending' });
     await seedTask(task);
     await setStatus(task.id, 'cut_loose');
@@ -251,11 +279,13 @@ describe('undoTaskCompletion (integration, real migration SQL)', () => {
     const { starsRemoved } = await undoTaskCutLoose(testDb.db, task);
 
     expect(starsRemoved).toBe(2);
-    const ledger = await liveLedger();
-    expect(ledger.map((row) => row.id)).toEqual(['l1']);
+    const all = await testDb.db.select().from(starActivityLog);
+    expect(all).toHaveLength(3);
+    expect(all.reduce((sum, row) => sum + row.amount, 0)).toBe(2);
+    expect(all.find((row) => row.action === 'cut_loose_undone')?.amount).toBe(-2);
   });
 
-  it("only the target task's award is removed", async () => {
+  it("only the target task's award is reversed", async () => {
     const task = makeTask();
     const other = makeTask({ id: 'task-2', title: 'Other task' });
     await seedTask(task);
@@ -263,8 +293,8 @@ describe('undoTaskCompletion (integration, real migration SQL)', () => {
     await testDb.db
       .insert(starActivityLog)
       .values([
-        ledgerRow(task.id, 10, 'l1', 'task_completed'),
-        ledgerRow(other.id, 15, 'l2', 'task_completed'),
+        ledgerRow(task.id, 10, 'l1', 'task_completed', new Date()),
+        ledgerRow(other.id, 15, 'l2', 'task_completed', new Date()),
       ]);
 
     const { starsRemoved } = await undoTaskCompletion(testDb.db, task);

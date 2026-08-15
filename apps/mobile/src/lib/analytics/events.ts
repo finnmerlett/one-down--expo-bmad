@@ -48,7 +48,8 @@ export type AnalyticsEventMap = EnforceFlatProps<{
       | 'subtask_completed'
       | 'subtask_deleted'
       | 'archive_retraction'
-      | 'completion_undone';
+      | 'completion_undone'
+      | 'cut_loose_undone';
     amount: number;
     /** v1.5 breakdown: card value / live-badge bonus / banked stars converted. */
     value: number;

@@ -33,11 +33,14 @@ appId: com.onedown.mobile
 
 # Task list: completed task is a display-only Done row, gone from To do (AC5)
 # (Story 4.4: done rows show plain title text — no `Completed:` label)
+# The completion toast overlaps the top bar and its Undo button eats taps
+# (flow 24's documented trap — a suite-3 failure screenshot showed the flow
+# still on home after a "successful" tap). Let it expire first.
+- extendedWaitUntil:
+    notVisible: 'One down!'
+    timeout: 8000
 - tapOn: 'Open task list'
 - waitForAnimationToEnd
-# Waited, not instant-asserted (9-7 hardening): the list's live query + one-
-# shot entry scroll can land a beat after the animation settles — flaked
-# once in-suite while passing solo.
 - extendedWaitUntil:
     visible: 'Done'
     timeout: 5000

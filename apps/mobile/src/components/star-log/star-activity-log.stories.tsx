@@ -12,9 +12,7 @@ function makeEntry(overrides: Partial<StarActivityData> & { id: string }): StarA
     taskTitle: 'Sample task',
     action: 'task_completed',
     amount: 10,
-    deletedAt: null,
     createdAt: new Date(),
-    updatedAt: new Date(),
     ...overrides,
   };
 }

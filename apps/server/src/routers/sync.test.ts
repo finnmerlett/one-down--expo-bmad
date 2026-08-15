@@ -335,7 +335,7 @@ describe('sync.pushSubtasks / pullSubtasks', () => {
 });
 
 describe('sync.pushStarActivity / pullStarActivity', () => {
-  it('round-trips ledger rows, including the tombstone flip and non-uuid taskIds', async () => {
+  it('round-trips immutable ledger rows (insert-only; re-push is a stale echo; non-uuid taskIds)', async () => {
     const user = await newUser();
     const award: StarActivityData = {
       id: randomUUID(),
@@ -344,26 +344,33 @@ describe('sync.pushStarActivity / pullStarActivity', () => {
       taskTitle: 'Cleared the queue',
       action: 'triage_confirmed',
       amount: 2,
-      deletedAt: null,
       createdAt: new Date('2026-07-01T10:00:00.000Z'),
-      updatedAt: new Date('2026-07-01T10:00:00.000Z'),
     };
     const inserted = await pushTo('sync.pushStarActivity', user.accessToken, { rows: [award] });
     expect(deserializeResult<PushPayload>(inserted).applied).toEqual([award.id]);
 
-    // The no-trace undo: same row comes back tombstoned with a newer clock.
-    const tombstoned = {
-      ...award,
-      deletedAt: new Date('2026-07-02T10:00:00.000Z'),
-      updatedAt: new Date('2026-07-02T10:00:00.000Z'),
+    // Immutable entity: the cursor-overlap re-push of the same row is a
+    // stale echo (clock-equal), never an update.
+    const echo = await pushTo('sync.pushStarActivity', user.accessToken, { rows: [award] });
+    expect(deserializeResult<PushPayload>(echo)).toMatchObject({ stale: [award.id], applied: [] });
+
+    // A compensating undo row is a NEW insert, not an edit.
+    const reversal: StarActivityData = {
+      id: randomUUID(),
+      taskId: '',
+      taskTitle: 'Cleared the queue',
+      action: 'completion_undone',
+      amount: -2,
+      createdAt: new Date('2026-07-02T10:00:00.000Z'),
     };
-    await pushTo('sync.pushStarActivity', user.accessToken, { rows: [tombstoned] });
+    await pushTo('sync.pushStarActivity', user.accessToken, { rows: [reversal] });
 
     const pulled = deserializeResult<RowsPullPayload<StarActivityData>>(
       await pullFrom('sync.pullStarActivity', user.accessToken, null),
     );
-    expect(pulled.rows).toHaveLength(1);
-    expect(pulled.rows[0]).toEqual({ ...tombstoned });
+    expect(pulled.rows).toHaveLength(2);
+    expect(pulled.rows.find((row) => row.id === award.id)).toEqual({ ...award });
+    expect(pulled.rows.find((row) => row.id === reversal.id)).toEqual({ ...reversal });
   });
 
   it('requires auth', async () => {

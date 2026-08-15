@@ -65,11 +65,15 @@ const PUSH_BATCH_LIMIT = 500;
 
 /**
  * The per-entity seam: the shared loop below owns cursors, batching, and the
- * LWW apply; adapters own the fully-typed drizzle statements and the match
- * key (uuid `id` everywhere except preferences, which match on `key`).
+ * LWW apply; adapters own the fully-typed drizzle statements, the match key
+ * (uuid `id` everywhere except preferences, which match on `key`), and the
+ * content clock (`updatedAt` for mutable entities; `createdAt` for the
+ * immutable star ledger, whose rows never change after insert).
  */
-interface EntityAdapter<Row extends { updatedAt: Date }> {
+interface EntityAdapter<Row> {
   metaId: SyncEntityKey;
+  /** The row's content clock — drives the push high-water mark and LWW. */
+  clockOf(row: Row): Date;
   changedSince(db: TasksDb, since: Date | null): Promise<Row[]>;
   push(transport: SyncTransport, rows: Row[]): Promise<unknown>;
   pull(transport: SyncTransport, since: Date | null): Promise<PullResponse<Row>>;
@@ -89,7 +93,7 @@ interface EntityAdapter<Row extends { updatedAt: Date }> {
  * Cursors only advance after their stage succeeded — a failed run marks no
  * progress and the next trigger retries.
  */
-async function syncEntity<Row extends { updatedAt: Date }>(
+async function syncEntity<Row>(
   db: TasksDb,
   transport: SyncTransport,
   session: SyncSession,
@@ -116,7 +120,7 @@ async function syncEntity<Row extends { updatedAt: Date }>(
       await adapter.push(transport, batch);
       pushed += batch.length;
     }
-    const highWater = new Date(Math.max(...toPush.map((row) => row.updatedAt.getTime())));
+    const highWater = new Date(Math.max(...toPush.map((row) => adapter.clockOf(row).getTime())));
     await db
       .update(syncMeta)
       .set({ lastPushedAt: highWater })
@@ -132,8 +136,9 @@ async function syncEntity<Row extends { updatedAt: Date }>(
       // lands exactly as the server sent it.
       await adapter.insertLocal(db, incoming);
       pulled += 1;
-    } else if (local.updatedAt >= incoming.updatedAt) {
+    } else if (adapter.clockOf(local) >= adapter.clockOf(incoming)) {
       // Own echo, or a local pending edit that wins here and pushes next run.
+      // (The immutable ledger always lands here — equal clocks, nothing to do.)
     } else {
       // Whole-row overwrite; the explicit updatedAt bypasses $onUpdate so the
       // server's content clock is preserved exactly (the pre-work pin).
@@ -152,6 +157,7 @@ async function syncEntity<Row extends { updatedAt: Date }>(
 
 const tasksAdapter: EntityAdapter<TaskData> = {
   metaId: 'tasks',
+  clockOf: (row) => row.updatedAt,
   changedSince: (db, since) =>
     since === null
       ? db.select().from(tasks)
@@ -171,6 +177,7 @@ const tasksAdapter: EntityAdapter<TaskData> = {
 
 const subtasksAdapter: EntityAdapter<SubtaskData> = {
   metaId: 'subtasks',
+  clockOf: (row) => row.updatedAt,
   changedSince: (db, since) =>
     since === null
       ? db.select().from(subtasks)
@@ -188,12 +195,16 @@ const subtasksAdapter: EntityAdapter<SubtaskData> = {
   },
 };
 
+// The ledger is IMMUTABLE (insert-only): createdAt is its content clock, and
+// the update arm below is unreachable in practice (an existing row always
+// compares clock-equal and skips) — it exists only to satisfy the seam.
 const starActivityAdapter: EntityAdapter<StarActivityData> = {
   metaId: 'star_activity',
+  clockOf: (row) => row.createdAt,
   changedSince: (db, since) =>
     since === null
       ? db.select().from(starActivityLog)
-      : db.select().from(starActivityLog).where(gt(starActivityLog.updatedAt, since)),
+      : db.select().from(starActivityLog).where(gt(starActivityLog.createdAt, since)),
   push: (transport, rows) => transport.pushStarActivity(rows),
   pull: (transport, since) => transport.pullStarActivity(since),
   findLocal: async (db, incoming) =>
@@ -209,6 +220,7 @@ const starActivityAdapter: EntityAdapter<StarActivityData> = {
 
 const preferencesAdapter: EntityAdapter<PreferenceData> = {
   metaId: 'preferences',
+  clockOf: (row) => row.updatedAt,
   changedSince: (db, since) =>
     since === null
       ? db.select().from(preferences)

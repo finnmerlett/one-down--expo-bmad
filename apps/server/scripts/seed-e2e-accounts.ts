@@ -274,9 +274,7 @@ const ACCOUNTS: Record<string, (now: Date) => TaskData[] | FixtureBundle> = {
           taskTitle: 'Old win',
           action: 'task_completed',
           amount: 12,
-          deletedAt: null,
           createdAt: aMinuteAgo,
-          updatedAt: aMinuteAgo,
         },
         {
           id: crypto.randomUUID(),
@@ -284,9 +282,7 @@ const ACCOUNTS: Record<string, (now: Date) => TaskData[] | FixtureBundle> = {
           taskTitle: 'Cleared the queue',
           action: 'triage_confirmed',
           amount: 2,
-          deletedAt: null,
           createdAt: aMinuteAgo,
-          updatedAt: aMinuteAgo,
         },
       ],
       preferences: [

@@ -112,8 +112,9 @@ export function useSync(): void {
   const { data: latestSubtaskRows } = useLiveQuery(
     db.select({ value: max(subtasks.updatedAt) }).from(subtasks),
   );
+  // The ledger is append-only — createdAt IS its content clock.
   const { data: latestStarRows } = useLiveQuery(
-    db.select({ value: max(starActivityLog.updatedAt) }).from(starActivityLog),
+    db.select({ value: max(starActivityLog.createdAt) }).from(starActivityLog),
   );
   const { data: latestPrefRows } = useLiveQuery(
     db.select({ value: max(preferences.updatedAt) }).from(preferences),

@@ -14,6 +14,9 @@ export const STAR_ACTIONS = [
   // Undo-complete (2026-07-27) — negative row returning a completion's award
   // when the task is flipped back to To do from the Done list.
   'completion_undone',
+  // Undo cut-loose (Story 9.7 convention pass) — negative row returning the
+  // release award; same compensating-entry pattern as completion_undone.
+  'cut_loose_undone',
 ] as const;
 export type StarAction = (typeof STAR_ACTIONS)[number];
 
@@ -22,6 +25,12 @@ export type StarAction = (typeof STAR_ACTIONS)[number];
  * exactly (AssertExact, same pattern as TaskData): the `star_activity_log`
  * sqliteTable in `schema-local` and the pg mirror in `schema` (synced since
  * Story 9.7).
+ *
+ * IMMUTABLE by convention (9.7 convention pass): rows are never edited or
+ * deleted; every correction is a new compensating (negative) row. That makes
+ * the ledger an insert-only sync entity — conflicts are impossible — and the
+ * "undo leaves no trace" UX lives in the DISPLAY layer (same-local-day
+ * do/undo pairs collapse; cross-day pairs stay visible as honest history).
  */
 export interface StarActivityData {
   /** Client-generated UUID (expo-crypto randomUUID). */
@@ -31,18 +40,7 @@ export interface StarActivityData {
   /** Title snapshot at award time — display only, never enters analytics (NFR-S3). */
   taskTitle: string;
   action: StarAction;
-  /** Signed — negative supported for future reversals. */
+  /** Signed — negative for reversals (compensating entries). */
   amount: number;
-  /**
-   * Tombstone (Story 9.7): the "undo leaves no trace" paths (undo-complete,
-   * undo cut-loose) tombstone rows instead of hard-deleting them so the
-   * removal syncs; totals and the activity feed filter `deletedAt is null`.
-   */
-  deletedAt: Date | null;
   createdAt: Date;
-  /**
-   * Content clock for sync LWW (Story 9.7). Rows are immutable except for
-   * tombstoning, so this only ever moves when `deletedAt` flips.
-   */
-  updatedAt: Date;
 }

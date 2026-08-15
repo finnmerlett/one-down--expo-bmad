@@ -41,7 +41,7 @@ where it belongs — an ops-level Postgres backup on the server.
 |---|---|---|
 | tasks | exists | add `deletedAt` both sides; bulk-delete flips it instead of deleting; queries/curation filter it |
 | subtasks | NEW | AI "replace uncompleted" = tombstone old rows + insert new; step delete = tombstone; step-remove Undo = clear the tombstone on the SAME row (today it re-inserts verbatim); parent-first ordering on pull (insert tasks before their subtasks, or keep server FK-free like tasks) |
-| star_activity_log | NEW | NOT append-only: undo paths hard-DELETE award rows today (removeCompletionAward, removeCutLooseAward) — switch those to tombstones; totals and the activity feed exclude tombstoned rows, preserving the deliberate "undo leaves no trace" UX |
+| star_activity_log | NEW | **Revised (convention pass, same day):** APPEND-ONLY — no tombstones, no updatedAt. Undo writes a negative compensating row (completion_undone / cut_loose_undone); the FEED collapses same-local-day do/undo pairs at render (cross-day pairs stay visible — owner ruling); totals are raw signed sums. Sync is insert-only on a createdAt cursor — conflicts impossible |
 | preferences | NEW | key-value LWW; needs `updatedAt` (+`deletedAt` for symmetry); carries the AI general notes |
 
 ## Mechanics
@@ -133,10 +133,15 @@ where it belongs — an ops-level Postgres backup on the server.
 - Flow 54 (new): restore-after-wipe of all four entities + the tombstone
   regression (archive → delete forever → wipe → sign-in → STAYS deleted),
   against the fresh keyless release APK.
-- Full Maestro suite: **35/35 passed** (second run; the first was 34/35 with
-  flow 09 flaking on an instant `assertVisible: 'Done'` right after list-open
-  — passed solo, hardened to an extendedWaitUntil, then the full rerun went
-  clean).
+- Full Maestro suite (tombstone base build): **35/35 passed** (second run;
+  the first was 34/35 with flow 09 failing).
+- Full Maestro suite (append-only-ledger build): 34/35 — every star/ledger
+  flow green (15/16/17/24/27/54); the one failure was flow 09 again, and its
+  failure screenshot found the REAL root cause: the completion toast eats
+  the 'Open task list' tap (flow 24's documented trap — the app was still on
+  home, with the counter correctly showing the new compensating-entry
+  award). Fixed with flow 24's toast-expiry guard; flow 09 green solo;
+  a confirmation full-suite run follows in the background.
 
 ## Follow-ups / revisit conditions
 
@@ -149,15 +154,20 @@ where it belongs — an ops-level Postgres backup on the server.
   Standing traps to watch meanwhile: every new read of a synced table must
   filter `deletedAt is null`; every new write path must respect the
   updatedAt discipline.
-- **Convention audit (2026-08-15, on Finn's ask):** the sync mechanics are
-  convention-shaped (tombstones for synced deletes, timestamp LWW, cursor +
-  overlap are the textbook patterns). The ONE deviation is the mutable
-  ledger: no-trace undo removes/tombstones award rows, against the
-  append-only ledger convention (which the same table half-follows via
-  `archive_retraction` compensating rows). Conventional fix that REDUCES
-  sync surface: undo writes a negative `completion_undone` row (ledger
-  becomes immutable → insert-only sync, no conflicts possible) and the
-  activity feed collapses matched award/reversal pairs at render — the
-  no-trace UX moves to the display layer where it belongs. Recommended;
-  awaiting Finn's go-ahead.
-- OTA (task 8) deliberately held until the above lands or is declined.
+- **Convention audit (2026-08-15, on Finn's ask): DONE same day.** The sync
+  mechanics were convention-shaped already (tombstones for synced deletes,
+  timestamp LWW, cursor + overlap). The one deviation — the mutable ledger —
+  was refactored back to convention: the ledger is append-only again
+  (dropped its `updatedAt`/`deletedAt`, sqlite 0012 + pg 0006), undo writes
+  compensating rows (`completion_undone`, new `cut_loose_undone` reversing
+  the newest award's amount capped by outstanding credit), and the churn
+  filter is a pure display function (`star-ledger-display.ts`
+  `visibleLedgerRows`, applied in useStarActivity): same-LOCAL-day do/undo
+  pairs collapse; cross-day pairs stay visible as honest history (owner
+  ruling). Anything not exactly matchable stays visible — the feed never
+  hides stars it can't account for. Totals stay raw signed sums. Ledger
+  sync is insert-only (createdAt cursor; a re-push is a stale echo), and the
+  client/server sync seams gained a per-entity `clockOf` accessor to carry
+  that.
+- OTA (task 8): ready once this suite run is green — publish + phone
+  verification remain.
