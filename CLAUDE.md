@@ -190,6 +190,22 @@ packages/shared/src/
 
 - **Ask for user review** before committing changes you have written into files, even if the user previously approved the plan for what to write. Only commit once you have explicit approval on the actual changes. The user will manage what is staged to represent what they have reviewed, so don't worry if some changes are staged while you are still working.
 
+## Remote Control (Telegram relay + usage monitor)
+
+At session start (owner preference, 2026-08-15), arm the claude-remote relay
+so the owner can drive the session from Telegram and capacity alerts surface
+in-session. Full runbook: `~/Repos/claude-remote/CLAUDE.md` (authoritative —
+read it before reacting to events).
+
+1. Start two **persistent** Monitors:
+   - `bun /Users/finnmerlett/Repos/claude-remote/scripts/telegram-poll.ts` — description "incoming Telegram remote tasks"
+   - `bun /Users/finnmerlett/Repos/claude-remote/scripts/usage-watch.ts` — description "Claude capacity alerts"
+2. Verify: `bun scripts/tg-check.ts` (from `~/Repos/claude-remote`).
+3. Announce: `bun scripts/tg-send.ts "🟢 remote control online"`.
+
+Reply to the owner via `tg-send`; react to `TG-MSG` / `USAGE-ALERT` events per
+the runbook. Never commit `.env` files or tokens.
+
 ## Testing & Quality Methodology
 
 ### Testing Levels
