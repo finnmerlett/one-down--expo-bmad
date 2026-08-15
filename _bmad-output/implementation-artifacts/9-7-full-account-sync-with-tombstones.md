@@ -140,14 +140,24 @@ where it belongs — an ops-level Postgres backup on the server.
 
 ## Follow-ups / revisit conditions
 
-- **Build-vs-buy (2026-08-15 discussion):** hand-rolled sync kept for now.
-  Standing traps to watch: every new read of a synced table must filter
-  `deletedAt is null`, and every new write path must respect the updatedAt
-  discipline. Candidate hardening: funnel reads through repository-level
-  live-query helpers + a guard test. **Trigger to migrate to PowerSync**
-  (Postgres↔SQLite sync engine, the Supabase-blessed offline answer):
-  real multi-device use or field-level merge needs — its protocol removes
-  the tombstone read-sweep and clock-discipline bug classes wholesale, at
-  the cost of an extra always-on service + a native module. Decision was
-  parked with Finn; the 9.7 layer is a sound foundation either way.
-- OTA (task 8) deliberately held until the build-vs-buy call lands.
+- **Build-vs-buy (2026-08-15, Finn's ruling): hand-rolled sync kept, but
+  FROZEN.** Any increase in sync complexity past 9.7 — new conflict
+  semantics, field-level merge, multi-device features, protocol changes —
+  triggers a migration to PowerSync rather than extending this engine
+  ("no iterative quick wins creeping us into a large hand-rolled sync
+  system"). Adding a plain new entity to the existing pattern is fine.
+  Standing traps to watch meanwhile: every new read of a synced table must
+  filter `deletedAt is null`; every new write path must respect the
+  updatedAt discipline.
+- **Convention audit (2026-08-15, on Finn's ask):** the sync mechanics are
+  convention-shaped (tombstones for synced deletes, timestamp LWW, cursor +
+  overlap are the textbook patterns). The ONE deviation is the mutable
+  ledger: no-trace undo removes/tombstones award rows, against the
+  append-only ledger convention (which the same table half-follows via
+  `archive_retraction` compensating rows). Conventional fix that REDUCES
+  sync surface: undo writes a negative `completion_undone` row (ledger
+  becomes immutable → insert-only sync, no conflicts possible) and the
+  activity feed collapses matched award/reversal pairs at render — the
+  no-trace UX moves to the display layer where it belongs. Recommended;
+  awaiting Finn's go-ahead.
+- OTA (task 8) deliberately held until the above lands or is declined.

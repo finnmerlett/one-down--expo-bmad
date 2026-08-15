@@ -157,6 +157,7 @@ packages/shared/src/
 
 **Key architectural decisions:**
 - **Offline-first**: expo-sqlite with Drizzle as primary data store; server sync is additive (Epic 5)
+- **Sync complexity freeze (owner decision 2026-08-15)**: the hand-rolled sync layer (Story 9.7: 4-entity LWW + tombstones) is feature-frozen. ANY increase in sync complexity — new conflict semantics, field-level merge, multi-device concerns, new sync-protocol features — triggers a migration to PowerSync instead of extending the hand-rolled engine. Adding a plain new entity to the existing pattern is allowed; changing how sync *works* is not. No iterative "quick wins" on the sync engine.
 - **Local-first task CRUD**: No server needed for Epics 1-4 — all task operations work against local DB
 - **tRPC end-to-end type safety**: Added in Epic 5, shared types via packages/shared
 - **AI service via tRPC**: Gemini Flash calls go through server (Epic 6), not directly from client
