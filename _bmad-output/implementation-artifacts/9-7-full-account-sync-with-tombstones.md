@@ -140,8 +140,9 @@ where it belongs — an ops-level Postgres backup on the server.
   failure screenshot found the REAL root cause: the completion toast eats
   the 'Open task list' tap (flow 24's documented trap — the app was still on
   home, with the counter correctly showing the new compensating-entry
-  award). Fixed with flow 24's toast-expiry guard; flow 09 green solo;
-  a confirmation full-suite run follows in the background.
+  award). Fixed with flow 24's toast-expiry guard; flow 09 green solo; the
+  confirmation full-suite run then passed **35/35** — the append-only-ledger
+  build is fully green on-device.
 
 ## Follow-ups / revisit conditions
 
