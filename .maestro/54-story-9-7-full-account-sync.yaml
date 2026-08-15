@@ -1,0 +1,96 @@
+# Story 9.7 — full account sync: a fresh sign-in restores ALL four synced
+# entities (tasks, steps with tick state, star history, AI-notes preference),
+# and a permanent delete STAYS deleted across sign-out → wipe → sign-in (the
+# tombstone regression — pre-9.7 the hard delete was invisible to sync and
+# the task resurrected).
+# Fixtures: e2e-fullsync — 'Restored task' (quick win, 1 done + 1 pending
+# step), 'Delete me task', ledger 12+2 = 14 stars, banked 1, AI note.
+appId: com.onedown.mobile
+---
+- runFlow: common/launch-app.yaml
+- runFlow:
+    file: common/sign-in-seeded.yaml
+    env:
+      EMAIL: 'e2e-fullsync@test.local'
+
+# --- Restore leg: the pull fills an empty local DB with the whole account ---
+- extendedWaitUntil:
+    visible: 'Task: Restored task. Worth 5 stars. Card 1 of 2'
+    timeout: 15000
+# Star history restored (12 + 2 from the ledger) + 1 banked from the
+# completed step on the pending quick win.
+- extendedWaitUntil:
+    visible: '14 stars, 14 earned today, 1 banked'
+    timeout: 15000
+# Steps restored with their tick state (both live rows, no tombstones).
+- tapOn: 'Task: Restored task. Worth 5 stars. Card 1 of 2'
+- waitForAnimationToEnd
+- assertVisible: 'Subtask: Step already done'
+- assertVisible: 'Subtask: Step still to do'
+- takeScreenshot: .maestro/screenshots/54-9-7-steps-restored
+# Hardware back closes the overlay (its BackHandler owns the press); the
+# backdrop's 'Close task details' control sits behind the card for Maestro.
+- back
+- waitForAnimationToEnd
+
+# --- Tombstone leg: archive + permanently delete, then prove it syncs ---
+- tapOn: 'Open task list'
+- waitForAnimationToEnd
+- longPressOn: 'Open task: Delete me task'
+- assertVisible: '1 selected'
+# No stars on this task → no 'Remove stars?' warning, straight to the toast.
+- tapOn: 'Archive'
+- assertVisible: 'Archived 1 task'
+- tapOn: 'Tab: Recycle bin'
+- waitForAnimationToEnd
+- longPressOn: 'Bin task: Delete me task'
+- assertVisible: '1 selected'
+- tapOn: 'Delete'
+- extendedWaitUntil:
+    visible: 'Delete permanently?'
+    timeout: 5000
+- tapOn: 'Delete forever'
+- extendedWaitUntil:
+    visible: 'Nothing here'
+    timeout: 5000
+- tapOn: 'Back to home'
+- waitForAnimationToEnd
+# Drain the debounced push: catch the indicator if it appears (it can finish
+# between hierarchy polls — optional), then wait until no sync is in flight.
+- extendedWaitUntil:
+    optional: true
+    visible: 'Sync pending'
+    timeout: 6000
+- extendedWaitUntil:
+    notVisible: 'Sync pending'
+    timeout: 15000
+- extendedWaitUntil:
+    notVisible: 'Sync retrying'
+    timeout: 15000
+
+# --- Wipe + restore leg: the tombstone must hold on a fresh sign-in ---
+- launchApp:
+    clearState: true
+- assertVisible: 'No tasks yet'
+- runFlow:
+    file: common/sign-in-seeded.yaml
+    env:
+      EMAIL: 'e2e-fullsync@test.local'
+# Card 1 of 1: 'Restored task' is back, 'Delete me task' STAYED deleted.
+- extendedWaitUntil:
+    visible: 'Task: Restored task. Worth 5 stars. Card 1 of 1'
+    timeout: 15000
+# Star history survived the wipe too (nothing double-counted, nothing lost).
+- extendedWaitUntil:
+    visible: '14 stars, 14 earned today, 1 banked'
+    timeout: 15000
+# The AI-notes preference restored — settings mounts AFTER the pull, so the
+# textarea shows the synced value.
+- tapOn: 'Open settings'
+- waitForAnimationToEnd
+- assertVisible: '- I like tiny steps'
+- takeScreenshot: .maestro/screenshots/54-9-7-restored-after-wipe
+- tapOn: 'Back to home'
+
+- assertNotVisible: 'Unhandled'
+- assertNotVisible: 'error occurred'

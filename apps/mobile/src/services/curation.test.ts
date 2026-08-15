@@ -25,6 +25,7 @@ function makeTask(overrides: Partial<TaskData> = {}): TaskData {
     skipCount: 0,
     skipWindowStartedAt: null,
     lastEngagedAt: new Date('2026-06-01T10:00:00Z'),
+    deletedAt: null,
     createdAt: new Date('2026-06-01T10:00:00Z'),
     updatedAt: new Date('2026-06-01T10:00:00Z'),
     ...overrides,

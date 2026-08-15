@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Nightly One Down Postgres backup (Story 9.7 task 7). User agent, no
+     sudo. Install:
+       cp scripts/ops/com.onedown.pg-backup.plist ~/Library/LaunchAgents/
+       launchctl bootstrap "gui/$(id -u)" ~/Library/LaunchAgents/com.onedown.pg-backup.plist
+     launchd runs missed jobs on wake, so a 09:00 schedule survives sleep. -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.onedown.pg-backup</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/finnmerlett/Repos/one-down--expo-bmad--alt/scripts/ops/pg-backup.sh</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>9</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>/Users/finnmerlett/Backups/one-down-pg/backup.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/finnmerlett/Backups/one-down-pg/backup.log</string>
+</dict>
+</plist>

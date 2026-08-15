@@ -43,6 +43,9 @@ export const tasks = pgTable(
     lastEngagedAt: timestamp('last_engaged_at', { withTimezone: true, mode: 'date' })
       .notNull()
       .$defaultFn(() => new Date()),
+    // Tombstone (Story 9.7) — mirrors schema-local; the server NEVER hard
+    // deletes, so a deleted-then-synced task can no longer resurrect.
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'date' }),
     // Schema-managed timestamps (Story 5.3 pre-work) — mirrors schema-local.
     // Explicit values in .values()/.set() win over $defaultFn/$onUpdate, so
     // sync writes always carry the client's content-change clock unchanged.

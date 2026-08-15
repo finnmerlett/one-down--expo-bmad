@@ -13,6 +13,7 @@ export function makeSubtask(overrides: Partial<SubtaskData> = {}): SubtaskData {
     completed: false,
     orderIndex: 0,
     source: 'ai',
+    deletedAt: null,
     createdAt: new Date('2026-07-01T10:00:00Z'),
     updatedAt: new Date('2026-07-01T10:00:00Z'),
     ...overrides,

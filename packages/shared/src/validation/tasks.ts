@@ -25,6 +25,9 @@ export const taskUpsertSchema = z.object({
   skipCount: z.number().int().min(0),
   skipWindowStartedAt: z.date().nullable(),
   lastEngagedAt: z.date(),
+  // default(null): pre-tombstone clients (Story 9.7) omit the key — their
+  // pushes must keep validating until every install is updated.
+  deletedAt: z.date().nullable().default(null),
   createdAt: z.date(),
   updatedAt: z.date(),
 }) satisfies z.ZodType<TaskData>;

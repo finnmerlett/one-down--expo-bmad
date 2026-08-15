@@ -51,6 +51,7 @@ function defaultFixtures(now: Date): TaskData[] {
     reviewFlags: null,
     skipCount: 0,
     skipWindowStartedAt: null,
+    deletedAt: null,
   };
   return [
     {

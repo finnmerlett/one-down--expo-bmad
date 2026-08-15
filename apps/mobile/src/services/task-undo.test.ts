@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, isNull } from 'drizzle-orm';
 
 import type { StarAction, TaskData } from '@one-down/shared';
 import { starActivityLog, tasks } from '@one-down/shared/schema-local';
@@ -29,6 +29,7 @@ function makeTask(overrides: Partial<TaskData> = {}): TaskData {
     skipCount: 0,
     skipWindowStartedAt: null,
     lastEngagedAt: new Date('2026-06-01T10:00:00Z'),
+    deletedAt: null,
     createdAt: new Date('2026-06-01T10:00:00Z'),
     updatedAt: new Date('2026-06-01T10:00:00Z'),
     ...overrides,
@@ -69,7 +70,12 @@ describe('undoTaskCompletion (integration, real migration SQL)', () => {
     await testDb.db.update(tasks).set({ status }).where(eq(tasks.id, id));
   }
 
-  it('returns the task to pending and DELETES the award — no trace in the log', async () => {
+  /** What the user (and totals) see: tombstoned rows are out (Story 9.7). */
+  async function liveLedger() {
+    return testDb.db.select().from(starActivityLog).where(isNull(starActivityLog.deletedAt));
+  }
+
+  it('returns the task to pending and TOMBSTONES the award — no trace in the log', async () => {
     const task = makeTask();
     await seedTask(task);
     await testDb.db.insert(starActivityLog).values(ledgerRow(task.id, 12, 'l1', 'task_completed'));
@@ -78,8 +84,12 @@ describe('undoTaskCompletion (integration, real migration SQL)', () => {
 
     expect(starsRemoved).toBe(12);
     expect(await taskStatus(task.id)).toBe('pending');
-    // Owner decision: removal, not a negative pair — the log is empty.
-    expect(await testDb.db.select().from(starActivityLog)).toHaveLength(0);
+    // Owner decision: removal, not a negative pair — the LIVE log is empty.
+    expect(await liveLedger()).toHaveLength(0);
+    // ...but the row survives as a tombstone so the removal syncs (9.7).
+    const all = await testDb.db.select().from(starActivityLog);
+    expect(all).toHaveLength(1);
+    expect(all[0]?.deletedAt).toBeInstanceOf(Date);
   });
 
   it('leaves subtask and triage stars untouched — only the completion award goes', async () => {
@@ -96,7 +106,7 @@ describe('undoTaskCompletion (integration, real migration SQL)', () => {
     const { starsRemoved } = await undoTaskCompletion(testDb.db, task);
 
     expect(starsRemoved).toBe(10);
-    const ledger = await testDb.db.select().from(starActivityLog);
+    const ledger = await liveLedger();
     expect(ledger.map((row) => row.action).sort()).toEqual([
       'subtask_completed',
       'triage_confirmed',
@@ -115,7 +125,7 @@ describe('undoTaskCompletion (integration, real migration SQL)', () => {
       await awardCompletionStars(testDb.db, { ...task, status: 'completed' });
       const { starsRemoved } = await undoTaskCompletion(testDb.db, task);
       expect(starsRemoved).toBeGreaterThan(0);
-      const completionRows = (await testDb.db.select().from(starActivityLog)).filter(
+      const completionRows = (await liveLedger()).filter(
         (row) => row.action === 'task_completed' || row.action === 'completion_undone',
       );
       expect(completionRows).toHaveLength(0);
@@ -135,7 +145,7 @@ describe('undoTaskCompletion (integration, real migration SQL)', () => {
 
     expect(starsRemoved).toBe(10);
     expect(await taskStatus(task.id)).toBe('pending');
-    expect(await testDb.db.select().from(starActivityLog)).toHaveLength(0);
+    expect(await liveLedger()).toHaveLength(0);
   });
 
   it('deletes only the newest unmatched award; a balanced legacy pair stays intact', async () => {
@@ -153,7 +163,7 @@ describe('undoTaskCompletion (integration, real migration SQL)', () => {
     const { starsRemoved } = await undoTaskCompletion(testDb.db, task);
 
     expect(starsRemoved).toBe(12);
-    const ledger = await testDb.db.select().from(starActivityLog);
+    const ledger = await liveLedger();
     expect(ledger.map((row) => row.id).sort()).toEqual(['l1', 'l2']);
     expect(ledger.reduce((sum, row) => sum + row.amount, 0)).toBe(0);
   });
@@ -173,7 +183,7 @@ describe('undoTaskCompletion (integration, real migration SQL)', () => {
     const { starsRemoved } = await undoTaskCompletion(testDb.db, task);
 
     expect(starsRemoved).toBe(10);
-    const ledger = await testDb.db.select().from(starActivityLog);
+    const ledger = await liveLedger();
     // Completion-family rows now net zero — totals stay exact.
     expect(ledger.reduce((sum, row) => sum + row.amount, 0)).toBe(0);
     expect(await taskStatus(task.id)).toBe('pending');
@@ -187,7 +197,7 @@ describe('undoTaskCompletion (integration, real migration SQL)', () => {
 
     expect(starsRemoved).toBe(0);
     expect(await taskStatus(task.id)).toBe('pending');
-    expect(await testDb.db.select().from(starActivityLog)).toHaveLength(0);
+    expect(await liveLedger()).toHaveLength(0);
   });
 
   it('is a no-op on tasks that are not completed', async () => {
@@ -199,7 +209,7 @@ describe('undoTaskCompletion (integration, real migration SQL)', () => {
 
     expect(starsRemoved).toBe(0);
     expect(await taskStatus(task.id)).toBe('in_progress');
-    expect(await testDb.db.select().from(starActivityLog)).toHaveLength(1);
+    expect(await liveLedger()).toHaveLength(1);
   });
 
   it('cut-loose undo removes the newest release award and restores pending', async () => {
@@ -212,7 +222,7 @@ describe('undoTaskCompletion (integration, real migration SQL)', () => {
 
     expect(starsRemoved).toBe(awarded);
     expect(await taskStatus(task.id)).toBe('pending');
-    expect(await testDb.db.select().from(starActivityLog)).toHaveLength(0);
+    expect(await liveLedger()).toHaveLength(0);
   });
 
   it('cut-loose undo is a no-op when the task is not cut loose', async () => {
@@ -224,7 +234,7 @@ describe('undoTaskCompletion (integration, real migration SQL)', () => {
 
     expect(starsRemoved).toBe(0);
     expect(await taskStatus(task.id)).toBe('completed');
-    expect(await testDb.db.select().from(starActivityLog)).toHaveLength(1);
+    expect(await liveLedger()).toHaveLength(1);
   });
 
   it('cut-loose undo removes only the NEWEST release row (cut → undo → cut again)', async () => {
@@ -241,7 +251,7 @@ describe('undoTaskCompletion (integration, real migration SQL)', () => {
     const { starsRemoved } = await undoTaskCutLoose(testDb.db, task);
 
     expect(starsRemoved).toBe(2);
-    const ledger = await testDb.db.select().from(starActivityLog);
+    const ledger = await liveLedger();
     expect(ledger.map((row) => row.id)).toEqual(['l1']);
   });
 
@@ -261,7 +271,7 @@ describe('undoTaskCompletion (integration, real migration SQL)', () => {
 
     expect(starsRemoved).toBe(10);
     expect(await taskStatus(other.id)).toBe('completed');
-    const ledger = await testDb.db.select().from(starActivityLog);
+    const ledger = await liveLedger();
     expect(ledger).toHaveLength(1);
     expect(ledger[0]?.taskId).toBe(other.id);
   });

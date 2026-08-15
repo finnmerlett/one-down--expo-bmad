@@ -24,6 +24,7 @@ export function makeTask(overrides: Partial<TaskData> = {}): TaskData {
     // "Now" so fixture tasks never trip the 7.2 stale detector (which reads
     // the real clock at render time); flagged stories override explicitly.
     lastEngagedAt: new Date(),
+    deletedAt: null,
     createdAt: new Date('2026-06-01T10:00:00Z'),
     updatedAt: new Date('2026-06-01T10:00:00Z'),
     ...overrides,

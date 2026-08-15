@@ -5,7 +5,7 @@ import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 
-import { tasks } from '@one-down/shared/schema-local';
+import { preferences, starActivityLog, subtasks, tasks } from '@one-down/shared/schema-local';
 
 import { useAuth } from '@/components/auth/auth-provider';
 import { track } from '@/lib/analytics/track';
@@ -20,10 +20,21 @@ type SyncTrigger = 'local_change' | 'reconnect' | 'foreground' | 'sign_in';
 // round while staying well inside AC-1's 5-second budget.
 const LOCAL_CHANGE_DEBOUNCE_MS = 1_500;
 
-// Transport = the vanilla tRPC client (module-scoped, matches runSync's seam).
+// Transport = the vanilla tRPC client (module-scoped, matches runSync's
+// seam). The tasks pair keeps its legacy Story 5.3 wire shape
+// ({ tasks: [...] } / { tasks, serverTime }) — deployed clients share it.
 const transport: SyncTransport = {
-  push: (input) => trpcClient.sync.push.mutate(input),
-  pull: (input) => trpcClient.sync.pull.query(input),
+  pushTasks: (rows) => trpcClient.sync.push.mutate({ tasks: rows }),
+  pullTasks: async (since) => {
+    const { tasks: rows, serverTime } = await trpcClient.sync.pull.query({ since });
+    return { rows, serverTime };
+  },
+  pushSubtasks: (rows) => trpcClient.sync.pushSubtasks.mutate({ rows }),
+  pullSubtasks: (since) => trpcClient.sync.pullSubtasks.query({ since }),
+  pushStarActivity: (rows) => trpcClient.sync.pushStarActivity.mutate({ rows }),
+  pullStarActivity: (since) => trpcClient.sync.pullStarActivity.query({ since }),
+  pushPreferences: (rows) => trpcClient.sync.pushPreferences.mutate({ rows }),
+  pullPreferences: (since) => trpcClient.sync.pullPreferences.query({ since }),
 };
 
 function failureReason(error: unknown): 'network' | 'server' | 'unknown' {
@@ -67,6 +78,14 @@ export function useSync(): void {
         track('sync_completed', {
           pushed: outcome.pushed,
           pulled: outcome.pulled,
+          pushed_tasks: outcome.entities.tasks.pushed,
+          pulled_tasks: outcome.entities.tasks.pulled,
+          pushed_subtasks: outcome.entities.subtasks.pushed,
+          pulled_subtasks: outcome.entities.subtasks.pulled,
+          pushed_star_activity: outcome.entities.star_activity.pushed,
+          pulled_star_activity: outcome.entities.star_activity.pulled,
+          pushed_preferences: outcome.entities.preferences.pushed,
+          pulled_preferences: outcome.entities.preferences.pulled,
           duration_ms: Date.now() - startedAt,
           trigger,
         });
@@ -84,11 +103,30 @@ export function useSync(): void {
   });
 
   // (a) Local change: any content write bumps max(updatedAt) via $onUpdate.
-  const { data: latestRows } = useLiveQuery(db.select({ value: max(tasks.updatedAt) }).from(tasks));
-  const latestMs = latestRows?.[0]?.value?.getTime() ?? null;
+  // One live query per synced entity (Story 9.7) — useLiveQuery only re-fires
+  // on its primary table, so a step tick or star award must have its own
+  // subscription to reach the server inside AC-1's budget.
+  const { data: latestTaskRows } = useLiveQuery(
+    db.select({ value: max(tasks.updatedAt) }).from(tasks),
+  );
+  const { data: latestSubtaskRows } = useLiveQuery(
+    db.select({ value: max(subtasks.updatedAt) }).from(subtasks),
+  );
+  const { data: latestStarRows } = useLiveQuery(
+    db.select({ value: max(starActivityLog.updatedAt) }).from(starActivityLog),
+  );
+  const { data: latestPrefRows } = useLiveQuery(
+    db.select({ value: max(preferences.updatedAt) }).from(preferences),
+  );
+  const latestMs = Math.max(
+    latestTaskRows?.[0]?.value?.getTime() ?? 0,
+    latestSubtaskRows?.[0]?.value?.getTime() ?? 0,
+    latestStarRows?.[0]?.value?.getTime() ?? 0,
+    latestPrefRows?.[0]?.value?.getTime() ?? 0,
+  );
   const lastSeenRef = useRef<number | null>(null);
   useEffect(() => {
-    if (latestMs === null || lastSeenRef.current === latestMs) return;
+    if (latestMs === 0 || lastSeenRef.current === latestMs) return;
     lastSeenRef.current = latestMs;
     const timer = setTimeout(() => requestSync('local_change'), LOCAL_CHANGE_DEBOUNCE_MS);
     return () => clearTimeout(timer);

@@ -1,4 +1,4 @@
-import { eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { useMemo } from 'react';
 
@@ -26,13 +26,16 @@ import { bankedForCount } from '@/services/star-calculator';
  */
 export function useBankedStars(): number {
   const { data: completedSteps } = useLiveQuery(
-    db.select({ taskId: subtasks.taskId }).from(subtasks).where(eq(subtasks.completed, true)),
+    db
+      .select({ taskId: subtasks.taskId })
+      .from(subtasks)
+      .where(and(eq(subtasks.completed, true), isNull(subtasks.deletedAt))),
   );
   const { data: activeTasks } = useLiveQuery(
     db
       .select({ id: tasks.id, size: tasks.size })
       .from(tasks)
-      .where(inArray(tasks.status, ['pending', 'in_progress'])),
+      .where(and(inArray(tasks.status, ['pending', 'in_progress']), isNull(tasks.deletedAt))),
   );
 
   return useMemo(() => {

@@ -1,4 +1,4 @@
-import { eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 import { randomUUID } from 'expo-crypto';
 
@@ -261,16 +261,22 @@ export async function restoreTask(db: TasksDb, id: string): Promise<void> {
 }
 
 /**
- * Permanent delete from the recycle bin (Story 7.1, AC5). Cascades to the
- * task's subtasks (no FK in the schema — Epic 7 owns the cascade decision,
- * resolved: orphan rows are useless once the parent is gone). The star
- * ledger is deliberately KEPT — it is the historical record; `taskId` is
- * nullable there precisely so the log survives task deletion.
+ * Permanent delete from the recycle bin (Story 7.1, AC5) — a TOMBSTONE since
+ * Story 9.7, never a SQL DELETE: hard-deleting left the server copy alive and
+ * the task resurrected on the next fresh sign-in. Cascades to the task's
+ * subtasks (tombstoned too). $onUpdate bumps both tables' updatedAt, so the
+ * deletion syncs like any other row change. The star ledger is deliberately
+ * KEPT — it is the historical record; `taskId` is nullable there precisely so
+ * the log survives task deletion.
  */
 export async function deleteTasksPermanently(db: TasksDb, ids: string[]): Promise<void> {
   if (ids.length === 0) return;
-  await db.delete(subtasks).where(inArray(subtasks.taskId, ids));
-  await db.delete(tasks).where(inArray(tasks.id, ids));
+  const now = new Date();
+  await db
+    .update(subtasks)
+    .set({ deletedAt: now })
+    .where(and(inArray(subtasks.taskId, ids), isNull(subtasks.deletedAt)));
+  await db.update(tasks).set({ deletedAt: now }).where(inArray(tasks.id, ids));
 }
 
 /**

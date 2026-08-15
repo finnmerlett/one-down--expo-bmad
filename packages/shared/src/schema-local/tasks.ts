@@ -28,6 +28,9 @@ export const tasks = sqliteTable('tasks', {
   lastEngagedAt: integer('last_engaged_at', { mode: 'timestamp_ms' })
     .notNull()
     .$defaultFn(() => new Date()),
+  // Tombstone (Story 9.7): non-null = deleted. Set via UPDATE (so $onUpdate
+  // bumps updatedAt and the deletion syncs); reads filter `deletedAt is null`.
+  deletedAt: integer('deleted_at', { mode: 'timestamp_ms' }),
   // Timestamps are schema-managed (Story 5.3 pre-work) so updatedAt can never
   // be forgotten. CRITICAL drizzle semantics the sync-apply path relies on:
   // an explicit value in .values()/.set() WINS over $defaultFn/$onUpdate —

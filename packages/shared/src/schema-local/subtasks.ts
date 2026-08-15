@@ -3,8 +3,9 @@ import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import type { SubtaskData, SubtaskSource } from '../types/subtask';
 
 // Subtasks from accepted AI breakdowns / micro-task nudges (Stories 6.3/6.4).
-// Local-only (no pg mirror yet — flagged follow-up). No FK constraint: task
-// deletion doesn't exist until Epic 7, which owns the cascade decision.
+// Synced to the pg mirror since Story 9.7. No FK constraint (matches the
+// server table): tasks sync before subtasks, and tombstoned parents keep
+// their rows anyway.
 export const subtasks = sqliteTable(
   'subtasks',
   {
@@ -14,6 +15,8 @@ export const subtasks = sqliteTable(
     completed: integer('completed', { mode: 'boolean' }).notNull().default(false),
     orderIndex: integer('order_index').notNull(),
     source: text('source').$type<SubtaskSource>().notNull(),
+    // Tombstone (Story 9.7) — same semantics as tasks.deletedAt.
+    deletedAt: integer('deleted_at', { mode: 'timestamp_ms' }),
     // Schema-managed timestamps, same semantics as the tasks table.
     createdAt: integer('created_at', { mode: 'timestamp_ms' })
       .notNull()

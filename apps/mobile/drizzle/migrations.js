@@ -12,6 +12,7 @@ import m0007 from './0007_rich_mongoose.sql';
 import m0008 from './0008_productive_zodiak.sql';
 import m0009 from './0009_sturdy_red_skull.sql';
 import m0010 from './0010_peaceful_wolf_cub.sql';
+import m0011 from './0011_salty_runaways.sql';
 
 export default {
   journal,
@@ -27,5 +28,6 @@ export default {
     m0008,
     m0009,
     m0010,
+    m0011,
   },
 };

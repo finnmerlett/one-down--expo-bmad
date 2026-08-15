@@ -1,3 +1,5 @@
+import { isNull } from 'drizzle-orm';
+
 import type { TaskData } from '@one-down/shared';
 import { starActivityLog, tasks } from '@one-down/shared/schema-local';
 
@@ -32,6 +34,7 @@ function makeTask(overrides: Partial<TaskData> = {}): TaskData {
     skipCount: 0,
     skipWindowStartedAt: null,
     lastEngagedAt: new Date('2026-06-01T10:00:00Z'),
+    deletedAt: null,
     createdAt: new Date('2026-06-01T10:00:00Z'),
     updatedAt: new Date('2026-06-01T10:00:00Z'),
     ...overrides,
@@ -144,7 +147,7 @@ describe('task-archive (integration, real migration SQL)', () => {
     expect((await netStarsByTask(testDb.db, ['done-1'])).get('done-1')).toBe(0);
   });
 
-  it('permanent delete removes rows but PRESERVES the ledger history (AC5)', async () => {
+  it('permanent delete tombstones the task but PRESERVES the ledger history (AC5)', async () => {
     const task = makeTask({ id: 'done-1', title: 'Done task', status: 'archived' });
     await testDb.db.insert(tasks).values(task);
     await testDb.db.insert(starActivityLog).values([ledgerRow('done-1', 10, 'row-1')]);
@@ -152,8 +155,12 @@ describe('task-archive (integration, real migration SQL)', () => {
     const count = await deleteSelection(testDb.db, ['done-1']);
 
     expect(count).toBe(1);
-    expect(await testDb.db.select().from(tasks)).toHaveLength(0);
-    // The ledger survives task deletion by design (taskId is nullable-safe).
-    expect(await testDb.db.select().from(starActivityLog)).toHaveLength(1);
+    // Tombstoned, not SQL-deleted (Story 9.7) — invisible to live reads.
+    expect(await testDb.db.select().from(tasks).where(isNull(tasks.deletedAt))).toHaveLength(0);
+    // The ledger survives task deletion by design (taskId is nullable-safe) —
+    // and stays LIVE: retraction history is not undone by deleting the task.
+    expect(
+      await testDb.db.select().from(starActivityLog).where(isNull(starActivityLog.deletedAt)),
+    ).toHaveLength(1);
   });
 });

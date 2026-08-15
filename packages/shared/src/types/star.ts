@@ -18,8 +18,10 @@ export const STAR_ACTIONS = [
 export type StarAction = (typeof STAR_ACTIONS)[number];
 
 /**
- * Canonical star transaction shape — the `star_activity_log` sqliteTable in
- * `schema-local` must conform exactly (AssertExact, same pattern as TaskData).
+ * Canonical star transaction shape — BOTH table definitions must conform
+ * exactly (AssertExact, same pattern as TaskData): the `star_activity_log`
+ * sqliteTable in `schema-local` and the pg mirror in `schema` (synced since
+ * Story 9.7).
  */
 export interface StarActivityData {
   /** Client-generated UUID (expo-crypto randomUUID). */
@@ -31,5 +33,16 @@ export interface StarActivityData {
   action: StarAction;
   /** Signed — negative supported for future reversals. */
   amount: number;
+  /**
+   * Tombstone (Story 9.7): the "undo leaves no trace" paths (undo-complete,
+   * undo cut-loose) tombstone rows instead of hard-deleting them so the
+   * removal syncs; totals and the activity feed filter `deletedAt is null`.
+   */
+  deletedAt: Date | null;
   createdAt: Date;
+  /**
+   * Content clock for sync LWW (Story 9.7). Rows are immutable except for
+   * tombstoning, so this only ever moves when `deletedAt` flips.
+   */
+  updatedAt: Date;
 }

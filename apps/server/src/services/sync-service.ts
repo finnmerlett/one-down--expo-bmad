@@ -1,13 +1,25 @@
-import { and, eq, gt, sql } from 'drizzle-orm';
+import { and, eq, gt, sql, type SQL } from 'drizzle-orm';
 
-import type { TaskData, TaskUpsert } from '@one-down/shared';
-import { tasks } from '@one-down/shared/schema';
+import type {
+  PreferenceData,
+  PreferenceUpsert,
+  StarActivityData,
+  StarActivityUpsert,
+  SubtaskData,
+  SubtaskUpsert,
+  TaskData,
+  TaskUpsert,
+} from '@one-down/shared';
+import { preferences, starActivityLog, subtasks, tasks } from '@one-down/shared/schema';
 
 import type { DbClient } from '../db/client';
 
-// Timestamp-based sync, tasks table only ("last-content-changed wins",
-// Story 5.3). Whole-row resolution on the client-set content clock
-// `updatedAt`; `syncedAt` is the server write clock the pull cursor keys on.
+// Timestamp-based sync ("last-content-changed wins", Story 5.3; generalized
+// to four entities in Story 9.7: tasks, subtasks, star ledger, preferences).
+// Whole-row resolution on the client-set content clock `updatedAt`;
+// `syncedAt` is the server write clock the pull cursors key on. Deletion is
+// a tombstone (`deletedAt`) riding the same rules — the server NEVER runs a
+// SQL DELETE on synced rows.
 
 export interface PushResult {
   /** Ids inserted or updated (incoming row won). */
@@ -16,26 +28,39 @@ export interface PushResult {
    *  row reaches the client via pull. */
   stale: string[];
   /** Ids refused — the id exists under ANOTHER user (uuid collision across
-   *  tenants). Never reveals anything about the existing row. */
+   *  tenants). Never reveals anything about the existing row. Preferences
+   *  can't hit this: their PK is (userId, key), keys collide by design. */
   rejected: string[];
 }
 
-export interface PullResult {
-  tasks: TaskData[];
+export interface PullResult<T> {
+  rows: T[];
   /** Database clock read in the same transaction — the client's next cursor. */
   serverTime: Date;
 }
 
-/** Strip the server-only columns — the wire shape is exactly TaskData. */
-function toTaskData(row: typeof tasks.$inferSelect): TaskData {
-  const { userId: _userId, syncedAt: _syncedAt, ...data } = row;
-  return data;
+type Tx = Parameters<Parameters<DbClient['transaction']>[0]>[0];
+
+/**
+ * The per-entity seam: the shared core below owns the transaction, the LWW
+ * comparison, and the cross-tenant rejection; adapters own the fully-typed
+ * drizzle statements (which columns exist is an entity decision, not a sync
+ * decision).
+ */
+interface PushAdapter<T extends { updatedAt: Date }> {
+  getId(row: T): string;
+  /** Rows with this id ACROSS users (uuid entities) so a foreign owner
+   *  rejects the push; preferences scope to the caller (keys collide by design). */
+  findExisting(tx: Tx, userId: string, row: T): Promise<{ userId: string; updatedAt: Date }[]>;
+  insert(tx: Tx, userId: string, row: T, syncedAt: SQL): Promise<void>;
+  update(tx: Tx, userId: string, row: T, syncedAt: SQL): Promise<void>;
 }
 
-export async function pushTasks(
+async function pushRows<T extends { updatedAt: Date }>(
   db: DbClient,
   userId: string,
-  incoming: TaskUpsert[],
+  incoming: T[],
+  adapter: PushAdapter<T>,
 ): Promise<PushResult> {
   const applied: string[] = [];
   const stale: string[] = [];
@@ -43,53 +68,26 @@ export async function pushTasks(
 
   await db.transaction(async (tx) => {
     for (const row of incoming) {
-      // Select by id ACROSS users deliberately: a row owned by someone else
-      // must reject the push (composite PK would otherwise happily insert a
-      // second copy under this user — an id-collision trap for future sync).
-      const existing = await tx.select().from(tasks).where(eq(tasks.id, row.id));
+      const id = adapter.getId(row);
+      const existing = await adapter.findExisting(tx, userId, row);
       const own = existing.find((candidate) => candidate.userId === userId);
       if (!own && existing.length > 0) {
-        rejected.push(row.id);
+        rejected.push(id);
         continue;
       }
 
       // DB clock, not new Date(): the pull cursor is handed out from
       // Postgres now(), so stamping writes from the app-server clock lets
-      // skew hide rows from the next pull (and flaked the since-boundary
-      // test). One clock for both sides; now() is fixed per transaction.
+      // skew hide rows from the next pull. now() is fixed per transaction.
       const syncedAt = sql`now()`;
       if (!own) {
-        // userId ALWAYS from the authenticated ctx — never a client value.
-        await tx.insert(tasks).values({ ...row, userId, syncedAt });
-        applied.push(row.id);
+        await adapter.insert(tx, userId, row, syncedAt);
+        applied.push(id);
       } else if (row.updatedAt > own.updatedAt) {
-        // Explicit updatedAt (the incoming content clock) wins over $onUpdate.
-        await tx
-          .update(tasks)
-          .set({
-            title: row.title,
-            details: row.details,
-            notes: row.notes,
-            status: row.status,
-            size: row.size,
-            criticality: row.criticality,
-            contexts: row.contexts,
-            deadline: row.deadline,
-            hasCheckNeeded: row.hasCheckNeeded,
-            reviewFlags: row.reviewFlags,
-            skipCount: row.skipCount,
-            // 9-5 session fix: these two were missing — server-side updates
-            // silently dropped pushed skip-window/engagement state.
-            skipWindowStartedAt: row.skipWindowStartedAt,
-            lastEngagedAt: row.lastEngagedAt,
-            createdAt: row.createdAt,
-            updatedAt: row.updatedAt,
-            syncedAt,
-          })
-          .where(and(eq(tasks.userId, userId), eq(tasks.id, row.id)));
-        applied.push(row.id);
+        await adapter.update(tx, userId, row, syncedAt);
+        applied.push(id);
       } else {
-        stale.push(row.id);
+        stale.push(id);
       }
     }
   });
@@ -97,11 +95,7 @@ export async function pushTasks(
   return { applied, stale, rejected };
 }
 
-export async function pullTasks(
-  db: DbClient,
-  userId: string,
-  since: Date | null,
-): Promise<PullResult> {
+async function pullRows<T>(db: DbClient, select: (tx: Tx) => Promise<T[]>): Promise<PullResult<T>> {
   return db.transaction(async (tx) => {
     // Same-transaction now(): the cursor can never run ahead of the rows it
     // was read with. Raw execute() skips drizzle's type mapping, so read the
@@ -111,15 +105,241 @@ export async function pullTasks(
     );
     const nowMs = Number(timeRows[0]?.now_ms);
     if (!Number.isFinite(nowMs)) {
-      throw new Error('pullTasks: could not read the database clock');
+      throw new Error('pull: could not read the database clock');
     }
     const serverTime = new Date(Math.floor(nowMs));
 
-    const rows = await tx
+    return { rows: await select(tx), serverTime };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Tasks (Story 5.3 — wire shape and result keys are load-bearing for old
+// clients; sync.push/sync.pull must keep behaving exactly as before).
+
+/** Strip the server-only columns — the wire shape is exactly TaskData. */
+function toTaskData(row: typeof tasks.$inferSelect): TaskData {
+  const { userId: _userId, syncedAt: _syncedAt, ...data } = row;
+  return data;
+}
+
+export function pushTasks(db: DbClient, userId: string, incoming: TaskUpsert[]) {
+  return pushRows(db, userId, incoming, {
+    getId: (row) => row.id,
+    // Select by id ACROSS users deliberately: a row owned by someone else
+    // must reject the push (composite PK would otherwise happily insert a
+    // second copy under this user — an id-collision trap).
+    findExisting: (tx, _userId, row) =>
+      tx
+        .select({ userId: tasks.userId, updatedAt: tasks.updatedAt })
+        .from(tasks)
+        .where(eq(tasks.id, row.id)),
+    // userId ALWAYS from the authenticated ctx — never a client value.
+    insert: async (tx, uid, row, syncedAt) => {
+      await tx.insert(tasks).values({ ...row, userId: uid, syncedAt });
+    },
+    // Explicit updatedAt (the incoming content clock) wins over $onUpdate.
+    update: async (tx, uid, row, syncedAt) => {
+      await tx
+        .update(tasks)
+        .set({
+          title: row.title,
+          details: row.details,
+          notes: row.notes,
+          status: row.status,
+          size: row.size,
+          criticality: row.criticality,
+          contexts: row.contexts,
+          deadline: row.deadline,
+          hasCheckNeeded: row.hasCheckNeeded,
+          reviewFlags: row.reviewFlags,
+          skipCount: row.skipCount,
+          skipWindowStartedAt: row.skipWindowStartedAt,
+          lastEngagedAt: row.lastEngagedAt,
+          deletedAt: row.deletedAt,
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
+          syncedAt,
+        })
+        .where(and(eq(tasks.userId, uid), eq(tasks.id, row.id)));
+    },
+  });
+}
+
+/** Legacy result shape ({ tasks }, not { rows }) — old clients depend on it. */
+export async function pullTasks(
+  db: DbClient,
+  userId: string,
+  since: Date | null,
+): Promise<{ tasks: TaskData[]; serverTime: Date }> {
+  const { rows, serverTime } = await pullRows(db, (tx) =>
+    tx
       .select()
       .from(tasks)
-      .where(and(eq(tasks.userId, userId), since === null ? undefined : gt(tasks.syncedAt, since)));
+      .where(and(eq(tasks.userId, userId), since === null ? undefined : gt(tasks.syncedAt, since))),
+  );
+  return { tasks: rows.map(toTaskData), serverTime };
+}
 
-    return { tasks: rows.map(toTaskData), serverTime };
+// ---------------------------------------------------------------------------
+// Subtasks (Story 9.7)
+
+function toSubtaskData(row: typeof subtasks.$inferSelect): SubtaskData {
+  const { userId: _userId, syncedAt: _syncedAt, ...data } = row;
+  return data;
+}
+
+export function pushSubtasks(db: DbClient, userId: string, incoming: SubtaskUpsert[]) {
+  return pushRows(db, userId, incoming, {
+    getId: (row) => row.id,
+    findExisting: (tx, _userId, row) =>
+      tx
+        .select({ userId: subtasks.userId, updatedAt: subtasks.updatedAt })
+        .from(subtasks)
+        .where(eq(subtasks.id, row.id)),
+    insert: async (tx, uid, row, syncedAt) => {
+      await tx.insert(subtasks).values({ ...row, userId: uid, syncedAt });
+    },
+    update: async (tx, uid, row, syncedAt) => {
+      await tx
+        .update(subtasks)
+        .set({
+          taskId: row.taskId,
+          title: row.title,
+          completed: row.completed,
+          orderIndex: row.orderIndex,
+          source: row.source,
+          deletedAt: row.deletedAt,
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
+          syncedAt,
+        })
+        .where(and(eq(subtasks.userId, uid), eq(subtasks.id, row.id)));
+    },
   });
+}
+
+export async function pullSubtasks(
+  db: DbClient,
+  userId: string,
+  since: Date | null,
+): Promise<PullResult<SubtaskData>> {
+  const { rows, serverTime } = await pullRows(db, (tx) =>
+    tx
+      .select()
+      .from(subtasks)
+      .where(
+        and(eq(subtasks.userId, userId), since === null ? undefined : gt(subtasks.syncedAt, since)),
+      ),
+  );
+  return { rows: rows.map(toSubtaskData), serverTime };
+}
+
+// ---------------------------------------------------------------------------
+// Star activity ledger (Story 9.7)
+
+function toStarActivityData(row: typeof starActivityLog.$inferSelect): StarActivityData {
+  const { userId: _userId, syncedAt: _syncedAt, ...data } = row;
+  return data;
+}
+
+export function pushStarActivity(db: DbClient, userId: string, incoming: StarActivityUpsert[]) {
+  return pushRows(db, userId, incoming, {
+    getId: (row) => row.id,
+    findExisting: (tx, _userId, row) =>
+      tx
+        .select({ userId: starActivityLog.userId, updatedAt: starActivityLog.updatedAt })
+        .from(starActivityLog)
+        .where(eq(starActivityLog.id, row.id)),
+    insert: async (tx, uid, row, syncedAt) => {
+      await tx.insert(starActivityLog).values({ ...row, userId: uid, syncedAt });
+    },
+    update: async (tx, uid, row, syncedAt) => {
+      await tx
+        .update(starActivityLog)
+        .set({
+          taskId: row.taskId,
+          taskTitle: row.taskTitle,
+          action: row.action,
+          amount: row.amount,
+          deletedAt: row.deletedAt,
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
+          syncedAt,
+        })
+        .where(and(eq(starActivityLog.userId, uid), eq(starActivityLog.id, row.id)));
+    },
+  });
+}
+
+export async function pullStarActivity(
+  db: DbClient,
+  userId: string,
+  since: Date | null,
+): Promise<PullResult<StarActivityData>> {
+  const { rows, serverTime } = await pullRows(db, (tx) =>
+    tx
+      .select()
+      .from(starActivityLog)
+      .where(
+        and(
+          eq(starActivityLog.userId, userId),
+          since === null ? undefined : gt(starActivityLog.syncedAt, since),
+        ),
+      ),
+  );
+  return { rows: rows.map(toStarActivityData), serverTime };
+}
+
+// ---------------------------------------------------------------------------
+// Preferences (Story 9.7) — keyed by (userId, key), so `findExisting` scopes
+// to the caller and the cross-tenant rejection path can never fire.
+
+function toPreferenceData(row: typeof preferences.$inferSelect): PreferenceData {
+  const { userId: _userId, syncedAt: _syncedAt, ...data } = row;
+  return data;
+}
+
+export function pushPreferences(db: DbClient, userId: string, incoming: PreferenceUpsert[]) {
+  return pushRows(db, userId, incoming, {
+    getId: (row) => row.key,
+    findExisting: (tx, uid, row) =>
+      tx
+        .select({ userId: preferences.userId, updatedAt: preferences.updatedAt })
+        .from(preferences)
+        .where(and(eq(preferences.userId, uid), eq(preferences.key, row.key))),
+    insert: async (tx, uid, row, syncedAt) => {
+      await tx.insert(preferences).values({ ...row, userId: uid, syncedAt });
+    },
+    update: async (tx, uid, row, syncedAt) => {
+      await tx
+        .update(preferences)
+        .set({
+          value: row.value,
+          deletedAt: row.deletedAt,
+          updatedAt: row.updatedAt,
+          syncedAt,
+        })
+        .where(and(eq(preferences.userId, uid), eq(preferences.key, row.key)));
+    },
+  });
+}
+
+export async function pullPreferences(
+  db: DbClient,
+  userId: string,
+  since: Date | null,
+): Promise<PullResult<PreferenceData>> {
+  const { rows, serverTime } = await pullRows(db, (tx) =>
+    tx
+      .select()
+      .from(preferences)
+      .where(
+        and(
+          eq(preferences.userId, userId),
+          since === null ? undefined : gt(preferences.syncedAt, since),
+        ),
+      ),
+  );
+  return { rows: rows.map(toPreferenceData), serverTime };
 }

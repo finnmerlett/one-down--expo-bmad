@@ -35,7 +35,12 @@ appId: com.onedown.mobile
 # (Story 4.4: done rows show plain title text — no `Completed:` label)
 - tapOn: 'Open task list'
 - waitForAnimationToEnd
-- assertVisible: 'Done'
+# Waited, not instant-asserted (9-7 hardening): the list's live query + one-
+# shot entry scroll can land a beat after the animation settles — flaked
+# once in-suite while passing solo.
+- extendedWaitUntil:
+    visible: 'Done'
+    timeout: 5000
 - assertVisible: 'Finish me first'
 - assertVisible: 'Open task: Next in line'
 - assertNotVisible: 'Open task: Finish me first'

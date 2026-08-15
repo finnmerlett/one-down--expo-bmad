@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, isNull } from 'drizzle-orm';
 
 import { subtasks, tasks } from '@one-down/shared/schema-local';
 
@@ -463,7 +463,7 @@ describe('tasks-repository (integration, real migration SQL)', () => {
       expect(rows.every((row) => row.status === 'pending')).toBe(true);
     });
 
-    it('deleteTasksPermanently removes the tasks and their subtasks only', async () => {
+    it('deleteTasksPermanently tombstones the tasks and their subtasks only (Story 9.7)', async () => {
       const doomed = await createTask(testDb.db, { title: 'Doomed' });
       const survivor = await createTask(testDb.db, { title: 'Survivor' });
       await testDb.db.insert(subtasks).values([
@@ -473,10 +473,18 @@ describe('tasks-repository (integration, real migration SQL)', () => {
 
       await deleteTasksPermanently(testDb.db, [doomed.id]);
 
-      const taskRows = await testDb.db.select().from(tasks);
-      expect(taskRows.map((row) => row.id)).toEqual([survivor.id]);
-      const subtaskRows = await testDb.db.select().from(subtasks);
-      expect(subtaskRows.map((row) => row.id)).toEqual(['sub-2']);
+      // Tombstoned, never SQL-deleted — the rows stay so the deletion syncs.
+      const liveTasks = await testDb.db.select().from(tasks).where(isNull(tasks.deletedAt));
+      expect(liveTasks.map((row) => row.id)).toEqual([survivor.id]);
+      const [doomedRow] = await testDb.db.select().from(tasks).where(eq(tasks.id, doomed.id));
+      expect(doomedRow?.deletedAt).toBeInstanceOf(Date);
+      const liveSubtasks = await testDb.db
+        .select()
+        .from(subtasks)
+        .where(isNull(subtasks.deletedAt));
+      expect(liveSubtasks.map((row) => row.id)).toEqual(['sub-2']);
+      const [doomedStep] = await testDb.db.select().from(subtasks).where(eq(subtasks.id, 'sub-1'));
+      expect(doomedStep?.deletedAt).toBeInstanceOf(Date);
     });
   });
 

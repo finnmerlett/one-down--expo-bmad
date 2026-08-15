@@ -85,6 +85,13 @@ export interface TaskData {
    * measured off it would let *avoiding* a task keep it "fresh".
    */
   lastEngagedAt: Date;
+  /**
+   * Tombstone (Story 9.7): non-null = deleted. Deletion is an ordinary row
+   * update that syncs by the same newer-wins rule — never a SQL DELETE, which
+   * the sync layer can't see (the pre-9.7 resurrection bug). Reads filter
+   * `deletedAt is null`.
+   */
+  deletedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }

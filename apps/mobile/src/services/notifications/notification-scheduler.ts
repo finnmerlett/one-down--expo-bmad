@@ -1,3 +1,4 @@
+import { isNull } from 'drizzle-orm';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
@@ -44,7 +45,11 @@ export async function resyncNotifications(db: PreferencesDb): Promise<void> {
   const permission = await Notifications.getPermissionsAsync();
   if (!permission.granted) return;
 
-  const [taskRows, prefs] = await Promise.all([db.select().from(tasks), getNotificationPrefs(db)]);
+  const [taskRows, prefs] = await Promise.all([
+    // Live tasks only (Story 9.7) — a deleted task must never notify.
+    db.select().from(tasks).where(isNull(tasks.deletedAt)),
+    getNotificationPrefs(db),
+  ]);
   const desired = planNotifications(taskRows, prefs, new Date());
 
   const scheduled = await Notifications.getAllScheduledNotificationsAsync();

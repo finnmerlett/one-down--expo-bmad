@@ -1,4 +1,4 @@
-import { and, asc, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull } from 'drizzle-orm';
 import { randomUUID } from 'expo-crypto';
 
 import type { SubtaskData, SubtaskSource } from '@one-down/shared';
@@ -9,12 +9,14 @@ import type { TasksDb } from './tasks-repository';
 // Subtask persistence (Story 6.3) — db injected like tasks-repository so
 // integration tests run the real migration SQL.
 
-/** Highest existing orderIndex for a task, or -1 when it has none. */
+/** Highest LIVE orderIndex for a task, or -1 when it has none. Tombstoned
+ *  rows don't reserve their slot — they're invisible, so a duplicate index
+ *  against one can't affect display order. */
 async function maxOrderIndex(db: TasksDb, taskId: string): Promise<number> {
   const [top] = await db
     .select()
     .from(subtasks)
-    .where(eq(subtasks.taskId, taskId))
+    .where(and(eq(subtasks.taskId, taskId), isNull(subtasks.deletedAt)))
     .orderBy(desc(subtasks.orderIndex))
     .limit(1);
   return top?.orderIndex ?? -1;
@@ -69,7 +71,9 @@ export async function setSubtaskCompleted(
 /**
  * Swap the UNCOMPLETED portion of a task's breakdown for refined steps
  * (Story 6.4, AC4): completed subtasks are never modified (UX-DR7); the new
- * steps append after the highest surviving orderIndex.
+ * steps append after the highest surviving orderIndex. "Removed" rows are
+ * tombstoned (Story 9.7), never deleted — the AI-replace must sync as
+ * tombstone-old + insert-new.
  */
 export async function replaceUncompletedSubtasks(
   db: TasksDb,
@@ -78,16 +82,24 @@ export async function replaceUncompletedSubtasks(
   source: SubtaskSource,
 ): Promise<{ deletedCount: number; insertedCount: number }> {
   const deleted = await db
-    .delete(subtasks)
-    .where(and(eq(subtasks.taskId, taskId), eq(subtasks.completed, false)))
+    .update(subtasks)
+    .set({ deletedAt: new Date() })
+    .where(
+      and(eq(subtasks.taskId, taskId), eq(subtasks.completed, false), isNull(subtasks.deletedAt)),
+    )
     .returning();
   const inserted = await createSubtasks(db, taskId, steps, source);
   return { deletedCount: deleted.length, insertedCount: inserted.length };
 }
 
-/** Delete a subtask, returning the deleted row (null when already gone). */
+/** Delete a subtask — a tombstone since Story 9.7, so the removal syncs.
+ *  Returns the (now tombstoned) row, or null when already gone. */
 export async function deleteSubtask(db: TasksDb, id: string): Promise<SubtaskData | null> {
-  const [deleted] = await db.delete(subtasks).where(eq(subtasks.id, id)).returning();
+  const [deleted] = await db
+    .update(subtasks)
+    .set({ deletedAt: new Date() })
+    .where(and(eq(subtasks.id, id), isNull(subtasks.deletedAt)))
+    .returning();
   return deleted ?? null;
 }
 
@@ -126,16 +138,26 @@ export async function reorderSubtasks(
   }
 }
 
-/** Re-insert a deleted row verbatim (undo toast) — same id, order, state. */
+/** Restore a deleted row (undo toast) — since Story 9.7 the row still exists
+ *  as a tombstone, so undo CLEARS the tombstone on the same row ($onUpdate
+ *  bumps updatedAt and the revival syncs). The insert arm covers a row that
+ *  never made it in (defensive; same id, order, state). */
 export async function restoreSubtask(db: TasksDb, row: SubtaskData): Promise<void> {
-  await db.insert(subtasks).values(row).onConflictDoNothing();
+  // Explicit updatedAt on both arms: $onUpdate isn't guaranteed to fire on
+  // the conflict arm, and the revival must move the content clock forward to
+  // beat the already-synced tombstone.
+  const now = new Date();
+  await db
+    .insert(subtasks)
+    .values({ ...row, deletedAt: null, updatedAt: now })
+    .onConflictDoUpdate({ target: subtasks.id, set: { deletedAt: null, updatedAt: now } });
 }
 
-/** Ordered read used by the live-query hook (and tests). */
+/** Ordered read of the LIVE rows, used by the live-query hook (and tests). */
 export async function listSubtasks(db: TasksDb, taskId: string): Promise<SubtaskData[]> {
   return db
     .select()
     .from(subtasks)
-    .where(eq(subtasks.taskId, taskId))
+    .where(and(eq(subtasks.taskId, taskId), isNull(subtasks.deletedAt)))
     .orderBy(asc(subtasks.orderIndex));
 }

@@ -288,8 +288,11 @@ export function useStepActions(
     track('steps_change_undone', { kind: plan.kind });
     if (plan.kind === 'delete-created') {
       if (plan.createdIds.length === 0) return;
+      // Tombstone, not DELETE (Story 9.7): the created rows may already have
+      // synced, so their removal must sync too.
       void db
-        .delete(subtasksTable)
+        .update(subtasksTable)
+        .set({ deletedAt: new Date() })
         .where(inArray(subtasksTable.id, plan.createdIds))
         // oxlint-disable-next-line no-console
         .catch((error: unknown) => console.warn('Step undo failed', error));

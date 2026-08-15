@@ -17,8 +17,9 @@
  * - NO deadlines except in the `bonus` account: a live bonus badge extends
  *   the card's a11y label ("Plus N bonus right now") and full-string
  *   selectors would miss. Flow 28 owns deadline/badge coverage.
- * - Stars and subtasks are LOCAL-only — fixtures cannot pre-earn stars or
- *   pre-create steps. Flows that assert star maths still earn them in-app.
+ * - Since Story 9.7 subtasks, star-ledger rows, and preferences sync too —
+ *   an account can return a full FixtureBundle to pre-seed them (see
+ *   `fullsync`). Accounts that return a plain task array are unaffected.
  * - reviewFlags shape is {"inferred":[...],"missingDeadline":true} —
  *   parseReviewFlags drops unknown keys silently.
  *
@@ -27,8 +28,8 @@
  */
 import { eq, sql } from 'drizzle-orm';
 
-import type { TaskData } from '@one-down/shared';
-import { tasks } from '@one-down/shared/schema';
+import type { PreferenceData, StarActivityData, SubtaskData, TaskData } from '@one-down/shared';
+import { preferences, starActivityLog, subtasks, tasks } from '@one-down/shared/schema';
 
 import { createDbClient } from '../src/db/client';
 
@@ -62,6 +63,7 @@ const BASE = {
   reviewFlags: null,
   skipCount: 0,
   skipWindowStartedAt: null,
+  deletedAt: null,
 } as const;
 
 type FixtureSpec = Partial<TaskData> & Pick<TaskData, 'title' | 'status' | 'size'>;
@@ -80,11 +82,41 @@ function task(now: Date, spec: FixtureSpec): TaskData {
   };
 }
 
+/** A subtask fixture (Story 9.7) — timestamps mirror task()'s hour-ago default. */
+function step(
+  now: Date,
+  taskId: string,
+  title: string,
+  spec: Partial<SubtaskData> = {},
+): SubtaskData {
+  const anHourAgo = new Date(now.getTime() - HOUR_MS);
+  return {
+    id: crypto.randomUUID(),
+    taskId,
+    title,
+    completed: false,
+    orderIndex: 0,
+    source: 'ai',
+    deletedAt: null,
+    createdAt: anHourAgo,
+    updatedAt: anHourAgo,
+    ...spec,
+  };
+}
+
+/** Full per-account fixture set (Story 9.7). Plain-array accounts seed tasks only. */
+interface FixtureBundle {
+  tasks: TaskData[];
+  subtasks?: SubtaskData[];
+  starActivity?: StarActivityData[];
+  preferences?: PreferenceData[];
+}
+
 /**
  * slug → fixtures. Account email is `e2e-<slug>@test.local`. Keep each set
  * in lockstep with its flow file (noted per entry).
  */
-const ACCOUNTS: Record<string, (now: Date) => TaskData[]> = {
+const ACCOUNTS: Record<string, (now: Date) => TaskData[] | FixtureBundle> = {
   // 04-story-1-3-card-stack: beta pinned top by quick-win momentum; gamma
   // is added mid-flow through the UI (mid-browse add is the AC under test).
   stack: (now) => [
@@ -217,6 +249,56 @@ const ACCOUNTS: Record<string, (now: Date) => TaskData[]> = {
     }),
     task(now, { title: 'Big one', status: 'pending', size: 'big_time' }),
   ],
+  // 54-story-9-7-full-account-sync: the restore leg asserts all four synced
+  // entities land on a fresh sign-in (tasks, steps with tick state, star
+  // history, AI-notes preference); the tombstone leg archives + permanently
+  // deletes 'Delete me task' and proves it STAYS deleted across a wipe.
+  // Ledger rows: 12 + 2 = 14 stars total; the completed step on the pending
+  // quick win banks 1 → counter label '14 stars, 14 earned today, 1 banked'.
+  // Ledger createdAt is one minute ago (not an hour) to keep the 'earned
+  // today' figure stable right after midnight.
+  fullsync: (now) => {
+    const aMinuteAgo = new Date(now.getTime() - 60_000);
+    const restored = task(now, { title: 'Restored task', status: 'pending', size: 'quick_win' });
+    const doomed = task(now, { title: 'Delete me task', status: 'pending', size: null });
+    return {
+      tasks: [restored, doomed],
+      subtasks: [
+        step(now, restored.id, 'Step already done', { completed: true, orderIndex: 0 }),
+        step(now, restored.id, 'Step still to do', { orderIndex: 1 }),
+      ],
+      starActivity: [
+        {
+          id: crypto.randomUUID(),
+          taskId: null,
+          taskTitle: 'Old win',
+          action: 'task_completed',
+          amount: 12,
+          deletedAt: null,
+          createdAt: aMinuteAgo,
+          updatedAt: aMinuteAgo,
+        },
+        {
+          id: crypto.randomUUID(),
+          taskId: '',
+          taskTitle: 'Cleared the queue',
+          action: 'triage_confirmed',
+          amount: 2,
+          deletedAt: null,
+          createdAt: aMinuteAgo,
+          updatedAt: aMinuteAgo,
+        },
+      ],
+      preferences: [
+        {
+          key: 'ai.general_notes',
+          value: JSON.stringify('- I like tiny steps'),
+          deletedAt: null,
+          updatedAt: aMinuteAgo,
+        },
+      ],
+    };
+  },
   // 28-95-bonus-window (9-5 items 12/13/15/16): due-today → placement, no
   // badge under 2 days; three window-eligible cards (3 days out) with
   // distinct criticalities → urgency hands the two badge slots to critical
@@ -296,12 +378,38 @@ async function main() {
   for (const slug of slugs) {
     const userId = await ensureUser(e2eEmail(slug));
     await db.delete(tasks).where(eq(tasks.userId, userId));
-    const fixtures = ACCOUNTS[slug]!(now);
+    await db.delete(subtasks).where(eq(subtasks.userId, userId));
+    await db.delete(starActivityLog).where(eq(starActivityLog.userId, userId));
+    await db.delete(preferences).where(eq(preferences.userId, userId));
+    const built = ACCOUNTS[slug]!(now);
+    const bundle: FixtureBundle = Array.isArray(built) ? { tasks: built } : built;
     await db
       .insert(tasks)
-      .values(fixtures.map((row) => ({ ...row, userId, syncedAt: sql`now()` })));
+      .values(bundle.tasks.map((row) => ({ ...row, userId, syncedAt: sql`now()` })));
+    if (bundle.subtasks?.length) {
+      await db
+        .insert(subtasks)
+        .values(bundle.subtasks.map((row) => ({ ...row, userId, syncedAt: sql`now()` })));
+    }
+    if (bundle.starActivity?.length) {
+      await db
+        .insert(starActivityLog)
+        .values(bundle.starActivity.map((row) => ({ ...row, userId, syncedAt: sql`now()` })));
+    }
+    if (bundle.preferences?.length) {
+      await db
+        .insert(preferences)
+        .values(bundle.preferences.map((row) => ({ ...row, userId, syncedAt: sql`now()` })));
+    }
+    const extras = [
+      bundle.subtasks?.length ? `${bundle.subtasks.length} steps` : null,
+      bundle.starActivity?.length ? `${bundle.starActivity.length} ledger rows` : null,
+      bundle.preferences?.length ? `${bundle.preferences.length} prefs` : null,
+    ].filter(Boolean);
     // oxlint-disable-next-line no-console -- CLI output is the whole point
-    console.log(`${e2eEmail(slug)} ← ${fixtures.length} tasks`);
+    console.log(
+      `${e2eEmail(slug)} ← ${bundle.tasks.length} tasks${extras.length ? ` + ${extras.join(', ')}` : ''}`,
+    );
   }
   await db.$client.end();
 }

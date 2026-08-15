@@ -109,10 +109,20 @@ export type AnalyticsEventMap = EnforceFlatProps<{
   auth_signed_in: { method: 'email' };
   /** Story 5.2 — signed out (success only). */
   auth_signed_out: Record<string, never>;
-  /** Story 5.3 — one sync round finished (counts and timings only, NFR-S3). */
+  /** Story 5.3 — one sync round finished (counts and timings only, NFR-S3).
+   *  Story 9.7: `pushed`/`pulled` became cross-entity totals, with per-entity
+   *  breakdowns alongside. */
   sync_completed: {
     pushed: number;
     pulled: number;
+    pushed_tasks: number;
+    pulled_tasks: number;
+    pushed_subtasks: number;
+    pulled_subtasks: number;
+    pushed_star_activity: number;
+    pulled_star_activity: number;
+    pushed_preferences: number;
+    pulled_preferences: number;
     duration_ms: number;
     trigger: 'local_change' | 'reconnect' | 'foreground' | 'sign_in';
   };
