@@ -213,14 +213,12 @@ describe('startTask skip reset (Story 6.4; engagement since 7.2)', () => {
 });
 
 describe('appendDistillationToNotes (Story 6.4, pure)', () => {
-  it('covers null notes, null distillation, and both present', () => {
-    expect(appendDistillationToNotes(null, 'Approach note: go physical')).toBe(
-      'Approach note: go physical',
-    );
+  it('covers null notes, null distillation, and both present — AI-note marker stamped', () => {
+    expect(appendDistillationToNotes(null, 'go physical')).toBe('AI note: go physical');
     expect(appendDistillationToNotes('existing notes', null)).toBe('existing notes');
     expect(appendDistillationToNotes(null, null)).toBeNull();
-    expect(appendDistillationToNotes('existing notes', 'Approach note: go physical')).toBe(
-      'existing notes\n\nApproach note: go physical',
+    expect(appendDistillationToNotes('existing notes', 'go physical')).toBe(
+      'existing notes\n\nAI note: go physical',
     );
   });
 });

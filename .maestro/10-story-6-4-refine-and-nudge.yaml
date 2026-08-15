@@ -6,7 +6,8 @@
 # opens the working screen (AC5–AC6). Deterministic fake provider (AC7).
 # Fake-provider contract (fake-provider.ts — lockstep with this flow):
 #   refine steps: the three first_steps starters prefixed 'Refined: '
-#   distillation: 'Approach note: ' + trimmed feedback (capped at 140 chars)
+#   distillation: trimmed feedback (capped at 140 chars), unprefixed — the
+#                 CLIENT stamps 'AI note: ' when appending (9-6 task 4)
 #   learning:     feedback containing 'prefer' → 'Learned: ' + trimmed
 #                 feedback (9-5 item 4) — lands in the settings AI notes
 #   micro step:   Do just the very first minute of "<title>"
@@ -81,8 +82,9 @@ appId: com.onedown.mobile
 - takeScreenshot: .maestro/screenshots/10-story-6-4-changed-steps
 
 # The distillation was appended to the notes immediately (AC3 — visible via
-# the draft-or-stored resync; notes were empty, so it is the whole value)
-- assertVisible: 'Approach note: I prefer physical actions I can tick off'
+# the draft-or-stored resync; notes were empty, so it is the whole value).
+# 'AI note: ' is the client-side attribution marker (9-6 task 4).
+- assertVisible: 'AI note: I prefer physical actions I can tick off'
 
 # --- Leg 2: pre-skipped card → one-tap smallest step (AC5–AC6) ---
 

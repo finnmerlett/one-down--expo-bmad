@@ -17,7 +17,7 @@ import {
 } from '@one-down/shared';
 import { z } from 'zod';
 
-import { truncateChars } from '../../lib/text';
+import { truncateChars, truncateCharsAtWord } from '../../lib/text';
 import type {
   AiProvider,
   ParseBrainDumpInput,
@@ -376,13 +376,15 @@ const rawRefineSchema = z.object({
 
 function coerceDistillation(value: unknown): string | null {
   if (typeof value !== 'string') return null;
-  const distilled = truncateChars(value.trim(), MAX_NOTES_DISTILLATION_CHARS).trimEnd();
+  // Word-boundary + ellipsis (9-6 task 4): these land verbatim in the user's
+  // notes — a mid-word chop reads as corruption.
+  const distilled = truncateCharsAtWord(value.trim(), MAX_NOTES_DISTILLATION_CHARS).trimEnd();
   return distilled.length > 0 ? distilled : null;
 }
 
 function coerceGeneralLearning(value: unknown): string | null {
   if (typeof value !== 'string') return null;
-  const learning = truncateChars(value.trim(), MAX_GENERAL_LEARNING_CHARS).trimEnd();
+  const learning = truncateCharsAtWord(value.trim(), MAX_GENERAL_LEARNING_CHARS).trimEnd();
   return learning.length > 0 ? learning : null;
 }
 

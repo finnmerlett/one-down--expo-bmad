@@ -13,14 +13,17 @@ import {
 
 /**
  * Append a refine distillation to the task's notes (Story 6.4, AC3). Pure —
- * exported for unit tests. Null distillation = nothing to append.
+ * exported for unit tests. Null distillation = nothing to append. The
+ * 'AI note: ' prefix (9-6 task 4) attributes the line — unmarked AI text in
+ * the notes box reads as contamination (2026-08-15 laundry incident).
  */
 export function appendDistillationToNotes(
   notes: string | null,
   distillation: string | null,
 ): string | null {
   if (!distillation) return notes;
-  return notes ? `${notes}\n\n${distillation}` : distillation;
+  const line = `AI note: ${distillation}`;
+  return notes ? `${notes}\n\n${line}` : line;
 }
 
 /** Analytics field name for a review item (snake_case in props — NFR-L1 taxonomy). */

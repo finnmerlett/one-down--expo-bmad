@@ -262,13 +262,23 @@ describe('mapRefineResponse', () => {
     expect(mapRefineResponse(raw).notesDistillation).toBeNull();
   });
 
-  it(`truncates the distillation to ${MAX_NOTES_DISTILLATION_CHARS} chars`, () => {
+  it(`truncates the distillation to ${MAX_NOTES_DISTILLATION_CHARS} chars with an ellipsis (no word boundary → hard cut)`, () => {
     const { notesDistillation } = mapRefineResponse({
       steps: ['Clear the desk'],
       notesDistillation: 'd'.repeat(MAX_NOTES_DISTILLATION_CHARS + 50),
     });
 
-    expect(notesDistillation).toBe('d'.repeat(MAX_NOTES_DISTILLATION_CHARS));
+    expect(notesDistillation).toBe(`${'d'.repeat(MAX_NOTES_DISTILLATION_CHARS - 1)}…`);
+  });
+
+  it('truncates an overlong distillation at a word boundary (9-6 task 4)', () => {
+    const { notesDistillation } = mapRefineResponse({
+      steps: ['Clear the desk'],
+      notesDistillation: `${'word '.repeat(60)}tail`,
+    });
+
+    expect(notesDistillation?.length).toBeLessThanOrEqual(MAX_NOTES_DISTILLATION_CHARS);
+    expect(notesDistillation?.endsWith('word…')).toBe(true);
   });
 
   it('throws when the top level has no steps array (broken model contract)', () => {

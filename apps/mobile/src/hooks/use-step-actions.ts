@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { TRPCClientError } from '@trpc/client';
 
-import { inArray } from 'drizzle-orm';
-import { subtasks as subtasksTable } from '@one-down/shared/schema-local';
+import { eq, inArray } from 'drizzle-orm';
+import { subtasks as subtasksTable, tasks as tasksTable } from '@one-down/shared/schema-local';
 import type { SubtaskData, TaskData } from '@one-down/shared';
 
 import { track } from '@/lib/analytics/track';
@@ -222,11 +222,15 @@ export function useStepActions(
           delay(MIN_WORKING_MS),
         ]);
         // Durable facts land in the notes immediately (6.4 semantics kept) —
-        // read the FRESHEST task so a mid-flight autosave isn't overwritten.
+        // re-read the row so a mid-flight autosave isn't overwritten. Pinned
+        // to the refine's OWN task id (9-6 task 5): taskRef.current can point
+        // at a different task if the screen's task switches mid-flight, which
+        // would append this task's distillation to that one's notes.
         if (result.notesDistillation) {
-          const latest = taskRef.current ?? current;
-          applyTaskPatch(latest, {
-            notes: appendDistillationToNotes(latest.notes, result.notesDistillation),
+          const [latest] = await db.select().from(tasksTable).where(eq(tasksTable.id, current.id));
+          const target = latest ?? current;
+          applyTaskPatch(target, {
+            notes: appendDistillationToNotes(target.notes, result.notesDistillation),
           });
         }
         // 9-5 item 4: a durable fact about the USER lands in the general AI

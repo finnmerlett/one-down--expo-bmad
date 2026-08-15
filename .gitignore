@@ -27,3 +27,6 @@ state.json
 # Maestro E2E screenshot output (regenerated every run)
 .maestro/screenshots/*
 !.maestro/screenshots/.gitkeep
+
+# Python tooling venvs (scripts/keep)
+.venv/

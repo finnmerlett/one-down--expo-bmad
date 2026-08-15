@@ -149,9 +149,10 @@ export function createFakeProvider(): AiProvider {
 
     // Story 6.4 refine contract (Maestro asserts these exact strings):
     // steps = the three first_steps starters prefixed 'Refined: ' (title is
-    // the only input that matters); distillation = 'Approach note: ' + the
-    // trimmed feedback capped at 140 chars (feedback is the only input that
-    // matters). generalLearning (9-5 item 4): feedback containing 'prefer'
+    // the only input that matters); distillation = the trimmed feedback
+    // capped at 140 chars, UNPREFIXED — the client stamps the 'AI note: '
+    // attribution marker (9-6 task 4), matching the gemini contract.
+    // generalLearning (9-5 item 4): feedback containing 'prefer'
     // (case-insensitive) → 'Learned: ' + the trimmed feedback capped at 140;
     // otherwise null. Existing subtasks and details/notes are ignored.
     refineBreakdown({ title, feedback }: RefineBreakdownInput): Promise<RefineBreakdownOutput> {
@@ -159,7 +160,7 @@ export function createFakeProvider(): AiProvider {
       return Promise.resolve({
         steps: fakeFirstSteps(title).map((step) => `Refined: ${step}`),
         // truncateChars (not bare slice) — never splits a surrogate pair.
-        notesDistillation: `Approach note: ${truncateChars(trimmed, 140)}`,
+        notesDistillation: truncateChars(trimmed, 140),
         generalLearning: /prefer/i.test(trimmed) ? `Learned: ${truncateChars(trimmed, 140)}` : null,
       });
     },

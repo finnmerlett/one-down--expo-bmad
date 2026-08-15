@@ -228,13 +228,13 @@ describe('fake provider breakdown refine (Story 6.4 E2E contract)', () => {
     ]);
   });
 
-  it('distills the trimmed feedback behind an "Approach note: " prefix', async () => {
+  it('distills the trimmed feedback unprefixed (client stamps the AI-note marker)', async () => {
     const { notesDistillation } = await provider.refineBreakdown({
       ...baseInput,
       feedback: '  Too vague, give me physical actions \n',
     });
 
-    expect(notesDistillation).toBe('Approach note: Too vague, give me physical actions');
+    expect(notesDistillation).toBe('Too vague, give me physical actions');
   });
 
   it('caps the distilled feedback at 140 chars (after trimming)', async () => {
@@ -243,7 +243,7 @@ describe('fake provider breakdown refine (Story 6.4 E2E contract)', () => {
       feedback: ` ${'f'.repeat(300)} `,
     });
 
-    expect(notesDistillation).toBe(`Approach note: ${'f'.repeat(140)}`);
+    expect(notesDistillation).toBe('f'.repeat(140));
   });
 
   it('never splits a surrogate pair at the 140-char cap', async () => {
@@ -254,8 +254,8 @@ describe('fake provider breakdown refine (Story 6.4 E2E contract)', () => {
     });
 
     // The whole emoji is dropped rather than leaving a lone high surrogate.
-    expect(notesDistillation).toBe(`Approach note: ${'f'.repeat(139)}`);
-    expect(notesDistillation?.length).toBe('Approach note: '.length + 139);
+    expect(notesDistillation).toBe('f'.repeat(139));
+    expect(notesDistillation?.length).toBe(139);
   });
 
   it('steps depend only on the title; distillation only on the feedback', async () => {

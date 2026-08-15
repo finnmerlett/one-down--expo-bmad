@@ -253,7 +253,7 @@ describe('ai.refineBreakdown (fake mode)', () => {
         'Refined: Do just the first two minutes',
         'Refined: Set a 10-minute timer and keep going',
       ],
-      notesDistillation: 'Approach note: Too vague, give me physical actions',
+      notesDistillation: 'Too vague, give me physical actions',
       // No 'prefer' in the feedback → no general learning (9-5 item 4).
       generalLearning: null,
       provider: 'fake',
