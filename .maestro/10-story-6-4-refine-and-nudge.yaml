@@ -84,6 +84,8 @@ appId: com.onedown.mobile
 # The distillation was appended to the notes immediately (AC3 — visible via
 # the draft-or-stored resync; notes were empty, so it is the whole value).
 # 'AI note: ' is the client-side attribution marker (9-6 task 4).
+# (9.8 B2: notes start collapsed — expand before reading them.)
+- tapOn: 'Expand notes'
 - assertVisible: 'AI note: I prefer physical actions I can tick off'
 
 # --- Leg 2: pre-skipped card → one-tap smallest step (AC5–AC6) ---

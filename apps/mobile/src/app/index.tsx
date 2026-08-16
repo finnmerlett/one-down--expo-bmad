@@ -335,8 +335,16 @@ export default function HomeScreen() {
     >
       {/* Blur target wrapper: everything the expanded context sheet sits
           over. collapsable={false} keeps the native view alive for the
-          snapshot; flex/column flow is identical to the bare children. */}
-      <BlurTargetView ref={blurTargetRef} style={{ flex: 1 }}>
+          snapshot; flex/column flow is identical to the bare children.
+          While the card-back overlay is up, home content leaves the a11y
+          tree (9.8 D3 made the nudge share the health prompt's labels —
+          TalkBack/Maestro must never reach the copy behind the overlay). */}
+      <BlurTargetView
+        ref={blurTargetRef}
+        style={{ flex: 1 }}
+        importantForAccessibility={overlayUp ? 'no-hide-descendants' : 'auto'}
+        accessibilityElementsHidden={overlayUp}
+      >
         {/* OTA update prompt (2026-07-27) — appears only when a downloaded
           update is pending; one tap reloads into it (no double-restart). */}
         <UpdateReadyBanner />
