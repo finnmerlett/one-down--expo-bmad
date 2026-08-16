@@ -414,8 +414,12 @@ export default function HomeScreen() {
               onTopChange={handleTopChange}
             />
             {/* Height-reveal (9-5 item 5): the deck eases up/down instead of
-                jumping when the nudge appears or the next card drops it. */}
-            <NudgeReveal visible={showNudge}>
+                jumping when the nudge appears or the next card drops it.
+                Collapsed while the card-back overlay is up: since D3 the
+                nudge carries the health prompt's exact labels, and a
+                still-rendered copy behind the overlay hijacks hierarchy
+                matching (Maestro taps the hidden one — flow 25). */}
+            <NudgeReveal visible={showNudge && !overlayUp}>
               <MicroTaskNudge
                 state={micro.state}
                 onGo={handleNudgeGo}
