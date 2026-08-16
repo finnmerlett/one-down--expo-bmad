@@ -168,6 +168,31 @@ All 25 items implemented across four commits (`7692b2d`, `1e843b1`,
    matters.
 4. **A8**: empty-state sizes: heading `2xl → xl`, body default(base) → `sm`.
 
-## Verification
+## Verification (2026-08-16)
 
-(fills in after the on-device pass)
+- `bun run typecheck`, `bun run lint:check` — green. Mobile jest 403/403
+  (61 suites), server `bun test` 162/162.
+- Manual argent spot-checks on the release APK: quick-add sizes/compact Save,
+  empty-state sizes, bigger anchored cards + review marker + triage entry,
+  collapsed notes → expand → multiline growth, `Get first steps`, dark-mode
+  context-sheet blur (D5) and toast ring (E1) — all confirmed visually.
+- Full Maestro suite history:
+  - Run 1: **31/35**. Three of the four failures shared one NEW root cause:
+    the local release build ran AHEAD of the published OTA for the first
+    time, and the no-clearState relaunch legs (flows 08/21, plus mixed into
+    10) booted the DOWNLOADED 9.7 bundle — old UI, new asserts. Fixed
+    hermetically: `app.config.js` + `E2E_BUILD=1` in `mobile:build` write
+    `expo.modules.updates.ENABLED=false` into local e2e APKs (the phone only
+    ever runs EAS builds, untouched). Flow 10 also needed an `Expand notes`
+    step before its `AI note:` assert (B2).
+  - Run 2: **34/35** — remaining failure was D3's label twin: the home nudge
+    (now the health prompt) stayed rendered UNDER the card-back overlay, and
+    Maestro's hierarchy matching tapped the hidden `Keep it` (swallowed by
+    the overlay). Fixed twice over: the nudge collapses while the overlay is
+    up, and home content leaves the a11y tree under the overlay
+    (TalkBack correctness).
+  - Final run: **35/35 passed** on the fixed build.
+- Ops bonus fix en route: `seed-e2e-accounts.ts` now paginates the GoTrue
+  admin list (the local auth store outgrew one 200-user page from
+  test-created throwaway users).
+- OTA + phone verification: pending below.
