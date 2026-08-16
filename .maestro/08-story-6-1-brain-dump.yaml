@@ -42,14 +42,27 @@ appId: com.onedown.mobile
 - assertVisible: '1 entry not added'
 - takeScreenshot: .maestro/screenshots/08-story-6-1-check-gate
 
+# 9.8 C1: hardware back exits HOME, keeping the whole parse as a draft —
+# reopening the brain dump restores the check stage exactly where it was.
+- back
+- waitForAnimationToEnd
+- tapOn: 'Brain dump'
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: 'Check these 2'
+    timeout: 5000
+- assertVisible: '1 entry not added'
+
 # Promote the unclaimed line (+) → it becomes a third box; drop it (×) —
-# counts move both ways (07f).
+# counts move both ways (07f). 9.8 C2: the dropped task's source line comes
+# BACK as a "not added" row instead of vanishing.
 - tapOn: 'Add as task: maybe fix the shed'
 - extendedWaitUntil:
     visible: 'Check these 3'
     timeout: 15000
 - tapOn: 'Drop task: Maybe fix the shed'
 - assertVisible: 'Check these 2'
+- assertVisible: '1 entry not added'
 
 # Approve the gate — ONLY now do the tasks land locally.
 - tapOn: 'Add 2 tasks'

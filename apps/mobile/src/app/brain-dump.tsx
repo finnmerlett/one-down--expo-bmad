@@ -15,6 +15,12 @@ import { Text } from '@/components/ui/text';
 import { track } from '@/lib/analytics/track';
 import { db } from '@/lib/local-db';
 import { trpc } from '@/lib/trpc';
+import {
+  clearBrainDumpDraft,
+  getBrainDumpDraft,
+  setBrainDumpDraft,
+  type BrainDumpDraft,
+} from '@/services/brain-dump-draft';
 import { createTasksFromBrainDump } from '@/services/tasks-repository';
 import { useQuickAddStore } from '@/stores/quick-add-store';
 
@@ -25,14 +31,19 @@ cssInterop(SafeAreaView, { className: 'style' });
 const SPINNER_DELAY_MS = 1_000;
 /** Past this, the "Taking a bit longer..." line escalates the copy (AC3). */
 const LONG_PARSE_MS = 4_000;
+/** Draft autosave debounce — covers process death; back paths flush directly. */
+const DRAFT_SAVE_DEBOUNCE_MS = 400;
 
 /**
  * Brain dump screen (Story 6.1 → v1.5 D6 gate): the dump parses into a CHECK
  * stage — one box per task with its evidence quotes, unclaimed lines as
- * promotable dashed rows — and NOTHING saves until `Add N tasks`. Backing
- * out (Back to the dump, back arrow) discards the parse; the dump text is
- * kept so nothing is ever lost. All AI calls go through the server's tRPC
- * seam, never directly to Gemini.
+ * promotable dashed rows — and NOTHING saves until `Add N tasks`. All AI
+ * calls go through the server's tRPC seam, never directly to Gemini.
+ *
+ * Leaving the screen (9.8 C1) — back arrow or hardware back — always exits
+ * HOME and persists the live stage as a draft (dump text, or the whole parsed
+ * check): reopening restores it. Returning from the check to the dump is the
+ * `Back to the dump` button's job, and only `Add N tasks` clears the draft.
  */
 export default function BrainDumpScreen() {
   const router = useRouter();
@@ -45,6 +56,53 @@ export default function BrainDumpScreen() {
   const [promotingLine, setPromotingLine] = useState<string | null>(null);
   const parseMutation = trpc.ai.parseBrainDump.useMutation();
   const promoteMutation = trpc.ai.promoteDumpLine.useMutation();
+
+  // ── Draft persistence (9.8 C1) ─────────────────────────────────────────
+  // Hydrate once; saves are gated on it so an empty first render can't
+  // clobber a stored draft before the read lands.
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    void getBrainDumpDraft(db)
+      .catch(() => null)
+      .then((draft) => {
+        if (cancelled) return;
+        if (draft) {
+          setText(draft.text);
+          if (draft.check && draft.check.tasks.length + draft.check.unclaimed.length > 0) {
+            setCheck(draft.check);
+          }
+        }
+        setHydrated(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Debounced autosave while the screen lives (covers process death)...
+  const latestDraftRef = useRef<BrainDumpDraft>({ text: '', check: null });
+  latestDraftRef.current = { text, check };
+  const hydratedRef = useRef(false);
+  hydratedRef.current = hydrated;
+  const draftClearedRef = useRef(false);
+  useEffect(() => {
+    if (!hydrated) return;
+    const timer = setTimeout(() => {
+      if (!draftClearedRef.current) void setBrainDumpDraft(db, latestDraftRef.current);
+    }, DRAFT_SAVE_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [text, check, hydrated]);
+
+  // ...and a final flush on unmount — the hardware-back path never sees the
+  // in-app back handler, so the write has to ride the teardown.
+  useEffect(
+    () => () => {
+      if (!hydratedRef.current || draftClearedRef.current) return;
+      void setBrainDumpDraft(db, latestDraftRef.current);
+    },
+    [],
+  );
 
   // Escalation timers live here (not in the component — it stays a pure
   // state renderer for stories): cleared whenever the mutation settles.
@@ -153,6 +211,9 @@ export default function BrainDumpScreen() {
       task_count: created.length,
       not_added_count: check?.unclaimed.length ?? 0,
     });
+    // The one path that CLEARS the draft — the work landed as tasks.
+    draftClearedRef.current = true;
+    await clearBrainDumpDraft(db);
     close();
   };
 
@@ -170,12 +231,13 @@ export default function BrainDumpScreen() {
       <HStack className="items-center gap-2 px-3 py-2">
         <Pressable
           accessibilityRole="button"
-          aria-label={checking ? 'Back to the dump' : 'Close brain dump'}
+          aria-label="Close brain dump"
           hitSlop={8}
           onPress={() => {
-            // Backing out of the check DISCARDS the parse, never the text.
-            if (checking) setCheck(null);
-            else close();
+            // 9.8 C1: back always exits HOME, saving the live stage as a
+            // draft (the unmount flush writes it). Returning to the dump
+            // from the check is the `Back to the dump` button's job.
+            close();
           }}
           className="h-11 w-11 items-center justify-center rounded-full active:bg-background-100"
         >
@@ -206,14 +268,23 @@ export default function BrainDumpScreen() {
             )
           }
           onDrop={(index) =>
-            setCheck((previous) =>
-              previous
-                ? {
-                    ...previous,
-                    tasks: previous.tasks.filter((_, candidate) => candidate !== index),
-                  }
-                : previous,
-            )
+            // 9.8 C2: a dropped task doesn't vanish — its source lines return
+            // to the unclaimed "not added" rows (re-promotable, honest count).
+            setCheck((previous) => {
+              if (!previous) return previous;
+              const dropped = previous.tasks[index];
+              const lines =
+                dropped === undefined
+                  ? []
+                  : dropped.evidence.length > 0
+                    ? dropped.evidence
+                    : [dropped.title];
+              const fresh = lines.filter((line) => !previous.unclaimed.includes(line));
+              return {
+                tasks: previous.tasks.filter((_, candidate) => candidate !== index),
+                unclaimed: [...previous.unclaimed, ...fresh],
+              };
+            })
           }
           onPromote={(line) => void handlePromote(line)}
           onChangeThese={(feedback) => void handleChangeThese(feedback)}
