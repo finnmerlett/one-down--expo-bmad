@@ -1,6 +1,9 @@
 # Story 9.8 — Keep fix-list round 1
 
-**Status:** in progress (opened 2026-08-16, overnight autonomous run)
+**Status:** implemented + verified 35/35 on-device; **OTA published 2026-08-16**
+(update group dc03b4f7, runtime 2026-08-11-expo-blur, commit 1e65dbe — JS-only,
+applies to the phone). Phone verification + Keep check-offs pending Finn's
+morning restart.
 **Branch:** automated-complete-build
 **Paper-trail style:** fixes story (no BMad ceremony), same as 9.4/9.5/9.6
 **Source:** first Keep-list sync (pipeline established in 9.6). Every task
@@ -195,4 +198,10 @@ All 25 items implemented across four commits (`7692b2d`, `1e843b1`,
 - Ops bonus fix en route: `seed-e2e-accounts.ts` now paginates the GoTrue
   admin list (the local auth store outgrew one 200-user page from
   test-created throwaway users).
-- OTA + phone verification: pending below.
+- **OTA published 2026-08-16**: update group dc03b4f7-c293-404c-974e-169381b49cae,
+  runtime 2026-08-11-expo-blur, commit 1e65dbe (android update 01a008a6-30aa-7c55).
+  No native changes this story — expo-clipboard was deliberately avoided (F3) —
+  so it applies to the phone's installed runtime.
+- Phone verification pending: after Restart now, check the bigger cards, the
+  collapsed notes, dark-mode fixes, and that a quick-add lands in triage.
+  Keep items get checked off ONLY once that's confirmed.
