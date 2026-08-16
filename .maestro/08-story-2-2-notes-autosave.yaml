@@ -20,6 +20,8 @@ appId: com.onedown.mobile
 # Type notes and DO NOT blur, DO NOT navigate — just idle past the debounce.
 # extendedWaitUntil on a never-present anchor is the Maestro sleep idiom:
 # optional means it waits the full timeout, then continues without failing.
+# (9.8 B2: notes start collapsed — expand before typing)
+- tapOn: 'Expand notes'
 - tapOn: 'Task notes'
 - inputText: 'Typed and never blurred'
 - extendedWaitUntil:
@@ -44,7 +46,8 @@ appId: com.onedown.mobile
 - waitForAnimationToEnd
 
 # The never-blurred note survived process death (AC1) and re-opening shows
-# all previously saved notes (AC3)
+# all previously saved notes (AC3) — expand the collapsed notes first (9.8 B2)
+- tapOn: 'Expand notes'
 - assertVisible: 'Typed and never blurred'
 - takeScreenshot: .claude/run-notes/screenshots/2-2-notes-survive-kill
 

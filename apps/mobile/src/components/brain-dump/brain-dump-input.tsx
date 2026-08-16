@@ -4,11 +4,14 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { MAX_BRAIN_DUMP_CHARS } from '@one-down/shared';
 
+import { AppButton } from '@/components/ui/app-button';
 import { Button, ButtonText } from '@/components/ui/button';
 import { HStack } from '@/components/ui/hstack';
 import { Text } from '@/components/ui/text';
 import { Textarea, TextareaInput } from '@/components/ui/textarea';
 import { VStack } from '@/components/ui/vstack';
+
+import { EDITABLE_BODY_SIZE } from '@/constants/typography';
 
 /**
  * Brain dump lifecycle (Story 6.1). `submitted` is the quiet first second of
@@ -53,8 +56,9 @@ export function BrainDumpInput({
         <Text className="font-body text-base text-typography-500">
           Get it all out, any format — we&apos;ll sort it into tasks.
         </Text>
-        {/* Stays visible while parsing, just disabled (UX-DR20). */}
-        <Textarea size="lg" isDisabled={pending} className="min-h-40 flex-1">
+        {/* Stays visible while parsing, just disabled (UX-DR20). Text at the
+            standardised editable size (9.8 A3). */}
+        <Textarea size={EDITABLE_BODY_SIZE} isDisabled={pending} className="min-h-40 flex-1">
           <TextareaInput
             aria-label="Brain dump"
             placeholder="What's on your mind?"
@@ -99,14 +103,14 @@ export function BrainDumpInput({
             </Animated.View>
           )
         ) : (
-          <Button
-            size="xl"
+          // Standardised full-height primary (9.8 A6) — same pill as
+          // Done editing / Add N tasks.
+          <AppButton
             aria-label="Parse my tasks"
-            isDisabled={text.trim().length === 0}
+            label="Parse my tasks"
+            disabled={text.trim().length === 0}
             onPress={() => onSubmit(text)}
-          >
-            <ButtonText>Parse my tasks</ButtonText>
-          </Button>
+          />
         )}
         {state === 'error' ? (
           <Button
@@ -119,15 +123,13 @@ export function BrainDumpInput({
           </Button>
         ) : null}
         {/* Visually secondary (link-style) — one primary action per screen. */}
-        <Button
-          size="lg"
-          variant="link"
-          isDisabled={pending}
+        <AppButton
+          kind="secondary"
           aria-label="Add one task instead"
+          label="Add one task instead"
+          disabled={pending}
           onPress={onQuickAddInstead}
-        >
-          <ButtonText>Add one task instead</ButtonText>
-        </Button>
+        />
       </VStack>
     </KeyboardAvoidingView>
   );

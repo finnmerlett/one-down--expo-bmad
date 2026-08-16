@@ -19,7 +19,7 @@ appId: com.onedown.mobile
 - waitForAnimationToEnd
 
 # Running screen shows the premium sparkle beside the AI action (AC1)
-- assertVisible: 'More steps'
+- assertVisible: 'Get first steps'
 - assertVisible: 'Premium feature: AI task breakdown'
 
 # Tap the sparkle → premium page (AC2)
@@ -35,7 +35,7 @@ appId: com.onedown.mobile
 # Back → running screen still intact (AC3)
 - back
 - waitForAnimationToEnd
-- assertVisible: 'More steps'
+- assertVisible: 'Get first steps'
 - assertVisible: 'Sparkle me task'
 
 - assertNotVisible: 'Unhandled'

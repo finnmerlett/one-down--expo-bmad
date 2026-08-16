@@ -22,6 +22,8 @@ import { Text } from '@/components/ui/text';
 import { Textarea, TextareaInput } from '@/components/ui/textarea';
 import { VStack } from '@/components/ui/vstack';
 
+import { EDITABLE_BODY_SIZE } from '@/constants/typography';
+
 import type { StepActionsController } from '@/hooks/use-step-actions';
 import type { UpdateTaskPatch } from '@/services/tasks-repository';
 
@@ -95,6 +97,9 @@ export function TaskRunningView({
 
   // Draft-or-stored: null draft = not editing, the field follows the DB.
   const [notesDraft, setNotesDraft] = useState<string | null>(null);
+
+  // 9.8 B2: notes start collapsed — the chevron beside the label expands.
+  const [notesOpen, setNotesOpen] = useState(false);
 
   // Catch-up drop on RAW equality only (Story 2.2): with mid-session debounced
   // writes landing via the live query, dropping the draft on ANY stored change
@@ -318,9 +323,10 @@ export function TaskRunningView({
           )
         ) : null}
         <Box className="flex-1" />
+        {/* 9.8 B3: with no steps yet the same action reads as the first ask. */}
         <Pressable
           accessibilityRole="button"
-          aria-label="More steps"
+          aria-label={hasSteps ? 'More steps' : 'Get first steps'}
           disabled={working || changeOpen}
           onPress={handleGetMoreSteps}
           className={`h-10 flex-row items-center justify-center gap-[7px] rounded-full bg-primary-500 px-[18px] active:bg-primary-600 ${
@@ -334,7 +340,9 @@ export function TaskRunningView({
             </>
           ) : (
             <>
-              <Text className="font-body-bold text-sm text-typography-0">More steps</Text>
+              <Text className="font-body-bold text-sm text-typography-0">
+                {hasSteps ? 'More steps' : 'Get first steps'}
+              </Text>
               <Icon as={ArrowRightIcon} size="sm" className="text-typography-0" />
             </>
           )}
@@ -420,25 +428,58 @@ export function TaskRunningView({
     )
   ) : null;
 
+  // Collapse must not eat an in-flight draft: drop the keyboard first (an
+  // unmounting focused TextInput hands focus onward on Android), then flush.
+  const toggleNotesOpen = () => {
+    if (notesOpen) {
+      Keyboard.dismiss();
+      flushNotes();
+    }
+    setNotesOpen((open) => !open);
+  };
+
   const notesBlock = (
     <VStack className="flex-none gap-[7px]">
-      <Text className="font-mono text-xs uppercase tracking-caps text-typography-400">Notes</Text>
+      {/* 9.8 B2: the whole label row toggles; chevron sits next to the word. */}
+      <Pressable
+        accessibilityRole="button"
+        aria-label={notesOpen ? 'Collapse notes' : 'Expand notes'}
+        hitSlop={8}
+        onPress={toggleNotesOpen}
+        className="flex-row items-center gap-1 self-start active:opacity-60"
+      >
+        <Text className="font-mono text-xs uppercase tracking-caps text-typography-400">Notes</Text>
+        <Icon
+          as={notesOpen ? ChevronUpIcon : ChevronDownIcon}
+          size="sm"
+          className="text-typography-400"
+        />
+      </Pressable>
       {/* Static className only — swapping a gluestack compound component's
           classes per-render tripped the css-interop style context on device
-          (D3); the component's own data-[focus] variant draws the ring. */}
-      <Textarea size="md" className="min-h-14 rounded-[15px] border-outline-100 bg-background-0">
-        <TextareaInput
-          aria-label="Task notes"
-          placeholder="Jot things down as you go"
-          value={notes}
-          onChangeText={handleNotesChange}
-          onFocus={() => setNotesFocused(true)}
-          onBlur={() => {
-            setNotesFocused(false);
-            flushNotes();
-          }}
-        />
-      </Textarea>
+          (D3); the component's own data-[focus] variant draws the ring.
+          9.8 B1: the box grows with its content (h-auto beats the base
+          h-[100px]); past ~6 lines the input scrolls inside its max height. */}
+      {notesOpen ? (
+        <Textarea
+          size={EDITABLE_BODY_SIZE}
+          className="h-auto min-h-14 rounded-[15px] border-outline-100 bg-background-0"
+        >
+          <TextareaInput
+            aria-label="Task notes"
+            placeholder="Jot things down as you go"
+            value={notes}
+            onChangeText={handleNotesChange}
+            onFocus={() => setNotesFocused(true)}
+            onBlur={() => {
+              setNotesFocused(false);
+              flushNotes();
+            }}
+            multiline
+            className="max-h-40 flex-none"
+          />
+        </Textarea>
+      ) : null}
     </VStack>
   );
 

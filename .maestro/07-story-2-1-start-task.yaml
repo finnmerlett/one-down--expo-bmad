@@ -24,11 +24,11 @@ appId: com.onedown.mobile
 - tapOn: 'Task: Start me task. Worth 5 stars. Card 1 of 1'
 - waitForAnimationToEnd
 
-# Working screen: title, notes area, action row
+# Working screen: title, notes area (collapsed by default, 9.8 B2), action row
 - assertVisible: 'Start me task'
-- assertVisible: 'Notes'
+- assertVisible: 'Expand notes'
 - assertVisible: 'Mark as complete'
-- assertVisible: 'More steps'
+- assertVisible: 'Get first steps'
 - assertVisible: 'Cut it loose'
 
 # Just looking is NOT starting: leave untouched -> no Continue marker
@@ -41,8 +41,10 @@ appId: com.onedown.mobile
 
 # Re-enter and add a working note, then leave WITHOUT blurring the field —
 # the note must survive via the beforeRemove flush, not the onBlur save
+# (9.8 B2: notes start collapsed — expand before typing)
 - tapOn: 'Task: Start me task. Worth 5 stars. Card 1 of 1'
 - waitForAnimationToEnd
+- tapOn: 'Expand notes'
 - tapOn: 'Task notes'
 - inputText: 'Halfway through the pile'
 - tapOn: 'Pause and go back'
@@ -55,9 +57,10 @@ appId: com.onedown.mobile
     timeout: 3000
 - assertVisible: 'In progress'
 
-# Tap again -> working screen reopens with the note preserved
+# Tap again -> working screen reopens with the note preserved (expand first)
 - tapOn: 'Task: Start me task. Worth 5 stars. Card 1 of 1'
 - waitForAnimationToEnd
+- tapOn: 'Expand notes'
 - assertVisible: 'Halfway through the pile'
 
 # Hardware back also leaves cleanly — home stack intact, still marked

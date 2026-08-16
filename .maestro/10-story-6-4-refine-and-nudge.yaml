@@ -35,7 +35,7 @@ appId: com.onedown.mobile
 # Open the working screen and land the first three steps (D4 direct)
 - tapOn: 'Task: Sort the paperwork mountain\..*'
 - waitForAnimationToEnd
-- tapOn: 'More steps'
+- tapOn: 'Get first steps'
 - extendedWaitUntil:
     visible: 'Subtask: Do just the first two minutes'
     timeout: 15000

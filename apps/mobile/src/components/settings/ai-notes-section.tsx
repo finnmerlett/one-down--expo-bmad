@@ -4,6 +4,8 @@ import { Text } from '@/components/ui/text';
 import { Textarea, TextareaInput } from '@/components/ui/textarea';
 import { VStack } from '@/components/ui/vstack';
 
+import { EDITABLE_BODY_SIZE } from '@/constants/typography';
+
 /**
  * General AI notes (9-5 item 4): the editable bullet list of durable facts
  * the AI knows about the user — grown automatically by refine learnings and
@@ -29,7 +31,10 @@ export function AiNotesSection({
           suggestion — bullet points, yours to edit.
         </Text>
       </VStack>
-      <Textarea size="md" className="min-h-28 rounded-[15px] border-outline-100 bg-background-0">
+      <Textarea
+        size={EDITABLE_BODY_SIZE}
+        className="min-h-28 rounded-[15px] border-outline-100 bg-background-0"
+      >
         <TextareaInput
           aria-label="AI general notes"
           placeholder="- Nothing here yet — add your own pointers, one per line"

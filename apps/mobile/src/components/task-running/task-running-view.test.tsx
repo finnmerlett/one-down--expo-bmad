@@ -15,6 +15,13 @@ import { makeStepActions } from './task-running-view.stories';
 const { WithDetailsAndNotes, Bare, WithSubtasks, ChangeWorking } =
   composeStories(taskRunningStories);
 
+// 9.8 B2: notes start collapsed — expand (idempotently) and return the field.
+const openNotes = async () => {
+  const toggle = screen.queryByLabelText('Expand notes');
+  if (toggle) await fireEvent.press(toggle);
+  return screen.getByLabelText('Task notes');
+};
+
 // Task shape backing the WithDetailsAndNotes story — rerendering with a
 // changed `notes` simulates a write landing via the live query.
 const storyTask = (notes: string | null) =>
@@ -32,11 +39,11 @@ describe('TaskRunningView (portable stories)', () => {
 
     expect(screen.getByText('Sort out the garage')).toBeTruthy();
     expect(screen.getByText('At least clear a path to the freezer')).toBeTruthy();
-    expect(screen.getByLabelText('Task notes').props.value).toBe('Shelves are up, boxes next');
+    expect((await openNotes()).props.value).toBe('Shelves are up, boxes next');
     // Done is disabled without onDone (Story 2.3); Cut loose without
-    // onCutLoose (2.4). With zero steps only More steps shows (D4).
+    // onCutLoose (2.4). With zero steps the action reads Get first steps (9.8 B3).
     expect(screen.getByLabelText('Mark as complete').props.accessibilityState?.disabled).toBe(true);
-    expect(screen.getByLabelText('More steps')).toBeTruthy();
+    expect(screen.getByLabelText('Get first steps')).toBeTruthy();
     expect(screen.queryByLabelText('Change')).toBeNull();
     expect(screen.getByLabelText('Cut it loose').props.accessibilityState?.disabled).toBe(true);
   });
@@ -62,7 +69,7 @@ describe('TaskRunningView (portable stories)', () => {
 
     // Keyboard still up, debounce not yet fired — released tasks keep their
     // latest notes for the Epic 7 recycle bin restore.
-    await fireEvent.changeText(screen.getByLabelText('Task notes'), 'Keep this for later');
+    await fireEvent.changeText(await openNotes(), 'Keep this for later');
     await fireEvent.press(screen.getByLabelText('Cut it loose'));
 
     expect(onPatch).toHaveBeenCalledWith({ notes: 'Keep this for later' });
@@ -79,7 +86,7 @@ describe('TaskRunningView (portable stories)', () => {
     await render(<WithDetailsAndNotes onPatch={onPatch} onDone={onDone} />);
 
     // Keyboard still up, debounce not yet fired — tap Done immediately.
-    await fireEvent.changeText(screen.getByLabelText('Task notes'), 'Final thought');
+    await fireEvent.changeText(await openNotes(), 'Final thought');
     await fireEvent.press(screen.getByLabelText('Mark as complete'));
 
     expect(onPatch).toHaveBeenCalledWith({ notes: 'Final thought' });
@@ -94,14 +101,14 @@ describe('TaskRunningView (portable stories)', () => {
     await render(<Bare />);
 
     expect(screen.getByText('Water the plants')).toBeTruthy();
-    expect(screen.getByLabelText('Task notes').props.value).toBe('');
+    expect((await openNotes()).props.value).toBe('');
   });
 
   it('saves changed notes on blur, but not unchanged ones', async () => {
     const onPatch = jest.fn();
     await render(<WithDetailsAndNotes onPatch={onPatch} />);
 
-    const notes = screen.getByLabelText('Task notes');
+    const notes = await openNotes();
     await fireEvent(notes, 'blur');
     expect(onPatch).not.toHaveBeenCalled();
 
@@ -114,11 +121,28 @@ describe('TaskRunningView (portable stories)', () => {
     const onPatch = jest.fn();
     await render(<WithDetailsAndNotes onPatch={onPatch} />);
 
-    const notes = screen.getByLabelText('Task notes');
+    const notes = await openNotes();
     await fireEvent.changeText(notes, '   ');
     await fireEvent(notes, 'blur');
 
     expect(onPatch).toHaveBeenCalledWith({ notes: null });
+  });
+
+  it('notes start collapsed; collapsing again flushes the draft (9.8 B1/B2)', async () => {
+    const onPatch = jest.fn();
+    await render(<WithDetailsAndNotes onPatch={onPatch} />);
+
+    // Collapsed by default — the field only mounts once expanded.
+    expect(screen.queryByLabelText('Task notes')).toBeNull();
+    await fireEvent.press(screen.getByLabelText('Expand notes'));
+    const notes = screen.getByLabelText('Task notes');
+    expect(notes.props.multiline).toBe(true);
+
+    // Collapse mid-draft: the pending text persists before the field unmounts.
+    await fireEvent.changeText(notes, 'Written then collapsed');
+    await fireEvent.press(screen.getByLabelText('Collapse notes'));
+    expect(onPatch).toHaveBeenCalledWith({ notes: 'Written then collapsed' });
+    expect(screen.queryByLabelText('Task notes')).toBeNull();
   });
 });
 
@@ -144,7 +168,7 @@ describe('TaskRunningView notes autosave (Story 2.2)', () => {
     const onPatch = jest.fn();
     await render(<WithDetailsAndNotes onPatch={onPatch} />);
 
-    await fireEvent.changeText(screen.getByLabelText('Task notes'), '  Boxes done, sweeping next ');
+    await fireEvent.changeText(await openNotes(), '  Boxes done, sweeping next ');
     expect(onPatch).not.toHaveBeenCalled();
 
     await pause(NOTES_AUTOSAVE_DEBOUNCE_MS);
@@ -159,7 +183,7 @@ describe('TaskRunningView notes autosave (Story 2.2)', () => {
   it('defers while typing continuously and writes only the final text (trailing debounce)', async () => {
     const onPatch = jest.fn();
     await render(<WithDetailsAndNotes onPatch={onPatch} />);
-    const notes = screen.getByLabelText('Task notes');
+    const notes = await openNotes();
 
     await fireEvent.changeText(notes, 'Boxes');
     await pause(NOTES_AUTOSAVE_DEBOUNCE_MS - 100);
@@ -175,7 +199,7 @@ describe('TaskRunningView notes autosave (Story 2.2)', () => {
   it('flushes immediately on blur and the cancelled timer never double-writes (AC2)', async () => {
     const onPatch = jest.fn();
     await render(<WithDetailsAndNotes onPatch={onPatch} />);
-    const notes = screen.getByLabelText('Task notes');
+    const notes = await openNotes();
 
     await fireEvent.changeText(notes, 'Halfway through');
     await fireEvent(notes, 'blur');
@@ -195,7 +219,7 @@ describe('TaskRunningView notes autosave (Story 2.2)', () => {
       <TaskRunningView ref={ref} task={storyTask('Shelves are up')} onPatch={onPatch} />,
     );
 
-    await fireEvent.changeText(screen.getByLabelText('Task notes'), 'Leaving mid-thought');
+    await fireEvent.changeText(await openNotes(), 'Leaving mid-thought');
     await act(async () => {
       ref.current?.flush();
     });
@@ -209,7 +233,7 @@ describe('TaskRunningView notes autosave (Story 2.2)', () => {
   it('does not duplicate the write when blur lands before the live query re-emits (AC4)', async () => {
     const onPatch = jest.fn();
     await render(<WithDetailsAndNotes onPatch={onPatch} />);
-    const notes = screen.getByLabelText('Task notes');
+    const notes = await openNotes();
 
     await fireEvent.changeText(notes, 'Fresh thinking');
     await pause(NOTES_AUTOSAVE_DEBOUNCE_MS);
@@ -225,7 +249,7 @@ describe('TaskRunningView notes autosave (Story 2.2)', () => {
   it('writes a revert-to-stored edit typed before the live query re-emits (AC1/AC4)', async () => {
     const onPatch = jest.fn();
     await render(<WithDetailsAndNotes onPatch={onPatch} />);
-    const notes = screen.getByLabelText('Task notes');
+    const notes = await openNotes();
 
     await fireEvent.changeText(notes, 'Changed my mind');
     await pause(NOTES_AUTOSAVE_DEBOUNCE_MS);
@@ -244,10 +268,7 @@ describe('TaskRunningView notes autosave (Story 2.2)', () => {
     await render(<WithDetailsAndNotes onPatch={onPatch} />);
 
     // Trims back to the stored 'Shelves are up, boxes next' — no write.
-    await fireEvent.changeText(
-      screen.getByLabelText('Task notes'),
-      '  Shelves are up, boxes next ',
-    );
+    await fireEvent.changeText(await openNotes(), '  Shelves are up, boxes next ');
     await pause(NOTES_AUTOSAVE_DEBOUNCE_MS);
 
     expect(onPatch).not.toHaveBeenCalled();
@@ -256,7 +277,7 @@ describe('TaskRunningView notes autosave (Story 2.2)', () => {
   it('drops the draft when the saved value lands, then follows the DB again (AC5)', async () => {
     const onPatch = jest.fn();
     const view = await render(<WithDetailsAndNotes onPatch={onPatch} />);
-    const notes = screen.getByLabelText('Task notes');
+    const notes = await openNotes();
 
     await fireEvent.changeText(notes, 'Fresh thinking');
     await pause(NOTES_AUTOSAVE_DEBOUNCE_MS);
@@ -266,20 +287,20 @@ describe('TaskRunningView notes autosave (Story 2.2)', () => {
     await view.rerender(
       <WithDetailsAndNotes onPatch={onPatch} task={storyTask('Fresh thinking')} />,
     );
-    expect(screen.getByLabelText('Task notes').props.value).toBe('Fresh thinking');
+    expect((await openNotes()).props.value).toBe('Fresh thinking');
 
     // Proof the draft actually dropped: the field follows stored changes again.
     await view.rerender(
       <WithDetailsAndNotes onPatch={onPatch} task={storyTask('Follows the DB now')} />,
     );
-    expect(screen.getByLabelText('Task notes').props.value).toBe('Follows the DB now');
+    expect((await openNotes()).props.value).toBe('Follows the DB now');
   });
 
   it('never visually trims trailing whitespace while editing (AC5)', async () => {
     const onPatch = jest.fn();
     const view = await render(<WithDetailsAndNotes onPatch={onPatch} />);
 
-    await fireEvent.changeText(screen.getByLabelText('Task notes'), 'Fresh thinking ');
+    await fireEvent.changeText(await openNotes(), 'Fresh thinking ');
     await pause(NOTES_AUTOSAVE_DEBOUNCE_MS);
     expect(onPatch).toHaveBeenCalledWith({ notes: 'Fresh thinking' });
 
@@ -288,13 +309,13 @@ describe('TaskRunningView notes autosave (Story 2.2)', () => {
     await view.rerender(
       <WithDetailsAndNotes onPatch={onPatch} task={storyTask('Fresh thinking')} />,
     );
-    expect(screen.getByLabelText('Task notes').props.value).toBe('Fresh thinking ');
+    expect((await openNotes()).props.value).toBe('Fresh thinking ');
   });
 
   it('keeps the active draft when an external writer changes notes mid-edit (AC5)', async () => {
     const onPatch = jest.fn();
     const view = await render(<WithDetailsAndNotes onPatch={onPatch} />);
-    const notes = screen.getByLabelText('Task notes');
+    const notes = await openNotes();
 
     await fireEvent.changeText(notes, 'My live draft');
 
@@ -303,7 +324,7 @@ describe('TaskRunningView notes autosave (Story 2.2)', () => {
     await view.rerender(
       <WithDetailsAndNotes onPatch={onPatch} task={storyTask('Externally written')} />,
     );
-    expect(screen.getByLabelText('Task notes').props.value).toBe('My live draft');
+    expect((await openNotes()).props.value).toBe('My live draft');
   });
 });
 
@@ -315,12 +336,12 @@ describe('premium sparkle gating (Story 8.2a)', () => {
     useEntitlementsStore.setState({ isPremium: false });
   });
 
-  it('free tier: the discovery sparkle sits beside More steps', async () => {
+  it('free tier: the discovery sparkle sits beside the steps action', async () => {
     await render(<WithDetailsAndNotes />);
 
     expect(screen.getByLabelText('Premium feature: AI task breakdown')).toBeTruthy();
     // Discovery only (AC3) — the gated button itself is untouched by gating.
-    expect(screen.getByLabelText('More steps')).toBeTruthy();
+    expect(screen.getByLabelText('Get first steps')).toBeTruthy();
   });
 
   it('premium: no sparkle rendered on the gated surface (AC4)', async () => {
@@ -328,20 +349,20 @@ describe('premium sparkle gating (Story 8.2a)', () => {
     await render(<WithDetailsAndNotes />);
 
     expect(screen.queryByLabelText('Premium feature: AI task breakdown')).toBeNull();
-    expect(screen.getByLabelText('More steps')).toBeTruthy();
+    expect(screen.getByLabelText('Get first steps')).toBeTruthy();
   });
 });
 
 describe('step actions (D4, 05b–05e)', () => {
-  it('More steps flushes the notes draft first, then asks the controller', async () => {
+  it('Get first steps flushes the notes draft first, then asks the controller', async () => {
     const onPatch = jest.fn();
     const getMoreSteps = jest.fn();
     await render(
       <WithDetailsAndNotes onPatch={onPatch} stepActions={makeStepActions({ getMoreSteps })} />,
     );
 
-    await fireEvent.changeText(screen.getByLabelText('Task notes'), 'Current thinking');
-    await fireEvent.press(screen.getByLabelText('More steps'));
+    await fireEvent.changeText(await openNotes(), 'Current thinking');
+    await fireEvent.press(screen.getByLabelText('Get first steps'));
 
     expect(getMoreSteps).toHaveBeenCalledTimes(1);
     expect(onPatch).toHaveBeenCalledWith({ notes: 'Current thinking' });

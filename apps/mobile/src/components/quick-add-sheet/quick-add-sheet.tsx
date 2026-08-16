@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { Keyboard, Modal, Pressable, View, type TextInput } from 'react-native';
 
-import { Button, ButtonText } from '@/components/ui/button';
+import { AppButton } from '@/components/ui/app-button';
 import { Input, InputField } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import { Textarea, TextareaInput } from '@/components/ui/textarea';
 import { VStack } from '@/components/ui/vstack';
+
+import { EDITABLE_BODY_SIZE, EDITABLE_BODY_TEXT } from '@/constants/typography';
 
 import type { CreateTaskInput } from '@/services/tasks-repository';
 
@@ -82,6 +84,8 @@ export function QuickAddSheet({
             <VStack className="h-1.5 w-10 rounded-full bg-background-400" />
           </VStack>
           <Text className="font-heading text-xl text-typography-900">Add a task</Text>
+          {/* Text at the standardised editable size (9.8 A1); the container
+              keeps its lg height so the tap target stays comfortable. */}
           <Input size="lg">
             <InputField
               ref={titleRef}
@@ -93,9 +97,10 @@ export function QuickAddSheet({
                 if (error) setError(null);
               }}
               autoFocus
+              className={EDITABLE_BODY_TEXT}
             />
           </Input>
-          <Textarea size="md">
+          <Textarea size={EDITABLE_BODY_SIZE}>
             <TextareaInput
               aria-label="Task details"
               placeholder="Details (optional)"
@@ -111,9 +116,12 @@ export function QuickAddSheet({
               {error}
             </Text>
           ) : null}
-          <Button size="lg" aria-label="Save task" onPress={handleSave}>
-            <ButtonText>Save</ButtonText>
-          </Button>
+          <AppButton
+            kind="primary-compact"
+            aria-label="Save task"
+            label="Save"
+            onPress={handleSave}
+          />
         </VStack>
       </View>
     </Modal>

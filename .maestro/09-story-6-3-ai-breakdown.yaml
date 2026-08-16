@@ -31,7 +31,8 @@ appId: com.onedown.mobile
 # First ask (zero steps): the three starters land DIRECTLY as subtasks (D4).
 # The 'Working' spinner state is NOT asserted: against the instant local fake
 # provider it renders for ~500ms and Maestro's hierarchy poll can miss it.
-- tapOn: 'More steps'
+# (9.8 B3: with zero steps the button reads 'Get first steps'.)
+- tapOn: 'Get first steps'
 - extendedWaitUntil:
     visible: 'Subtask: Do just the first two minutes'
     timeout: 15000

@@ -1,4 +1,4 @@
-import { Button, ButtonText } from '@/components/ui/button';
+import { AppButton } from '@/components/ui/app-button';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 
@@ -31,13 +31,18 @@ export function EmptyState({
       >
         {glyph}
       </Text>
-      <Text className="text-center font-heading text-2xl text-typography-900">{title}</Text>
-      <Text className="text-center text-typography-500">{body}</Text>
+      {/* 9.8 A8: both copy lines a step smaller — this screen read louder
+          than the brain dump. */}
+      <Text className="text-center font-heading text-xl text-typography-900">{title}</Text>
+      <Text className="text-center text-sm text-typography-500">{body}</Text>
       {actionLabel && onAction ? (
-        // gluestack creator components take aria-label, not accessibilityLabel.
-        <Button size="lg" className="mt-4" aria-label={actionLabel} onPress={onAction}>
-          <ButtonText>{actionLabel}</ButtonText>
-        </Button>
+        <AppButton
+          kind="primary-compact"
+          className="mt-4"
+          aria-label={actionLabel}
+          label={actionLabel}
+          onPress={onAction}
+        />
       ) : null}
     </VStack>
   );

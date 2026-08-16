@@ -4,5 +4,6 @@
 // The package barrel deliberately re-exports neither.
 export * from './preferences';
 export * from './star-activity';
+export * from './state-snapshots';
 export * from './subtasks';
 export * from './tasks';
