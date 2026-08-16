@@ -8,6 +8,8 @@ const meta = {
   args: {
     onGo: () => {},
     onRetry: () => {},
+    onKeep: () => {},
+    onCutLoose: () => {},
   },
 } satisfies Meta<typeof MicroTaskNudge>;
 

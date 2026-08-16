@@ -9,10 +9,12 @@ import { useAuth } from '@/components/auth/auth-provider';
 import { AccountSection } from '@/components/settings/account-section';
 import { AiNotesSection } from '@/components/settings/ai-notes-section';
 import { AppearanceSection } from '@/components/settings/appearance-section';
+import { DebugSection } from '@/components/settings/debug-section';
 import {
   NotificationPreferencesSection,
   type NotificationPermissionState,
 } from '@/components/settings/notification-preferences-section';
+import { SessionSection } from '@/components/settings/session-section';
 import { SettingsView } from '@/components/settings/settings-view';
 import { HStack } from '@/components/ui/hstack';
 import { ArrowLeftIcon, Icon } from '@/components/ui/icon';
@@ -20,6 +22,7 @@ import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
 import { track } from '@/lib/analytics/track';
 import { db } from '@/lib/local-db';
+import { trpcClient } from '@/lib/trpc';
 import {
   getNotificationPrefs,
   setNotificationPrefs,
@@ -28,6 +31,8 @@ import {
 } from '@/services/notifications/notification-prefs';
 import { getAiGeneralNotes, setAiGeneralNotes } from '@/services/ai-notes';
 import { getAppearance, setAppearance, type AppearanceMode } from '@/services/appearance';
+import { getContextAutoOpen, setContextAutoOpen } from '@/services/context-auto-open';
+import { captureStateSnapshot } from '@/services/state-snapshot';
 
 // Third-party component — NativeWind only auto-interops react-native core.
 cssInterop(SafeAreaView, { className: 'style' });
@@ -51,6 +56,8 @@ export default function SettingsScreen() {
   const [appearance, setAppearanceState] = useState<AppearanceMode | null>(null);
   // null until loaded (9-5 item 4) — an early edit can't clobber stored notes.
   const [aiNotes, setAiNotes] = useState<string | null>(null);
+  // null until loaded (9.8 D4) — same early-toggle guard.
+  const [contextAutoOpen, setContextAutoOpenState] = useState<boolean | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -62,6 +69,9 @@ export default function SettingsScreen() {
     });
     void getAiGeneralNotes(db).then((stored) => {
       if (!cancelled) setAiNotes(stored);
+    });
+    void getContextAutoOpen(db).then((stored) => {
+      if (!cancelled) setContextAutoOpenState(stored);
     });
     const checkPermission = () =>
       void Notifications.getPermissionsAsync().then((response) => {
@@ -183,6 +193,25 @@ export default function SettingsScreen() {
             }}
           />
         ) : null}
+        {contextAutoOpen !== null ? (
+          <SessionSection
+            autoOpen={contextAutoOpen}
+            onToggle={(value) => {
+              setContextAutoOpenState(value);
+              void setContextAutoOpen(db, value)
+                // oxlint-disable-next-line no-console
+                .catch((error: unknown) => console.warn('Context auto-open save failed', error));
+            }}
+          />
+        ) : null}
+        <DebugSection
+          signedIn={session !== null}
+          onCapture={() =>
+            captureStateSnapshot(db, {
+              save: (input) => trpcClient.snapshot.save.mutate(input),
+            })
+          }
+        />
       </SettingsView>
     </SafeAreaView>
   );

@@ -1,5 +1,6 @@
 import { BlurTargetView, BlurView } from 'expo-blur';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { useColorScheme } from 'nativewind';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 import Animated, { Easing, FadeIn, FadeOut, withTiming } from 'react-native-reanimated';
@@ -38,6 +39,7 @@ import { useTaskOffers } from '@/hooks/use-task-offers';
 import { useTasks } from '@/hooks/use-tasks';
 import { track } from '@/lib/analytics/track';
 import { db } from '@/lib/local-db';
+import { getContextAutoOpen } from '@/services/context-auto-open';
 import {
   assignBadges,
   attentionContexts,
@@ -96,6 +98,8 @@ const sheetExit = () => {
 
 export default function HomeScreen() {
   const router = useRouter();
+  // 9.8 D5: the context-sheet scrim follows the live scheme.
+  const { colorScheme: scheme } = useColorScheme();
   const isOpen = useQuickAddStore((state) => state.isOpen);
   const open = useQuickAddStore((state) => state.open);
   const close = useQuickAddStore((state) => state.close);
@@ -131,13 +135,24 @@ export default function HomeScreen() {
   // (well inside the grace window) has tasks, expand; an empty deck at open
   // forfeits it for the session — the sheet must never pop up mid-session
   // when the first task lands (brand-new-user seeding would hit that).
+  // 9.8 D4: gated on the "ask for your context" setting — off means the stack
+  // shows straight away with the previous context.
   const mountedAtRef = useRef(Date.now());
   useEffect(() => {
     if (Date.now() - mountedAtRef.current > 4000) {
       consumeAutoOpen();
       return;
     }
-    if (tasks.length > 0) autoOpenOnce();
+    if (tasks.length === 0) return;
+    let cancelled = false;
+    void getContextAutoOpen(db).then((enabled) => {
+      if (cancelled) return;
+      if (enabled) autoOpenOnce();
+      else consumeAutoOpen();
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [tasks.length, autoOpenOnce, consumeAutoOpen]);
 
   // Session curation seed — stable across re-renders/live-query emits (the
@@ -226,6 +241,28 @@ export default function HomeScreen() {
     topTask !== null &&
     topTask.status === 'pending' &&
     topTask.skipCount >= MICRO_TASK_SKIP_THRESHOLD;
+  // 9.8 D3: the nudge is the 7.2 health prompt now — Keep it clears the skip
+  // streak; Cut loose mirrors the overlay path (award + undo toast).
+  const handleNudgeKeep = useCallback(() => {
+    if (topTask) keepTask(topTask);
+  }, [topTask]);
+  const handleNudgeCutLoose = useCallback(() => {
+    const task = topTask;
+    if (!task) return;
+    if (cutLooseFiredRef.current === task.id) return;
+    cutLooseFiredRef.current = task.id;
+    cutLooseTask(task, 'home_nudge');
+    void awardCutLooseStars(db, task).then((stars) => {
+      showRewardToast(toast, {
+        title: 'Released',
+        stars,
+        onUndo: () => {
+          cutLooseFiredRef.current = null;
+          void undoTaskCutLoose(db, task);
+        },
+      });
+    });
+  }, [topTask, toast]);
   const available = useMemo(() => availableContexts(tasks, mode), [tasks, mode]);
 
   // v1.5 economy: the card shows its size value; badges render separately
@@ -371,7 +408,13 @@ export default function HomeScreen() {
             {/* Height-reveal (9-5 item 5): the deck eases up/down instead of
                 jumping when the nudge appears or the next card drops it. */}
             <NudgeReveal visible={showNudge}>
-              <MicroTaskNudge state={micro.state} onGo={handleNudgeGo} onRetry={handleNudgeGo} />
+              <MicroTaskNudge
+                state={micro.state}
+                onGo={handleNudgeGo}
+                onRetry={handleNudgeGo}
+                onKeep={handleNudgeKeep}
+                onCutLoose={handleNudgeCutLoose}
+              />
             </NudgeReveal>
           </>
         )}
@@ -388,9 +431,14 @@ export default function HomeScreen() {
             exiting={FadeOut.duration(150)}
             style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
           >
+            {/* 9.8 D5: theme-aware scrim. The hardcoded light tint + the
+                background-100 token (dark: rgb 43 46 44) painted the whole
+                backdrop flat dark grey in dark mode — the blur was invisible
+                under it. Dark mode now blurs with a dark tint and a gentle
+                black wash so the blurred home still reads through. */}
             <BlurView
               intensity={22}
-              tint="light"
+              tint={scheme === 'dark' ? 'dark' : 'light'}
               blurMethod="dimezisBlurView"
               blurTarget={blurTargetRef}
               style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
@@ -399,7 +447,7 @@ export default function HomeScreen() {
               accessibilityRole="button"
               aria-label="Close context sheet"
               onPress={collapseBar}
-              className="absolute inset-0 bg-background-100/40"
+              className="absolute inset-0 bg-background-100/40 dark:bg-black/25"
             />
           </Animated.View>
           {/* The sheet grows out of the bar's spot instead of popping.

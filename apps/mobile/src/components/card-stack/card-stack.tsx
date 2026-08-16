@@ -55,9 +55,12 @@ const PROMOTE_DURATION_MS = 200;
 const CARD_FRAME = { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 } as const;
 const FILL = { height: '100%', width: '100%' } as const;
 
-// Playing-card proportions (owner feedback 2026-07-27): 2.5:3.5.
-export const CARD_WIDTH = 280;
-export const CARD_HEIGHT = 392;
+// Card geometry (9.8 D1, owner-specified maths): vs the old fixed 280×392
+// playing card, the side margins shrink by ~35% (so width follows the screen)
+// and the height ratio grows 15% (1.4 → 1.61) — bigger, taller cards.
+const SCREEN_WIDTH = Dimensions.get('window').width;
+export const CARD_WIDTH = Math.round(SCREEN_WIDTH - (SCREEN_WIDTH - 280) * 0.65);
+export const CARD_HEIGHT = Math.round(CARD_WIDTH * 1.61);
 /** |translateX| at which the card has fully left the screen — the advance
  *  fires HERE (mid-flight), not at the end of the 1000px timing. */
 const EXIT_X = (Dimensions.get('window').width + CARD_WIDTH) / 2;
@@ -495,11 +498,11 @@ export function CardStack({
   };
 
   return (
-    // Playing-card deck (owner feedback 2026-07-27, round 2): the card keeps
-    // real playing-card proportions (2.5:3.5 → 280×392) with breathing room
-    // on every side — centered in the leftover vertical space, never a
-    // full-screen fill (that read as one giant card with a dead middle).
-    <Box className="flex-1 items-center justify-center py-2">
+    // Deck anchored to the TOP of the leftover space (9.8 D2): the old
+    // vertical centering meant anything appearing below (the keeps-coming-
+    // round panel) re-centred the deck and the cards jumped. Anchored, the
+    // cards hold one position and the panel fills the space underneath.
+    <Box className="flex-1 items-center justify-start py-2">
       <Box className="relative" style={{ width: CARD_WIDTH, height: CARD_HEIGHT }}>
         {/* Deepest card first so the top card paints last (highest z). */}
         {stackWindow

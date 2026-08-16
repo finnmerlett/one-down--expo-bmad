@@ -102,11 +102,11 @@ appId: com.onedown.mobile
           end: 5%, 45%
       - waitForAnimationToEnd
 
-# The E9 nudge floats under the stack for the skipped top card (AC5). One tap
-# costs no decisions: fetch the smallest step, save it, open the working
-# screen with it in the list (AC6).
-- assertVisible: 'This one keeps coming back round.'
-- tapOn: 'Show me the smallest step'
+# The E9 nudge floats under the stack for the skipped top card (AC5). 9.8 D3:
+# it now IS the 7.2 health prompt — Break it down keeps the zero-decision
+# magic: fetch the smallest step, save it, open the working screen (AC6).
+- assertVisible: 'You keep skipping this one. No judgement — what would help?'
+- tapOn: 'Break it down'
 - extendedWaitUntil:
     visible: 'Subtask: Do just the very first minute of "Ring the council office"'
     timeout: 15000

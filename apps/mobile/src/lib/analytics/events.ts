@@ -30,7 +30,7 @@ export type AnalyticsEventMap = EnforceFlatProps<{
   task_completed: { size: 'quick_win' | 'big_time' | null; had_notes: boolean };
   /** Story 2.4 — task archived guilt-free (7.3 adds the triage surface). */
   task_cut_loose: {
-    via: 'card_back_overlay' | 'list_detail' | 'task_running' | 'triage';
+    via: 'card_back_overlay' | 'list_detail' | 'task_running' | 'triage' | 'home_nudge';
     was_started: boolean;
   };
   /** Story 3.1 — a context filter button toggled on the home screen (enum names only). */
@@ -222,6 +222,10 @@ export type AnalyticsEventMap = EnforceFlatProps<{
   task_completion_undone: { stars_removed: number };
   /** Undo cut-loose (2026-07-27) — reward-toast Undo; the release award row is removed. */
   task_cut_loose_undone: { stars_removed: number };
+  /** 9.8 D4 — the "ask for context on open" setting flipped. */
+  context_auto_open_changed: { value: boolean };
+  /** 9.8 F3 — a debugging state snapshot was uploaded (size only, never content). */
+  state_snapshot_saved: { bytes: number };
   /** OTA update banner (2026-07-27) — a downloaded update is ready to apply. */
   update_prompt_shown: { surface: 'home' };
   /** OTA update banner — user restarted into the update or dismissed it. */
