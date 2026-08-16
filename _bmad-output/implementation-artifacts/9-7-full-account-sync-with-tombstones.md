@@ -1,6 +1,8 @@
 # Story 9.7 — Full account sync with tombstones
 
-**Status:** implemented 2026-08-15 (tasks 1–7); task 8 (OTA + phone verification) pending
+**Status:** DONE 2026-08-16 — OTA group 9b0a45c6 confirmed live on the phone
+(Finn filed Keep items against the 139981d build, incl. one regression, with
+no sync problems reported; treating phone verification as passed)
 **Origin:** 2026-08-15 design discussion (steps-don't-sync gap found during the
 laundry-notes forensics; snapshot-vs-sync options weighed, hybrid rejected as
 a two-sources-of-truth smell)
@@ -79,7 +81,7 @@ where it belongs — an ops-level Postgres backup on the server.
 | 5 | Tests: mobile sync integration (tombstone round-trip, resurrection regression, AI-replace + undo over sync, per-entity cursors, preference key-LWW) + server sync tests per entity incl. old-client no-deletedAt push | **done** — 381 mobile + 156 server green |
 | 6 | E2E: `fullsync` fixture account (tasks + steps + ledger + preference) + flow 54 proving restore-after-wipe AND delete-stays-deleted | **done** — see verification |
 | 7 | Ops: scheduled `pg_dump` for the supabase-local Postgres, retention 14 days | **done** — `scripts/ops/pg-backup.sh` + `com.onedown.pg-backup.plist` (launchd user agent, daily 09:00, installed + smoke-run: 584K dump) |
-| 8 | OTA + phone verification once shipped | **OTA published 2026-08-16** (update group 9b0a45c6, runtime 2026-08-11-expo-blur, commit 139981d — also ships 9.6's `AI note:` marker). Phone verification pending: after Restart now, the first sync pushes the phone's existing steps/stars/AI notes to the +1 account |
+| 8 | OTA + phone verification once shipped | **done** — OTA published 2026-08-16 (update group 9b0a45c6, runtime 2026-08-11-expo-blur, commit 139981d — also ships 9.6's `AI note:` marker); phone verification confirmed same day: Finn is running the 139981d build (filed Keep items against it) with no sync issues reported |
 
 ## Implementation notes (2026-08-15)
 
