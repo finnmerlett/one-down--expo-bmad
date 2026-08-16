@@ -79,7 +79,7 @@ where it belongs — an ops-level Postgres backup on the server.
 | 5 | Tests: mobile sync integration (tombstone round-trip, resurrection regression, AI-replace + undo over sync, per-entity cursors, preference key-LWW) + server sync tests per entity incl. old-client no-deletedAt push | **done** — 381 mobile + 156 server green |
 | 6 | E2E: `fullsync` fixture account (tasks + steps + ledger + preference) + flow 54 proving restore-after-wipe AND delete-stays-deleted | **done** — see verification |
 | 7 | Ops: scheduled `pg_dump` for the supabase-local Postgres, retention 14 days | **done** — `scripts/ops/pg-backup.sh` + `com.onedown.pg-backup.plist` (launchd user agent, daily 09:00, installed + smoke-run: 584K dump) |
-| 8 | OTA + phone verification once shipped | todo — publish OTA (picks up the client `AI note:` marker from 9.6 too), then verify sync end-to-end on the phone |
+| 8 | OTA + phone verification once shipped | **OTA published 2026-08-16** (update group 9b0a45c6, runtime 2026-08-11-expo-blur, commit 139981d — also ships 9.6's `AI note:` marker). Phone verification pending: after Restart now, the first sync pushes the phone's existing steps/stars/AI notes to the +1 account |
 
 ## Implementation notes (2026-08-15)
 
