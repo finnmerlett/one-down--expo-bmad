@@ -352,12 +352,20 @@ async function ensureUser(email: string): Promise<string> {
   if (created.status !== 422) {
     throw new Error(`admin create user failed: ${created.status} ${await created.text()}`);
   }
-  const list = await fetch(`${SUPABASE_URL}/auth/v1/admin/users?per_page=200`, { headers });
-  if (!list.ok) throw new Error(`admin list users failed: ${list.status}`);
-  const body = (await list.json()) as { users: { id: string; email?: string }[] };
-  const user = body.users.find((candidate) => candidate.email === email);
-  if (!user) throw new Error(`user ${email} exists but was not found in the first 200`);
-  return user.id;
+  // Paginate: the local auth store accumulates throwaway users from server
+  // integration tests (createTestDb harness), so the fixed account can sit
+  // past any single page (bit us at >200 users, 2026-08-16).
+  for (let page = 1; page <= 50; page += 1) {
+    const list = await fetch(`${SUPABASE_URL}/auth/v1/admin/users?per_page=200&page=${page}`, {
+      headers,
+    });
+    if (!list.ok) throw new Error(`admin list users failed: ${list.status}`);
+    const body = (await list.json()) as { users: { id: string; email?: string }[] };
+    const user = body.users.find((candidate) => candidate.email === email);
+    if (user) return user.id;
+    if (body.users.length < 200) break;
+  }
+  throw new Error(`user ${email} exists but was not found while paginating the admin list`);
 }
 
 async function main() {

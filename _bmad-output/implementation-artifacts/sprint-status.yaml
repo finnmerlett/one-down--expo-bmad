@@ -119,4 +119,4 @@ development_status:
   9-2-post-launch-remote-fixes-round-2: done
   9-6-keep-fix-list-pipeline-and-housekeeping: done
   9-7-full-account-sync-with-tombstones: done # OTA group 9b0a45c6 live on phone (Finn reporting bugs against 139981d build, no sync issues)
-  9-8-keep-fixes-round-1: in-progress # first Keep-list sync: 26 items, overnight run 2026-08-16
+  9-8-keep-fixes-round-1: in-progress # first Keep-list sync: 25 items, overnight run 2026-08-16
