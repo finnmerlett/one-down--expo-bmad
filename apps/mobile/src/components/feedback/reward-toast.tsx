@@ -149,7 +149,9 @@ export function RewardToast({
             ))}
           </Box>
         ) : null}
-        <HStack className="items-center gap-3 rounded-full bg-[#2C2723] py-3.5 pl-[22px] pr-3.5 shadow-toast">
+        {/* 9.8 E1: the pill is dark by design, so in dark mode a warm light
+            ring separates it from the equally dark backdrop. */}
+        <HStack className="items-center gap-3 rounded-full bg-[#2C2723] py-3.5 pl-[22px] pr-3.5 shadow-toast dark:border dark:border-[rgba(247,241,232,0.4)]">
           <PulsingStar celebrate={burst} />
           <VStack>
             <Text className="font-heading text-base leading-5 text-[#F7F1E8]">{title}</Text>
@@ -189,7 +191,7 @@ export function showUndoToast(
         accessibilityLiveRegion="polite"
         className="mt-2 items-center border-0 bg-transparent p-0 shadow-none"
       >
-        <HStack className="items-center gap-3 rounded-full bg-[#2C2723] py-3 pl-[22px] pr-3 shadow-toast">
+        <HStack className="items-center gap-3 rounded-full bg-[#2C2723] py-3 pl-[22px] pr-3 shadow-toast dark:border dark:border-[rgba(247,241,232,0.4)]">
           <Text className="font-heading text-base leading-5 text-[#F7F1E8]">{title}</Text>
           <Pressable
             accessibilityRole="button"

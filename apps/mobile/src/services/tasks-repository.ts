@@ -52,6 +52,12 @@ export async function createTask(db: TasksDb, input: CreateTaskInput): Promise<T
       id: randomUUID(),
       title,
       details: details ? details : null,
+      // 9.8 F1: quick-added tasks enter the SAME triage queue as brain-dump
+      // parses. With only a typed title there is nothing to confirm as
+      // guessed — the open question is the deadline ("nothing to go on"),
+      // and the blueprint card carries size/contexts alongside it.
+      reviewFlags: JSON.stringify({ missingDeadline: true } satisfies TaskReviewFlags),
+      hasCheckNeeded: true,
     })
     .returning();
   if (!task) {

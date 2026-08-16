@@ -2,7 +2,7 @@ import { eq, isNull } from 'drizzle-orm';
 
 import { subtasks, tasks } from '@one-down/shared/schema-local';
 
-import type { ParsedTaskDraft } from '@one-down/shared';
+import { parseReviewFlags, type ParsedTaskDraft } from '@one-down/shared';
 
 import { createTestDb, type TestDb } from '../test-utils/db';
 import { loadLocalMigrationsSql } from '../test-utils/migrations';
@@ -51,7 +51,10 @@ describe('tasks-repository (integration, real migration SQL)', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]).toEqual(created);
     expect(rows[0]?.status).toBe('pending');
-    expect(rows[0]?.hasCheckNeeded).toBe(false);
+    // 9.8 F1: quick-added tasks enter the triage queue like brain-dump
+    // parses — the deadline question stands open ("nothing to go on").
+    expect(rows[0]?.hasCheckNeeded).toBe(true);
+    expect(parseReviewFlags(rows[0]?.reviewFlags ?? null)).toEqual({ missingDeadline: true });
     expect(rows[0]?.size).toBeNull();
     expect(rows[0]?.deadline).toBeNull();
     expect(rows[0]?.createdAt).toBeInstanceOf(Date);

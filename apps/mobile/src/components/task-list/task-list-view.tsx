@@ -120,7 +120,9 @@ function TaskRow({
       onLongPress={onLongPress}
       className={`rounded-[15px] border px-4 py-3 ${
         bonus
-          ? 'border-[#EEDDB0] bg-[#FFFCF4] active:bg-tertiary-100'
+          ? // 9.8 E2: the gold treatment gets a dark twin — the hardcoded
+            // cream made the (near-white) dark-mode title invisible.
+            'border-[#EEDDB0] bg-[#FFFCF4] active:bg-tertiary-100 dark:border-[#5C4E2E] dark:bg-[#33301F] dark:active:bg-[#3D3826]'
           : 'border-outline-100 bg-background-0 active:bg-background-50'
       }`}
     >
@@ -137,14 +139,14 @@ function TaskRow({
                   key={context}
                   as={CONTEXT_ICONS[context]}
                   size="2xs"
-                  className={bonus ? 'text-[#B08F3E]' : 'text-[#B0A594]'}
+                  className={bonus ? 'text-[#B08F3E] dark:text-[#D4B36A]' : 'text-[#B0A594]'}
                 />
               ))}
               {metaCaps ? (
                 <Text
                   numberOfLines={1}
                   className={`font-mono text-xs tracking-caps-tight ${
-                    bonus ? 'text-[#B08F3E]' : 'text-typography-400'
+                    bonus ? 'text-[#B08F3E] dark:text-[#D4B36A]' : 'text-typography-400'
                   }`}
                 >
                   {metaCaps}
@@ -161,9 +163,11 @@ function TaskRow({
               </Box>
             ) : null}
             {starValue !== undefined ? (
+              // 9.8 E2: a step darker — the old 600/500 golds washed out on
+              // the white and cream row surfaces.
               <HStack className="items-baseline gap-[2px]">
-                <Text className="font-mono text-sm text-tertiary-600">{starValue}</Text>
-                <Text className="text-2xs text-tertiary-500">★</Text>
+                <Text className="font-mono text-sm text-tertiary-700">{starValue}</Text>
+                <Text className="text-2xs text-tertiary-600">★</Text>
               </HStack>
             ) : null}
             <Icon as={ChevronRightIcon} size="sm" className="text-typography-200" />
@@ -201,7 +205,22 @@ function DoneRow({
   onUndo?: () => void;
 }) {
   return (
-    <HStack className="items-center gap-2">
+    // 9.8 E3: the row card is the OUTER container so the Undo pill sits
+    // INSIDE it, inset on the left. The plain HStack wrapper keeps the pill
+    // and the row content as siblings (nested pressables inside an
+    // accessible container are flattened away from TalkBack/Maestro).
+    <HStack className="items-center gap-3 rounded-[15px] bg-[rgba(44,39,35,0.045)] px-3 py-3 dark:bg-[rgba(255,255,255,0.06)]">
+      {selecting ? null : (
+        <Pressable
+          accessibilityRole="button"
+          aria-label={`Undo completion: ${task.title}`}
+          hitSlop={8}
+          onPress={onUndo}
+          className="h-7 flex-none items-center justify-center rounded-full bg-background-0 px-3 shadow-segment active:bg-background-100"
+        >
+          <Text className="font-body-semibold text-xs text-primary-600">Undo</Text>
+        </Pressable>
+      )}
       <Pressable
         accessible={selecting}
         accessibilityRole={selecting ? 'button' : undefined}
@@ -209,7 +228,7 @@ function DoneRow({
         accessibilityState={selecting ? { selected } : undefined}
         onPress={selecting ? onPress : undefined}
         onLongPress={onLongPress}
-        className="flex-1 rounded-[15px] bg-[rgba(44,39,35,0.045)] px-4 py-3"
+        className="min-w-0 flex-1"
       >
         <HStack className="items-center gap-3">
           {selecting ? (
@@ -229,17 +248,6 @@ function DoneRow({
           </VStack>
         </HStack>
       </Pressable>
-      {selecting ? null : (
-        <Pressable
-          accessibilityRole="button"
-          aria-label={`Undo completion: ${task.title}`}
-          hitSlop={8}
-          onPress={onUndo}
-          className="h-7 items-center justify-center rounded-full bg-background-0 px-3 shadow-segment active:bg-background-100"
-        >
-          <Text className="font-body-semibold text-xs text-primary-600">Undo</Text>
-        </Pressable>
-      )}
     </HStack>
   );
 }
@@ -264,14 +272,27 @@ function BinRow({
   onRestore?: () => void;
 }) {
   return (
-    <HStack className="items-center gap-2">
+    // 9.8 E3: same inset treatment as DoneRow — the Restore pill lives
+    // INSIDE the row card, on the left, as a sibling of the labeled row.
+    <HStack className="items-center gap-3 rounded-[15px] border border-outline-100 bg-background-0 px-3 py-3.5">
+      {selecting ? null : (
+        <Pressable
+          accessibilityRole="button"
+          aria-label={`Restore task: ${task.title}`}
+          hitSlop={8}
+          onPress={onRestore}
+          className="h-9 flex-none items-center justify-center rounded-full bg-background-50 px-3.5 shadow-segment active:bg-background-100"
+        >
+          <Text className="font-body-bold text-sm text-primary-600">Restore</Text>
+        </Pressable>
+      )}
       <Pressable
         accessibilityRole="button"
         aria-label={selecting ? selectionLabel(task, selected) : `Bin task: ${task.title}`}
         accessibilityState={selecting ? { selected } : undefined}
         onPress={selecting ? onToggleSelect : undefined}
         onLongPress={onLongPress}
-        className="flex-1 rounded-[15px] border border-outline-100 bg-background-0 px-4 py-3.5 active:bg-background-50"
+        className="min-w-0 flex-1"
       >
         <HStack className="items-center gap-3">
           {selecting ? <SelectionIndicator selected={selected} /> : null}
@@ -285,17 +306,6 @@ function BinRow({
           </VStack>
         </HStack>
       </Pressable>
-      {selecting ? null : (
-        <Pressable
-          accessibilityRole="button"
-          aria-label={`Restore task: ${task.title}`}
-          hitSlop={8}
-          onPress={onRestore}
-          className="h-11 items-center justify-center rounded-full bg-background-0 px-4 shadow-segment active:bg-background-100"
-        >
-          <Text className="font-body-bold text-sm text-primary-600">Restore</Text>
-        </Pressable>
-      )}
     </HStack>
   );
 }

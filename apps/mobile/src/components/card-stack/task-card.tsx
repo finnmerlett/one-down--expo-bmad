@@ -219,7 +219,11 @@ export function TaskCard({
             badge; the due line carries the band's ink. */}
         <HStack
           className={`items-end justify-between border-t border-outline-100 px-6 pb-[18px] pt-[15px] ${
-            band === 'badge' ? 'bg-[#FDF6E7]' : 'bg-[#FAFCFB]'
+            // 9.8 E2 twin: the rail's tints get dark equivalents so dark-mode
+            // ink stays legible (same fix as the list's bonus rows).
+            band === 'badge'
+              ? 'bg-[#FDF6E7] dark:bg-[#33301F]'
+              : 'bg-[#FAFCFB] dark:bg-[rgba(255,255,255,0.04)]'
           }`}
         >
           <VStack className="min-w-0 flex-1 gap-[5px]">
