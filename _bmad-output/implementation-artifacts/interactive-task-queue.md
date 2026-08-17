@@ -16,6 +16,8 @@ into the fixes story of the session that does them.
 | (new) | Mutually-exclusive context requirements — design exploration (the dot/filter mismatch bug is being fixed separately as code) | `cbx.o2u93vm22tk4` second half |
 | `1a008473ac0` | Triage force-all residue: size + deadline forcing SHIPPED (G1); still open — forcing contexts needs a "no context needed" affordance, and criticality reads Chill-by-default so forcing a tap needs a design call | Finn's `~` on the F1 INPUT NEEDED item |
 
+| `cbx.b8ueg65xd032` + `cbx.nwfqpcs1nen2` | Intermittent grey backdrop behind the context-sheet blur (G19): NOT reproducible on the emulator in either theme (blur renders correctly over deck/empty/dark) — real-device dimezis snapshot behaviour. Candidates to try live on the phone: drop `blurMethod="dimezisBlurView"` (plain translucency, no blur), an opaque themed underlay behind the BlurView, or remove the BlurView and keep only the wash | Finn, 2026-08-17 |
+
 ## Standing notes
 
 - Native build (expo-clipboard for one-tap snapshot copy): approved "yes but
