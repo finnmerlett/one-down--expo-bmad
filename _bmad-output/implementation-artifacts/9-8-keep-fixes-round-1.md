@@ -75,6 +75,33 @@ Grouped for implementation; the Keep id column is the sync key.
 | F2 | `cbx.1owfytykj8hn` | Three-step view tick-off animation: exiting top task height-collapses + fades, entering bottom task height-expands + fades in (symmetrical ease-in-out), middle rows slide; reversed for the opposite direction | done |
 | F3 | `cbx.8bkuthhjdv52` | Settings "get state snapshot" button: saves a snapshot of the local DB to the server, returns a copyable uuid (debugging) | done |
 
+### G. Round 2 (Finn's 2026-08-17 review — protocol v2: he ticks, `~` comments harvested)
+
+Interactive/discussion items live in `interactive-task-queue.md` (RECORDED).
+Doable items below; F-numbers continue.
+
+| # | Keep id | Item | Status |
+|---|---------|------|--------|
+| G1 | `1a008473ac0` (INPUT F1 answer) | Triage requires answers: size, criticality, and deadline (date or explicit None) before Save and next; Skip keeps the card triageable | pending |
+| G2 | `cbx.shifwrr8o6wc` (+ `~` on 5bx2a25n9ugs) | Undo/Restore pills inset on the RIGHT inside the row (correction of E3's LHS) | pending |
+| G3 | `cbx.2sy6bppgved7` | Card-back details textarea at the standardised editable size | pending |
+| G4 | `cbx.g5umcg8avm2i` | Full-list task meta caps match the done-row size (smaller) | pending |
+| G5 | `cbx.rpoonv8c0aay` | Notes box: min 4 lines while focused (still grows); clamps back to 4 lines unfocused | pending |
+| G6 | `cbx.a4egew82yqeh` | Tighten the gap under Mark as complete / Cut it loose (buttons sit a line above the screen bottom) | pending |
+| G7 | `cbx.6bn5ck5tajxk` | Brain dump: tighten bottom gap; hide "Add one task instead" while the keyboard is up | pending |
+| G8 | `cbx.3w3etl1s97qy` | Re-adding a dropped parse entry restores its stored draft instantly (no AI round-trip) | pending |
+| G9 | `cbx.qbb6y8qcjhzh` | Promoting a never-claimed line creates an empty-title box with the title focused for typing (no AI title guess) | pending |
+| G10 | `cbx.dr88kuki3wnk` | Triage chips: dashed = AI-guessed-unconfirmed; tapping (confirming) or picking from scratch = solid (currently inverted) | pending |
+| G11 | `cbx.rcdh1lyksctk` | Triage: delete icon (top-right) → recycle bin, toast + undo, no award; investigate Skip on the last card + the 4/4 progress display | pending |
+| G12 | `cbx.hg2ee9wsxu26` | Context sheet: chips only grey out when NO task at all requires that context (mode must not grey them) | pending |
+| G13 | `cbx.xd4mfu8euyw6` | Full-list section headers stick to the top until pushed out by the next section | pending |
+| G14 | `cbx.lpy5i8mkr48t` | Steps edit: a dropped row lands in place — no post-drop settle animation from the pre-drag position | pending |
+| G15 | `cbx.h8s0uehyuhro` | Steps header outside the scroll box; swap right margin for padding so the scrollbar has room | pending |
+| G16 | `cbx.jwklwh8ywzr5` | 3-step window: floor the height at a 9-line-equivalent; animate growth beyond it (no jumps between windows) | pending |
+| G17 | `cbx.tq01ezl95cbk` | Investigate: criticality chips collapse vertically on the edit card when the date changes | pending |
+| G18 | `cbx.o2u93vm22tk4` (first half) | Attention dot shows for a context whose filter surfaces nothing (multi-context task mismatch) — make dot logic agree with the filter | pending |
+| G19 | `cbx.b8ueg65xd032` + `cbx.nwfqpcs1nen2` | Intermittent grey backdrop behind the context-sheet blur, content-dependent — investigate the dimezis snapshot path | pending |
+
 ## Constraints
 
 - **Sync complexity freeze applies**: F3 is a separate snapshot endpoint +

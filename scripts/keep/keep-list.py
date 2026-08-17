@@ -11,6 +11,7 @@ Commands (run with scripts/keep/.venv/bin/python):
   check <id> [...]     tick item(s) by the id shown by pull, then sync
   uncheck <id> [...]   untick item(s), then sync
   add <text>           append a new unchecked item to the list, then sync
+  prefix <id> <text>   prepend text to an item (protocol v2: `RECORDED: `)
 
 Config from the repo-root .env (gitignored):
   GOOGLE_KEEP_EMAIL         account that owns the list
@@ -103,6 +104,23 @@ def cmd_add(text: str) -> None:
     print(f"[ ] {text}")
 
 
+def cmd_prefix(item_id: str, prefix: str) -> None:
+    """Prepend to an item's text (protocol v2 2026-08-17: mark interactive
+    items `RECORDED: ` without rewriting Finn's words)."""
+    keep = get_keep()
+    note = get_list(keep)
+    by_id = {item.id: item for item in note.items}
+    item = by_id.get(item_id)
+    if item is None:
+        sys.exit(f"Item {item_id!r} not found — run `pull` for current ids.")
+    if item.text.startswith(prefix):
+        print(f"already prefixed: {item.text}")
+        return
+    item.text = f"{prefix}{item.text}"
+    keep.sync()
+    print(f"[{'x' if item.checked else ' '}] {item.text}")
+
+
 def main() -> None:
     args = sys.argv[1:]
     if not args:
@@ -117,6 +135,8 @@ def main() -> None:
         cmd_set_checked(rest, False)
     elif command == "add" and rest:
         cmd_add(" ".join(rest))
+    elif command == "prefix" and len(rest) >= 2:
+        cmd_prefix(rest[0], " ".join(rest[1:]) + " ")
     else:
         sys.exit(__doc__)
 
