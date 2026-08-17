@@ -145,7 +145,7 @@ function TaskRow({
               {metaCaps ? (
                 <Text
                   numberOfLines={1}
-                  className={`font-mono text-xs tracking-caps-tight ${
+                  className={`font-mono text-2xs tracking-caps-tight ${
                     bonus ? 'text-[#B08F3E] dark:text-[#D4B36A]' : 'text-typography-400'
                   }`}
                 >
@@ -205,22 +205,12 @@ function DoneRow({
   onUndo?: () => void;
 }) {
   return (
-    // 9.8 E3: the row card is the OUTER container so the Undo pill sits
-    // INSIDE it, inset on the left. The plain HStack wrapper keeps the pill
-    // and the row content as siblings (nested pressables inside an
-    // accessible container are flattened away from TalkBack/Maestro).
+    // 9.8 E3 (corrected G2: RIGHT-hand side — "oops I meant right"): the row
+    // card is the OUTER container so the Undo pill sits INSIDE it, inset
+    // right. The plain HStack wrapper keeps the pill and the row content as
+    // siblings (nested pressables inside an accessible container are
+    // flattened away from TalkBack/Maestro).
     <HStack className="items-center gap-3 rounded-[15px] bg-[rgba(44,39,35,0.045)] px-3 py-3 dark:bg-[rgba(255,255,255,0.06)]">
-      {selecting ? null : (
-        <Pressable
-          accessibilityRole="button"
-          aria-label={`Undo completion: ${task.title}`}
-          hitSlop={8}
-          onPress={onUndo}
-          className="h-7 flex-none items-center justify-center rounded-full bg-background-0 px-3 shadow-segment active:bg-background-100"
-        >
-          <Text className="font-body-semibold text-xs text-primary-600">Undo</Text>
-        </Pressable>
-      )}
       <Pressable
         accessible={selecting}
         accessibilityRole={selecting ? 'button' : undefined}
@@ -248,6 +238,17 @@ function DoneRow({
           </VStack>
         </HStack>
       </Pressable>
+      {selecting ? null : (
+        <Pressable
+          accessibilityRole="button"
+          aria-label={`Undo completion: ${task.title}`}
+          hitSlop={8}
+          onPress={onUndo}
+          className="h-7 flex-none items-center justify-center rounded-full bg-background-0 px-3 shadow-segment active:bg-background-100"
+        >
+          <Text className="font-body-semibold text-xs text-primary-600">Undo</Text>
+        </Pressable>
+      )}
     </HStack>
   );
 }
@@ -272,20 +273,10 @@ function BinRow({
   onRestore?: () => void;
 }) {
   return (
-    // 9.8 E3: same inset treatment as DoneRow — the Restore pill lives
-    // INSIDE the row card, on the left, as a sibling of the labeled row.
+    // 9.8 E3 (corrected G2): same inset treatment as DoneRow — the Restore
+    // pill lives INSIDE the row card, on the RIGHT, as a sibling of the
+    // labeled row.
     <HStack className="items-center gap-3 rounded-[15px] border border-outline-100 bg-background-0 px-3 py-3.5">
-      {selecting ? null : (
-        <Pressable
-          accessibilityRole="button"
-          aria-label={`Restore task: ${task.title}`}
-          hitSlop={8}
-          onPress={onRestore}
-          className="h-9 flex-none items-center justify-center rounded-full bg-background-50 px-3.5 shadow-segment active:bg-background-100"
-        >
-          <Text className="font-body-bold text-sm text-primary-600">Restore</Text>
-        </Pressable>
-      )}
       <Pressable
         accessibilityRole="button"
         aria-label={selecting ? selectionLabel(task, selected) : `Bin task: ${task.title}`}
@@ -306,6 +297,17 @@ function BinRow({
           </VStack>
         </HStack>
       </Pressable>
+      {selecting ? null : (
+        <Pressable
+          accessibilityRole="button"
+          aria-label={`Restore task: ${task.title}`}
+          hitSlop={8}
+          onPress={onRestore}
+          className="h-9 flex-none items-center justify-center rounded-full bg-background-50 px-3.5 shadow-segment active:bg-background-100"
+        >
+          <Text className="font-body-bold text-sm text-primary-600">Restore</Text>
+        </Pressable>
+      )}
     </HStack>
   );
 }
@@ -444,7 +446,9 @@ export function TaskListView({
       }
       renderSectionHeader={({ section }) =>
         section.title ? (
-          <HStack className="items-center justify-between pb-1.5 pt-3">
+          // 9.8 G13: headers stick, so they need an opaque ground — the list
+          // background token — or rows would scroll through the caps text.
+          <HStack className="items-center justify-between bg-background-100 pb-1.5 pt-3">
             <Text className="font-mono text-xs uppercase tracking-caps text-typography-400">
               {section.title}
             </Text>
@@ -470,7 +474,9 @@ export function TaskListView({
           });
         }, 100);
       }}
-      stickySectionHeadersEnabled={false}
+      // 9.8 G13: section headers hold the top until the next section's
+      // header pushes them out (Android default is off).
+      stickySectionHeadersEnabled
       ListEmptyComponent={
         <Box className="py-8">
           {mode === 'bin' ? (

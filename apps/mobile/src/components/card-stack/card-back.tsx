@@ -26,6 +26,7 @@ import { VStack } from '@/components/ui/vstack';
 
 import { track } from '@/lib/analytics/track';
 import { CONTEXT_ICONS } from '@/components/stack-filters/context-icons';
+import { EDITABLE_BODY_SIZE } from '@/constants/typography';
 import { taskValue } from '@/services/star-calculator';
 import { evaluateTaskHealth } from '@/services/task-health';
 import type { UpdateTaskPatch } from '@/services/tasks-repository';
@@ -399,7 +400,11 @@ export function CardBack({
             </Box>
             <VStack className="gap-2">
               <CapsLabel>Details</CapsLabel>
-              <Textarea size="md" className="rounded-[15px] border-outline-100 bg-background-0">
+              {/* Standardised editable size (9.8 G3). */}
+              <Textarea
+                size={EDITABLE_BODY_SIZE}
+                className="rounded-[15px] border-outline-100 bg-background-0"
+              >
                 <TextareaInput
                   aria-label="Task details"
                   placeholder="Add details"
@@ -520,7 +525,10 @@ export function CardBack({
             {/* 9-5 item 15: how bad missing the deadline would be — feeds the
                 hidden urgency metric that ranks bonus assignment. */}
             <Group label="How critical?">
-              <HStack className="flex-1 flex-wrap gap-2">
+              {/* 9.8 G17: no flex-1 here — in this COLUMN parent its basis-0
+                  collapsed the row to zero height when the date change
+                  re-ran layout. */}
+              <HStack className="flex-wrap gap-2">
                 {TASK_CRITICALITIES.map((criticality) => (
                   <Chip
                     key={criticality}

@@ -39,6 +39,10 @@ export interface TaskRunningViewHandle {
  */
 export const NOTES_AUTOSAVE_DEBOUNCE_MS = 500;
 
+/** 9.8 G5 — the notes box's 4-line waterline: text-sm line height (14 ×
+ *  UI_SCALE 1.15 × 1.36 ≈ 22) × 4 + the input's p-3 (12 × 2). */
+const NOTES_FOUR_LINES = 4 * 22 + 24;
+
 /**
  * Working screen body (v1.5 spec §5): Gabarito title + description stay put,
  * graded steps, the AI step actions (D4), NOTES field, and the two terminal
@@ -465,6 +469,9 @@ export function TaskRunningView({
           size={EDITABLE_BODY_SIZE}
           className="h-auto min-h-14 rounded-[15px] border-outline-100 bg-background-0"
         >
+          {/* 9.8 G5 (heights via style — className must stay static): while
+              focused the box holds at least 4 lines and keeps growing with
+              the text; unfocused it clamps back to 4 lines and scrolls. */}
           <TextareaInput
             aria-label="Task notes"
             placeholder="Jot things down as you go"
@@ -476,7 +483,8 @@ export function TaskRunningView({
               flushNotes();
             }}
             multiline
-            className="max-h-40 flex-none"
+            className="flex-none"
+            style={notesFocused ? { minHeight: NOTES_FOUR_LINES } : { maxHeight: NOTES_FOUR_LINES }}
           />
         </Textarea>
       ) : null}
@@ -492,7 +500,9 @@ export function TaskRunningView({
     // identity — a branch swap remounted the Textarea mid-focus on device,
     // dropping the keyboard and eating keystrokes (D3).
     <KeyboardAvoidingView behavior="padding" className="flex-1">
-      <VStack className="flex-1 gap-4 px-6 pb-3 pt-2">
+      {/* pb-0 (9.8 G6): the terminal pills sit a line above the screen
+          bottom — the safe-area inset alone is the gap. */}
+      <VStack className="flex-1 gap-4 px-6 pb-0 pt-2">
         {titleBlock}
         {/* Steps live in their own scroll area at ALL times: sized to
             content normally, stretched to fill while the notes field owns

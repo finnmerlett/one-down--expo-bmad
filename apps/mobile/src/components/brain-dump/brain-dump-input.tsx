@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Keyboard, KeyboardAvoidingView } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { MAX_BRAIN_DUMP_CHARS } from '@one-down/shared';
@@ -47,11 +47,24 @@ export function BrainDumpInput({
   const setText = onChangeText ?? setInnerText;
   const pending = state === 'submitted' || state === 'parsing' || state === 'parsing_long';
 
+  // 9.8 G7: while typing, only Parse rides above the keyboard — the escape
+  // hatch hides rather than pushing the layout up.
+  const [keyboardUp, setKeyboardUp] = useState(false);
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardUp(true));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardUp(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+
   return (
     // Edge-to-edge Android never resizes for the keyboard — explicit padding
     // keeps the submit row reachable while dumping (same as the card back).
+    // pb-2 (G7): the CTAs sit close to the screen bottom.
     <KeyboardAvoidingView behavior="padding" className="flex-1">
-      <VStack className="flex-1 gap-4 px-6 pb-6 pt-2">
+      <VStack className="flex-1 gap-4 px-6 pb-2 pt-2">
         <Text className="font-heading text-3xl text-typography-900">Brain dump</Text>
         <Text className="font-body text-base text-typography-500">
           Get it all out, any format — we&apos;ll sort it into tasks.
@@ -122,14 +135,17 @@ export function BrainDumpInput({
             <ButtonText>Use quick add instead</ButtonText>
           </Button>
         ) : null}
-        {/* Visually secondary (link-style) — one primary action per screen. */}
-        <AppButton
-          kind="secondary"
-          aria-label="Add one task instead"
-          label="Add one task instead"
-          disabled={pending}
-          onPress={onQuickAddInstead}
-        />
+        {/* Visually secondary (link-style) — one primary action per screen.
+            Hidden while the keyboard is up (9.8 G7). */}
+        {keyboardUp ? null : (
+          <AppButton
+            kind="secondary"
+            aria-label="Add one task instead"
+            label="Add one task instead"
+            disabled={pending}
+            onPress={onQuickAddInstead}
+          />
+        )}
       </VStack>
     </KeyboardAvoidingView>
   );
