@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { cssInterop } from 'nativewind';
 
-
 import { BrainDumpCheck } from '@/components/brain-dump/brain-dump-check';
 import { BrainDumpInput, type BrainDumpState } from '@/components/brain-dump/brain-dump-input';
 import { HStack } from '@/components/ui/hstack';
