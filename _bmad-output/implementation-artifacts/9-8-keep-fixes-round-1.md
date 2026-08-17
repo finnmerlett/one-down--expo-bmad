@@ -225,6 +225,18 @@ All 25 items implemented across four commits (`7692b2d`, `1e843b1`,
 - Ops bonus fix en route: `seed-e2e-accounts.ts` now paginates the GoTrue
   admin list (the local auth store outgrew one 200-user page from
   test-created throwaway users).
+## Round 2 verification (2026-08-17)
+
+- Mobile jest 406/406, server 162/162, typecheck + lint:check green.
+- Emulator spot-checks: triage card (G1 gate + hint, G10 chip semantics, G11
+  bin + full progress fill) verified end-to-end incl. the Triage-cleared
+  toast; G19 NOT reproducible on the emulator (blur correct both themes) —
+  moved to the interactive queue with candidate fixes for the phone session.
+- Full Maestro suite: **35/35 passed** (one earlier abort was a Maestro
+  device-discovery race with the argent adb connection, not a flow failure —
+  clean on retry).
+- Round 2 OTA: recorded below once published.
+
 - **OTA published 2026-08-16**: update group dc03b4f7-c293-404c-974e-169381b49cae,
   runtime 2026-08-11-expo-blur, commit 1e65dbe (android update 01a008a6-30aa-7c55).
   No native changes this story — expo-clipboard was deliberately avoided (F3) —
