@@ -235,7 +235,10 @@ All 25 items implemented across four commits (`7692b2d`, `1e843b1`,
 - Full Maestro suite: **35/35 passed** (one earlier abort was a Maestro
   device-discovery race with the argent adb connection, not a flow failure —
   clean on retry).
-- Round 2 OTA: recorded below once published.
+- **Round 2 OTA published 2026-08-17**: update group
+  5a902bda-b7ae-4b09-9712-c10ec5f959e8, runtime 2026-08-11-expo-blur, commit
+  2d2c5b3 (android update 01a00d40-90e2-7f46). JS-only — applies on restart.
+  Per protocol v2 Finn ticks the Keep items himself after checking it out.
 
 - **OTA published 2026-08-16**: update group dc03b4f7-c293-404c-974e-169381b49cae,
   runtime 2026-08-11-expo-blur, commit 1e65dbe (android update 01a008a6-30aa-7c55).
