@@ -56,6 +56,13 @@ const stepExit = (values: ExitAnimationsValues) => {
   };
 };
 
+/** 9.8 G16 — the 3-step window's height floor: three rows at three text
+ *  lines each (text-sm leading-5 = 20/line + py-2.5 = 20) plus each slot's
+ *  8px gap padding. Shorter windows hold this height so ticking a step
+ *  doesn't jump the layout; taller ones grow (animated via the container's
+ *  layout transition). */
+export const STEP_WINDOW_MIN_HEIGHT = 3 * (3 * 20 + 20) + 3 * 8;
+
 /** One animated slot in the step list. Plain styles only — reanimated views
  *  are not css-interop registered; the old container gap-2 moved into the
  *  slot's padding so a collapsing row removes its gap with it. */
@@ -93,6 +100,55 @@ export function reportLabel(report: Pick<StepChangeReport, 'added' | 'changed'>)
  * `STEPS  2 ADDED · 1 CHANGED  [Undo]` — and the affected rows carry NEW
  * tags. While an action is in flight the rows fade to 45%.
  */
+/** The STEPS label line (report + Undo + Edit chip) — extracted (9.8 G15)
+ *  so the working screen can pin it ABOVE the scrolling rows. */
+export function StepsHeader({
+  report = null,
+  onUndo,
+  onEditSteps,
+}: {
+  report?: StepChangeReport | null;
+  onUndo?: () => void;
+  onEditSteps?: () => void;
+}) {
+  return (
+    <HStack className="min-h-6 items-center gap-2.5">
+      <Text className="font-mono text-xs uppercase tracking-caps text-typography-400">Steps</Text>
+      {report ? (
+        <>
+          <Text className="font-mono text-xs uppercase tracking-caps text-primary-600">
+            {reportLabel(report)}
+          </Text>
+          {onUndo ? (
+            <Pressable
+              accessibilityRole="button"
+              aria-label="Undo step changes"
+              hitSlop={6}
+              onPress={onUndo}
+              className="rounded-full bg-primary-50 px-[9px] py-[2px] active:bg-primary-100"
+            >
+              <Text className="font-body-semibold text-xs text-primary-700">Undo</Text>
+            </Pressable>
+          ) : null}
+        </>
+      ) : null}
+      <Box className="flex-1" />
+      {onEditSteps ? (
+        <Pressable
+          accessibilityRole="button"
+          aria-label="Edit steps"
+          hitSlop={6}
+          onPress={onEditSteps}
+          className="flex-row items-center gap-[5px] rounded-full bg-primary-50 px-[11px] py-[3px] active:bg-primary-100"
+        >
+          <Icon as={EditIcon} size="2xs" className="text-primary-700" />
+          <Text className="font-body-semibold text-xs text-primary-700">Edit</Text>
+        </Pressable>
+      ) : null}
+    </HStack>
+  );
+}
+
 export function SubtaskList({
   subtasks,
   taskSize = null,
@@ -104,6 +160,7 @@ export function SubtaskList({
   faded = false,
   hiddenAbove = 0,
   hiddenBelow = 0,
+  showHeader = true,
 }: {
   subtasks: SubtaskData[];
   /** Parent task size — sets how many hollow stars a done row shows. */
@@ -124,6 +181,8 @@ export function SubtaskList({
   hiddenAbove?: number;
   /** Steps hidden below the slice — draws the trailing ellipsis row. */
   hiddenBelow?: number;
+  /** False when the host pins StepsHeader outside its scroll area (G15). */
+  showHeader?: boolean;
 }) {
   // Window-slide animations arm only AFTER first paint: the list appearing
   // with the screen must not play a cascade of expansions. Hook order is
@@ -152,70 +211,48 @@ export function SubtaskList({
 
   return (
     <VStack className="gap-2.5">
-      <HStack className="min-h-6 items-center gap-2.5">
-        <Text className="font-mono text-xs uppercase tracking-caps text-typography-400">Steps</Text>
-        {report ? (
-          <>
-            <Text className="font-mono text-xs uppercase tracking-caps text-primary-600">
-              {reportLabel(report)}
-            </Text>
-            {onUndo ? (
-              <Pressable
-                accessibilityRole="button"
-                aria-label="Undo step changes"
-                hitSlop={6}
-                onPress={onUndo}
-                className="rounded-full bg-primary-50 px-[9px] py-[2px] active:bg-primary-100"
-              >
-                <Text className="font-body-semibold text-xs text-primary-700">Undo</Text>
-              </Pressable>
-            ) : null}
-          </>
-        ) : null}
-        <Box className="flex-1" />
-        {onEditSteps ? (
-          <Pressable
-            accessibilityRole="button"
-            aria-label="Edit steps"
-            hitSlop={6}
-            onPress={onEditSteps}
-            className="flex-row items-center gap-[5px] rounded-full bg-primary-50 px-[11px] py-[3px] active:bg-primary-100"
-          >
-            <Icon as={EditIcon} size="2xs" className="text-primary-700" />
-            <Text className="font-body-semibold text-xs text-primary-700">Edit</Text>
-          </Pressable>
-        ) : null}
-      </HStack>
+      {showHeader ? (
+        <StepsHeader report={report} onUndo={onUndo} onEditSteps={onEditSteps} />
+      ) : null}
       {/* Slot padding replaces the old gap-2 (see StepSlot) — the -pb-2
-          equivalent isn't needed: the trailing 8px reads as breathing room. */}
-      <VStack className={faded ? 'opacity-[0.45]' : ''} pointerEvents={faded ? 'none' : 'auto'}>
-        {hiddenAbove > 0 ? (
-          <StepSlot animate={animate}>
-            <EllipsisRow count={hiddenAbove} where="earlier" />
-          </StepSlot>
-        ) : null}
-        {subtasks.map((subtask) => {
-          const grade = gradeOf(subtask);
-          const banked = grade === 'done' ? (++doneSeen <= bankCap ? bankPerStep : 0) : 0;
-          return (
-            <StepSlot key={subtask.id} animate={animate}>
-              <StepRow
-                subtask={subtask}
-                grade={grade}
-                bankedStars={banked}
-                isNew={!subtask.completed && (report?.newTitles.has(subtask.title) ?? false)}
-                onToggle={onToggle}
-                onDelete={onDelete}
-              />
+          equivalent isn't needed: the trailing 8px reads as breathing room.
+          9.8 G16: windowed lists hold the 9-line height floor and animate
+          growth past it via the layout transition. */}
+      <Animated.View
+        layout={
+          animate ? LinearTransition.duration(STEP_WINDOW_MS).easing(STEP_WINDOW_EASE) : undefined
+        }
+        style={hiddenAbove + hiddenBelow > 0 ? { minHeight: STEP_WINDOW_MIN_HEIGHT } : undefined}
+      >
+        <VStack className={faded ? 'opacity-[0.45]' : ''} pointerEvents={faded ? 'none' : 'auto'}>
+          {hiddenAbove > 0 ? (
+            <StepSlot animate={animate}>
+              <EllipsisRow count={hiddenAbove} where="earlier" />
             </StepSlot>
-          );
-        })}
-        {hiddenBelow > 0 ? (
-          <StepSlot animate={animate}>
-            <EllipsisRow count={hiddenBelow} where="later" />
-          </StepSlot>
-        ) : null}
-      </VStack>
+          ) : null}
+          {subtasks.map((subtask) => {
+            const grade = gradeOf(subtask);
+            const banked = grade === 'done' ? (++doneSeen <= bankCap ? bankPerStep : 0) : 0;
+            return (
+              <StepSlot key={subtask.id} animate={animate}>
+                <StepRow
+                  subtask={subtask}
+                  grade={grade}
+                  bankedStars={banked}
+                  isNew={!subtask.completed && (report?.newTitles.has(subtask.title) ?? false)}
+                  onToggle={onToggle}
+                  onDelete={onDelete}
+                />
+              </StepSlot>
+            );
+          })}
+          {hiddenBelow > 0 ? (
+            <StepSlot animate={animate}>
+              <EllipsisRow count={hiddenBelow} where="later" />
+            </StepSlot>
+          ) : null}
+        </VStack>
+      </Animated.View>
     </VStack>
   );
 }

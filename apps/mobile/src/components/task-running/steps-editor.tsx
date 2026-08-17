@@ -304,11 +304,21 @@ function EditorRow({
         transform: [{ translateY: dragY.value }, { translateX: 4 }, { rotate: '-1.4deg' }],
       };
     }
-    let shift = 0;
-    if (dragFrom.value >= 0) {
-      if (dragFrom.value < index && dragTo.value >= index) shift = -STRIDE;
-      else if (dragFrom.value > index && dragTo.value <= index) shift = STRIDE;
+    // 9.8 G14: once the drag ends (dragFrom reset), the reordered rows are
+    // ALREADY at their final layout positions — snap the shift to 0 instead
+    // of animating from the pre-drop offset (that settle read as the row
+    // sliding in from where it used to be).
+    if (dragFrom.value < 0) {
+      return {
+        zIndex: 0,
+        shadowOpacity: 0,
+        elevation: 0,
+        transform: [{ translateY: 0 }, { translateX: 0 }, { rotate: '0deg' }],
+      };
     }
+    let shift = 0;
+    if (dragFrom.value < index && dragTo.value >= index) shift = -STRIDE;
+    else if (dragFrom.value > index && dragTo.value <= index) shift = STRIDE;
     return {
       zIndex: 0,
       shadowOpacity: 0,

@@ -6,7 +6,7 @@ import { MAX_REFINE_FEEDBACK_CHARS, type SubtaskData, type TaskData } from '@one
 import { SparkleBadge } from '@/components/premium/sparkle-badge';
 import { FadedScrollView } from '@/components/shared/faded-scroll-view';
 import { StepsEditor, type StepEditCallbacks } from '@/components/task-running/steps-editor';
-import { SubtaskList } from '@/components/task-running/subtask-list';
+import { StepsHeader, SubtaskList } from '@/components/task-running/subtask-list';
 import { Box } from '@/components/ui/box';
 import {
   ArrowRightIcon,
@@ -428,6 +428,8 @@ export function TaskRunningView({
         onUndo={stepActions?.undo}
         onEditSteps={stepEdits && !working ? enterEditMode : undefined}
         faded={working}
+        // 9.8 G15: the header is pinned OUTSIDE the scroll area below.
+        showHeader={false}
       />
     )
   ) : null;
@@ -504,13 +506,26 @@ export function TaskRunningView({
           bottom — the safe-area inset alone is the gap. */}
       <VStack className="flex-1 gap-4 px-6 pb-0 pt-2">
         {titleBlock}
+        {/* 9.8 G15: the STEPS label line sits OUTSIDE the scroll area — only
+            the rows scroll under it. */}
+        {hasSteps && !editMode ? (
+          <StepsHeader
+            report={stepActions?.report ?? null}
+            onUndo={stepActions?.undo}
+            onEditSteps={stepEdits && !working ? enterEditMode : undefined}
+          />
+        ) : null}
         {/* Steps live in their own scroll area at ALL times: sized to
             content normally, stretched to fill while the notes field owns
             the keyboard (05f) — the list is what gives up the room. */}
         {/* Scroll-aware soft edges (item 4): fades only when content is
             actually hidden past an edge. Collapsed windows fit → no fades. */}
+        {/* G15: -mr-3 reclaims a slice of the screen's right padding and
+            hands it to the content as pr-3, so the scrollbar rides in its
+            own gutter instead of over the rows. */}
         <FadedScrollView
-          containerClassName={choreographed ? 'min-h-0 flex-1' : 'min-h-0 shrink'}
+          containerClassName={choreographed ? '-mr-3 min-h-0 flex-1' : '-mr-3 min-h-0 shrink'}
+          contentContainerStyle={{ paddingRight: 12 }}
           keyboardShouldPersistTaps="handled"
           scrollEnabled={!dragLocked}
         >
