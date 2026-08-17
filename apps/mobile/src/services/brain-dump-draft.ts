@@ -11,9 +11,18 @@ import { getPreference, setPreference, type PreferencesDb } from './preferences-
  * Stored as an ordinary preference, so it rides the 9.7 preferences sync
  * unchanged (same pattern as the AI general notes).
  */
+export interface BrainDumpCheckState {
+  tasks: ParsedTaskDraft[];
+  unclaimed: string[];
+  /** 9.8 G8 — drafts of dropped tasks, keyed by each of their unclaimed
+   *  lines: re-adding a line restores its draft instantly (no AI round
+   *  trip). Absent on drafts saved before this shipped. */
+  droppedDrafts?: Record<string, ParsedTaskDraft>;
+}
+
 export interface BrainDumpDraft {
   text: string;
-  check: { tasks: ParsedTaskDraft[]; unclaimed: string[] } | null;
+  check: BrainDumpCheckState | null;
 }
 
 const KEY = 'brain_dump.draft';

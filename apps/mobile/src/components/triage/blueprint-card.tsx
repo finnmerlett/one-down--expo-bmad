@@ -15,7 +15,7 @@ import {
 } from '@one-down/shared';
 
 import { Box } from '@/components/ui/box';
-import { CheckIcon, Icon } from '@/components/ui/icon';
+import { CheckIcon, Icon, TrashIcon } from '@/components/ui/icon';
 import { HStack } from '@/components/ui/hstack';
 import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
@@ -52,10 +52,13 @@ export function BlueprintCard({
   task,
   onSave,
   onSkip,
+  onDelete,
 }: {
   task: TaskData;
   onSave: (draft: BlueprintDraft) => void;
   onSkip: () => void;
+  /** 9.8 G11 — top-right bin: recycle-bin the task (no award, undoable). */
+  onDelete?: () => void;
 }) {
   const flags = parseReviewFlags(task.reviewFlags);
   const inferred = flags?.inferred ?? [];
@@ -74,6 +77,18 @@ export function BlueprintCard({
   const [answeredNone, setAnsweredNone] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
 
+  // 9.8 G10: which groups the user has interacted with — an AI guess stays
+  // DASHED (unconfirmed) until its group is touched; touching flips it solid.
+  type ChipGroup = 'size' | 'contexts' | 'deadline';
+  const [touched, setTouched] = useState<ReadonlySet<ChipGroup>>(new Set());
+  const markTouched = (group: ChipGroup) =>
+    setTouched((previous) => {
+      if (previous.has(group)) return previous;
+      const next = new Set(previous);
+      next.add(group);
+      return next;
+    });
+
   const toggleContext = (context: TaskContext) => {
     setContexts((previous) =>
       TASK_CONTEXTS.filter((candidate) =>
@@ -88,12 +103,20 @@ export function BlueprintCard({
       ? 'No deadline'
       : null;
 
-  /** Dashed blueprint chip; guessed+selected renders solid-ish (spec §9). */
+  // 9.8 G1 save gate: a size always; the deadline question only when it was
+  // flagged "nothing to go on" (elsewhere None is available but optional).
+  const deadlineAnswered = deadline !== null || answeredNone || !missingDeadline;
+  const canSave = size !== null && deadlineAnswered;
+
+  /** Blueprint chip (9.8 G10 semantics): DASHED = selected because the AI
+   *  guessed it and the user hasn't confirmed; SOLID bright = the user's own
+   *  answer (scratch pick, or a guess confirmed by tapping it); unselected =
+   *  faint solid outline. `confirmed` = !guessed-or-touched. */
   const chip = (
     label: string,
     accessibilityLabel: string,
     selected: boolean,
-    guessed: boolean,
+    confirmed: boolean,
     onPress: () => void,
   ) => (
     <Pressable
@@ -105,15 +128,21 @@ export function BlueprintCard({
       className="rounded-full px-3.5 py-[7px]"
       style={
         selected
-          ? {
-              backgroundColor: 'rgba(160,200,245,0.16)',
-              borderWidth: 1.5,
-              borderColor: guessed ? INK_MID : 'rgba(160,200,245,0.7)',
-            }
+          ? confirmed
+            ? {
+                backgroundColor: 'rgba(160,200,245,0.16)',
+                borderWidth: 1.5,
+                borderColor: 'rgba(160,200,245,0.7)',
+              }
+            : {
+                backgroundColor: 'rgba(160,200,245,0.16)',
+                borderWidth: 1.5,
+                borderStyle: 'dashed',
+                borderColor: INK_MID,
+              }
           : {
               borderWidth: 1.5,
-              borderStyle: 'dashed',
-              borderColor: 'rgba(160,200,245,0.4)',
+              borderColor: 'rgba(160,200,245,0.3)',
             }
       }
     >
@@ -186,6 +215,17 @@ export function BlueprintCard({
               ★
             </Text>
           </HStack>
+          {onDelete ? (
+            <Pressable
+              accessibilityRole="button"
+              aria-label={`Delete from triage: ${task.title}`}
+              hitSlop={8}
+              onPress={onDelete}
+              className="h-8 w-8 flex-none items-center justify-center rounded-full pt-1"
+            >
+              <Icon as={TrashIcon} size="sm" style={{ color: INK_LABEL }} />
+            </Pressable>
+          ) : null}
         </HStack>
         <VStack className="gap-1.5">
           {groupLabel('Details', null)}
@@ -208,8 +248,16 @@ export function BlueprintCard({
                 SIZE_LABELS[candidate],
                 `Size: ${SIZE_LABELS[candidate]}`,
                 size === candidate,
-                inferred.includes('size'),
-                () => setSize((previous) => (previous === candidate ? null : candidate)),
+                !inferred.includes('size') || touched.has('size'),
+                () => {
+                  // First tap on a still-dashed guess CONFIRMS it (solid);
+                  // after that, taps toggle as normal (G10).
+                  const confirmingGuess =
+                    inferred.includes('size') && size === candidate && !touched.has('size');
+                  markTouched('size');
+                  if (confirmingGuess) return;
+                  setSize((previous) => (previous === candidate ? null : candidate));
+                },
               ),
             )}
           </HStack>
@@ -223,7 +271,7 @@ export function BlueprintCard({
                 CRITICALITY_LABELS[candidate],
                 `Criticality: ${CRITICALITY_LABELS[candidate]}`,
                 (criticality ?? 'chill') === candidate,
-                false,
+                true,
                 () => setCriticality((previous) => (previous === candidate ? null : candidate)),
               ),
             )}
@@ -237,8 +285,16 @@ export function BlueprintCard({
                 CONTEXT_LABELS[candidate],
                 `Context: ${CONTEXT_LABELS[candidate]}`,
                 contexts.includes(candidate),
-                inferred.includes('contexts'),
-                () => toggleContext(candidate),
+                !inferred.includes('contexts') || touched.has('contexts'),
+                () => {
+                  const confirmingGuess =
+                    inferred.includes('contexts') &&
+                    contexts.includes(candidate) &&
+                    !touched.has('contexts');
+                  markTouched('contexts');
+                  if (confirmingGuess) return;
+                  toggleContext(candidate);
+                },
               ),
             )}
           </HStack>
@@ -258,14 +314,23 @@ export function BlueprintCard({
                   deadlineLabel,
                   `Deadline: ${deadlineLabel}`,
                   true,
-                  inferred.includes('deadline'),
-                  () => setShowPicker(true),
+                  !inferred.includes('deadline') || touched.has('deadline'),
+                  () => {
+                    // First tap on a dashed guessed date CONFIRMS it (G10);
+                    // changing it is the Pick-a-date chip's job.
+                    if (inferred.includes('deadline') && !touched.has('deadline')) {
+                      markTouched('deadline');
+                      return;
+                    }
+                    setShowPicker(true);
+                  },
                 )
               : null}
-            {chip('Pick a date', 'Pick a deadline date', false, false, () => setShowPicker(true))}
-            {deadline || !missingDeadline
+            {chip('Pick a date', 'Pick a deadline date', false, true, () => setShowPicker(true))}
+            {deadline
               ? null
-              : chip('None', 'No deadline needed', answeredNone, false, () => {
+              : chip('None', 'No deadline needed', answeredNone, true, () => {
+                  markTouched('deadline');
                   setAnsweredNone(true);
                   setDeadline(null);
                 })}
@@ -288,19 +353,37 @@ export function BlueprintCard({
                   next.setHours(18, 0, 0, 0);
                   setDeadline(next);
                   setAnsweredNone(false);
+                  markTouched('deadline');
                 }
               }}
             />
           ) : null}
         </VStack>
         <VStack className="gap-2 pt-1">
+          {/* 9.8 G1: triage means ANSWERING — a size, and (when there was
+              nothing to go on) a date or an explicit None. Skip stays free:
+              the card just remains triageable. */}
+          {canSave ? null : (
+            <Text
+              accessibilityLiveRegion="polite"
+              className="text-center font-body text-sm"
+              style={{ color: INK_MID }}
+            >
+              {size === null && !deadlineAnswered
+                ? 'Pick a size and settle the deadline to save'
+                : size === null
+                  ? 'Pick a size to save'
+                  : 'Pick a date — or None — to save'}
+            </Text>
+          )}
           <Pressable
             accessibilityRole="button"
             aria-label="Save and next"
+            disabled={!canSave}
             onPress={() =>
               onSave({ title, details, size, criticality, contexts, deadline, answeredNone })
             }
-            className="h-[54px] flex-row items-center justify-center gap-[9px] rounded-full"
+            className="h-[54px] flex-row items-center justify-center gap-[9px] rounded-full disabled:opacity-40"
             style={{ backgroundColor: '#49BAB9' }}
           >
             <Icon as={CheckIcon} size="md" className="text-typography-0" />

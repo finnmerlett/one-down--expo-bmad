@@ -19,6 +19,7 @@ import {
   clearBrainDumpDraft,
   getBrainDumpDraft,
   setBrainDumpDraft,
+  type BrainDumpCheckState,
   type BrainDumpDraft,
 } from '@/services/brain-dump-draft';
 import { createTasksFromBrainDump } from '@/services/tasks-repository';
@@ -49,13 +50,11 @@ export default function BrainDumpScreen() {
   const router = useRouter();
   const [state, setState] = useState<BrainDumpState>('idle');
   const [text, setText] = useState('');
-  const [check, setCheck] = useState<{ tasks: ParsedTaskDraft[]; unclaimed: string[] } | null>(
-    null,
-  );
+  const [check, setCheck] = useState<BrainDumpCheckState | null>(null);
   const [working, setWorking] = useState(false);
-  const [promotingLine, setPromotingLine] = useState<string | null>(null);
+  // 9.8 G9: a locally promoted line opens its (empty) title for typing.
+  const [autoEditIndex, setAutoEditIndex] = useState<number | null>(null);
   const parseMutation = trpc.ai.parseBrainDump.useMutation();
-  const promoteMutation = trpc.ai.promoteDumpLine.useMutation();
 
   // ── Draft persistence (9.8 C1) ─────────────────────────────────────────
   // Hydrate once; saves are gated on it so an empty first render can't
@@ -181,26 +180,45 @@ export default function BrainDumpScreen() {
     }
   };
 
-  const handlePromote = async (line: string) => {
-    if (promotingLine !== null) return;
-    setPromotingLine(line);
-    try {
-      const result = await promoteMutation.mutateAsync({ line });
-      setCheck((previous) =>
-        previous
-          ? {
-              tasks: [...previous.tasks, result.task],
-              unclaimed: previous.unclaimed.filter((candidate) => candidate !== line),
-            }
-          : previous,
-      );
-      track('brain_dump_line_promoted', { provider: result.provider });
-    } catch {
-      // The + simply stops spinning; the row stays promotable.
-      track('brain_dump_failed', { reason: 'server_error' });
-    } finally {
-      setPromotingLine(null);
-    }
+  // 9.8 G8/G9: promoting is LOCAL now — no AI round trip. A line whose task
+  // was dropped earlier restores that draft (and consumes the draft's other
+  // lines); a never-claimed line becomes an empty-title box with the title
+  // focused for typing (the AI already failed to claim it once).
+  const handlePromote = (line: string) => {
+    setCheck((previous) => {
+      if (!previous) return previous;
+      const dropped = previous.droppedDrafts?.[line];
+      if (dropped) {
+        const consumed = new Set(dropped.evidence.length > 0 ? dropped.evidence : [dropped.title]);
+        const remainingDropped = Object.fromEntries(
+          Object.entries(previous.droppedDrafts ?? {}).filter(([key]) => !consumed.has(key)),
+        );
+        track('brain_dump_line_promoted', { via: 'restored' });
+        return {
+          tasks: [...previous.tasks, dropped],
+          unclaimed: previous.unclaimed.filter((candidate) => !consumed.has(candidate)),
+          droppedDrafts: remainingDropped,
+        };
+      }
+      track('brain_dump_line_promoted', { via: 'manual' });
+      setAutoEditIndex(previous.tasks.length);
+      return {
+        ...previous,
+        tasks: [
+          ...previous.tasks,
+          {
+            title: '',
+            details: null,
+            size: null,
+            contexts: [],
+            deadline: null,
+            timeSensitive: false,
+            evidence: [line],
+          },
+        ],
+        unclaimed: previous.unclaimed.filter((candidate) => candidate !== line),
+      };
+    });
   };
 
   const handleAddAll = async () => {
@@ -254,7 +272,8 @@ export default function BrainDumpScreen() {
           tasks={check.tasks}
           unclaimed={check.unclaimed}
           working={working}
-          promotingLine={promotingLine}
+          autoEditIndex={autoEditIndex}
+          onAutoEditHandled={() => setAutoEditIndex(null)}
           onRename={(index, title) =>
             setCheck((previous) =>
               previous
@@ -270,6 +289,8 @@ export default function BrainDumpScreen() {
           onDrop={(index) =>
             // 9.8 C2: a dropped task doesn't vanish — its source lines return
             // to the unclaimed "not added" rows (re-promotable, honest count).
+            // G8: the draft itself is kept, keyed by those lines, so re-adding
+            // restores it instantly.
             setCheck((previous) => {
               if (!previous) return previous;
               const dropped = previous.tasks[index];
@@ -280,13 +301,18 @@ export default function BrainDumpScreen() {
                     ? dropped.evidence
                     : [dropped.title];
               const fresh = lines.filter((line) => !previous.unclaimed.includes(line));
+              const keyed =
+                dropped === undefined
+                  ? {}
+                  : Object.fromEntries(lines.map((line) => [line, dropped]));
               return {
                 tasks: previous.tasks.filter((_, candidate) => candidate !== index),
                 unclaimed: [...previous.unclaimed, ...fresh],
+                droppedDrafts: { ...previous.droppedDrafts, ...keyed },
               };
             })
           }
-          onPromote={(line) => void handlePromote(line)}
+          onPromote={handlePromote}
           onChangeThese={(feedback) => void handleChangeThese(feedback)}
           onAddAll={() => void handleAddAll()}
           onBackToDump={() => setCheck(null)}

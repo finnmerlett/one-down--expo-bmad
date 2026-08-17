@@ -194,6 +194,7 @@ export function attentionContexts(
   tasks: TaskData[],
   offers: ReadonlyMap<string, number>,
   now: Date,
+  activeContexts: readonly TaskContext[] = [],
 ): Set<TaskContext> {
   const attention = new Set<TaskContext>();
   // Same selection the cards render (9-5 item 16) — a dot never points at a
@@ -204,7 +205,12 @@ export function attentionContexts(
     const hot = isTopOfDeck(task, now) || badges.has(task.id);
     if (!hot) continue;
     for (const context of parseTaskContexts(task.contexts)) {
-      if ((TASK_CONTEXTS as readonly string[]).includes(context)) {
+      if (!(TASK_CONTEXTS as readonly string[]).includes(context)) continue;
+      // 9.8 G18: the dot is an invitation to toggle THIS tile on — it only
+      // tells the truth if doing so actually surfaces the hot task under
+      // the requirements rule (EVERY required context must be active). A
+      // home+out task must not dot "out & about" alone.
+      if (matchesContexts(task, [...activeContexts, context])) {
         attention.add(context as TaskContext);
       }
     }

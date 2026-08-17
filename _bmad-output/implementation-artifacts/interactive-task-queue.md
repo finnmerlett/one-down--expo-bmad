@@ -14,6 +14,7 @@ into the fixes story of the session that does them.
 | (new) | Card dimensions + stack clipping/overlap live-tweak session; storybook pass on the phone | ~comments on `tlczvpvc621y` / `4k06x6s32vut` |
 | (new) | Bonus-bar dark palette rework — dark gold reads brown; likely keep light bar colours in dark theme | ~comment on `s1trv74q7fhu` |
 | (new) | Mutually-exclusive context requirements — design exploration (the dot/filter mismatch bug is being fixed separately as code) | `cbx.o2u93vm22tk4` second half |
+| `1a008473ac0` | Triage force-all residue: size + deadline forcing SHIPPED (G1); still open — forcing contexts needs a "no context needed" affordance, and criticality reads Chill-by-default so forcing a tap needs a design call | Finn's `~` on the F1 INPUT NEEDED item |
 
 ## Standing notes
 

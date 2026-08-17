@@ -33,6 +33,8 @@ export function BrainDumpCheck({
   unclaimed,
   working = false,
   promotingLine = null,
+  autoEditIndex = null,
+  onAutoEditHandled,
   onRename,
   onDrop,
   onPromote,
@@ -46,6 +48,9 @@ export function BrainDumpCheck({
   working?: boolean;
   /** The unclaimed line currently being promoted (its + spins). */
   promotingLine?: string | null;
+  /** 9.8 G9 — open this task's title editor (a just-promoted empty title). */
+  autoEditIndex?: number | null;
+  onAutoEditHandled?: () => void;
   onRename: (index: number, title: string) => void;
   onDrop: (index: number) => void;
   onPromote: (line: string) => void;
@@ -57,6 +62,18 @@ export function BrainDumpCheck({
   const [draft, setDraft] = useState('');
   const [changeOpen, setChangeOpen] = useState(false);
   const [changeText, setChangeText] = useState('');
+
+  // 9.8 G9: a locally promoted line lands as an empty-title box — put the
+  // caret straight in its title.
+  useEffect(() => {
+    if (autoEditIndex === null) return;
+    const target = tasks[autoEditIndex];
+    if (target !== undefined) {
+      setEditingIndex(autoEditIndex);
+      setDraft(target.title);
+    }
+    onAutoEditHandled?.();
+  }, [autoEditIndex, tasks, onAutoEditHandled]);
 
   // 9.8 C3 (task-running item-14 pattern): while the change box owns the
   // keyboard, everything below it hides so ITS bottom lands on the keyboard —
@@ -128,6 +145,7 @@ export function BrainDumpCheck({
                         onSubmitEditing={() => commitRename(index)}
                         onBlur={() => commitRename(index)}
                         returnKeyType="done"
+                        placeholder="Name this task"
                         className="flex-1 font-body-semibold text-sm text-typography-900"
                       />
                     ) : (

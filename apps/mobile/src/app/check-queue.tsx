@@ -13,7 +13,7 @@ import {
   type TaskData,
 } from '@one-down/shared';
 
-import { showRewardToast } from '@/components/feedback/reward-toast';
+import { showRewardToast, showUndoToast } from '@/components/feedback/reward-toast';
 import { SIZE_LABELS } from '@/components/card-stack/task-card';
 import { BlueprintCard, type BlueprintDraft } from '@/components/triage/blueprint-card';
 import { Box } from '@/components/ui/box';
@@ -29,7 +29,7 @@ import { track } from '@/lib/analytics/track';
 import { db } from '@/lib/local-db';
 import { appendAiLearning } from '@/services/ai-notes';
 import { applyTaskPatch, confirmReviewItem, confirmReviewItems } from '@/services/task-edits';
-import type { UpdateTaskPatch } from '@/services/tasks-repository';
+import { archiveTasks, restoreTask, type UpdateTaskPatch } from '@/services/tasks-repository';
 
 // Third-party component — NativeWind only auto-interops react-native core.
 cssInterop(SafeAreaView, { className: 'style' });
@@ -215,6 +215,29 @@ export default function CheckQueueScreen() {
     setHandledIds((previous) => new Set(previous));
   };
 
+  // 9.8 G11: bin from triage — recycle bin (archived), NO award, undoable.
+  const handleDelete = (task: TaskData) => {
+    void archiveTasks(db, [task.id])
+      // oxlint-disable-next-line no-console
+      .catch((error: unknown) => console.warn('Triage delete failed', error));
+    track('triage_card_deleted', {});
+    setHandledIds((previous) => new Set(previous).add(task.id));
+    showUndoToast(toast, {
+      title: 'Sent to the recycle bin',
+      onUndo: () => {
+        void restoreTask(db, task.id)
+          // oxlint-disable-next-line no-console
+          .catch((error: unknown) => console.warn('Triage delete undo failed', error));
+        // Back into this session's queue — it is still flagged.
+        setHandledIds((previous) => {
+          const next = new Set(previous);
+          next.delete(task.id);
+          return next;
+        });
+      },
+    });
+  };
+
   return (
     <SafeAreaView
       edges={['top', 'left', 'right', 'bottom']}
@@ -246,12 +269,14 @@ export default function CheckQueueScreen() {
       <VStack className="gap-2 px-6 pb-3">
         {total > 0 ? (
           <HStack className="gap-1">
+            {/* 9.8 G11: bars fill by HANDLED count — the old position-1 fill
+                left the last bar empty on the Queue-clear screen. */}
             {Array.from({ length: total }, (_, index) => (
               <Box
                 key={index}
                 className="h-1 flex-1 rounded-full"
                 style={{
-                  backgroundColor: index < position - 1 ? RAIL_DONE : 'rgba(160,200,245,0.25)',
+                  backgroundColor: index < handledIds.size ? RAIL_DONE : 'rgba(160,200,245,0.25)',
                 }}
               />
             ))}
@@ -273,6 +298,7 @@ export default function CheckQueueScreen() {
               task={current}
               onSave={(draft) => handleSave(current, draft)}
               onSkip={() => handleSkip(current)}
+              onDelete={() => handleDelete(current)}
             />
           </Animated.View>
         </ScrollView>

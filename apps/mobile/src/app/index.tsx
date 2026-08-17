@@ -263,7 +263,9 @@ export default function HomeScreen() {
       });
     });
   }, [topTask, toast]);
-  const available = useMemo(() => availableContexts(tasks, mode), [tasks, mode]);
+  // 9.8 G12: chips grey only when NO task at all needs that context — the
+  // current mode must not grey them (it filters the stack, not the choices).
+  const available = useMemo(() => availableContexts(tasks), [tasks]);
 
   // v1.5 economy: the card shows its size value; badges render separately
   // (gold band) and never fold into the number (spec §2).
@@ -276,7 +278,10 @@ export default function HomeScreen() {
     (task: TaskData) => getBadge(task) === null && isTopOfDeck(task, new Date()),
     [getBadge],
   );
-  const attention = useMemo(() => attentionContexts(tasks, offers, new Date()), [tasks, offers]);
+  const attention = useMemo(
+    () => attentionContexts(tasks, offers, new Date(), activeContexts),
+    [tasks, offers, activeContexts],
+  );
 
   // Committed pass: count the skip (6.4) and erode any live offer (Row E).
   const handleSwipe = useCallback((task: TaskData) => {

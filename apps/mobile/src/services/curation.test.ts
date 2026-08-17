@@ -2,6 +2,7 @@ import { TASK_CONTEXTS, type TaskData } from '@one-down/shared';
 
 import {
   assignBadges,
+  attentionContexts,
   availableContexts,
   curateTasks,
   MAX_LIVE_BONUSES,
@@ -317,6 +318,37 @@ describe('curateTasks scoring (Story 3.3)', () => {
       .map((t) => t.id)
       .filter((id) => id !== 'newcomer');
     expect(after).toEqual(before);
+  });
+});
+
+describe('attentionContexts (9.8 G18: dots agree with the requirements filter)', () => {
+  const NOW = new Date('2026-06-10T12:00:00Z');
+  // Due tomorrow → top-of-deck hot, requires BOTH home and out_and_about.
+  const hotBoth = makeTask({
+    id: 'hot-both',
+    deadline: new Date('2026-06-11T12:00:00Z'),
+    contexts: '["home","out_and_about"]',
+  });
+
+  it('never dots a single tile that alone cannot surface a multi-context hot task', () => {
+    expect(attentionContexts([hotBoth], new Map(), NOW, [])).toEqual(new Set());
+  });
+
+  it('dots the missing context once the rest of the requirement set is active', () => {
+    // Only the tile still to toggle gets the dot — 'home' is already active
+    // (and selected tiles render no dot anyway).
+    expect(attentionContexts([hotBoth], new Map(), NOW, ['home'])).toEqual(
+      new Set(['out_and_about']),
+    );
+  });
+
+  it('single-context hot tasks dot their tile from an empty active set', () => {
+    const hot = makeTask({
+      id: 'hot-one',
+      deadline: new Date('2026-06-11T12:00:00Z'),
+      contexts: '["phone"]',
+    });
+    expect(attentionContexts([hot], new Map(), NOW, [])).toEqual(new Set(['phone']));
   });
 });
 

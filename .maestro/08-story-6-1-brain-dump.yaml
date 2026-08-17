@@ -53,14 +53,28 @@ appId: com.onedown.mobile
     timeout: 5000
 - assertVisible: '1 entry not added'
 
-# Promote the unclaimed line (+) → it becomes a third box; drop it (×) —
-# counts move both ways (07f). 9.8 C2: the dropped task's source line comes
-# BACK as a "not added" row instead of vanishing.
+# Promote the unclaimed line (+): 9.8 G9 — no AI title guess; an empty-title
+# box opens with the caret in the title. Type one, commit with done.
 - tapOn: 'Add as task: maybe fix the shed'
 - extendedWaitUntil:
     visible: 'Check these 3'
-    timeout: 15000
-- tapOn: 'Drop task: Maybe fix the shed'
+    timeout: 5000
+- inputText: 'Fix the shed'
+- pressKey: Enter
+- waitForAnimationToEnd
+- assertVisible: 'Fix the shed'
+
+# Drop it (×) — 9.8 C2: the source line comes BACK as a "not added" row.
+- tapOn: 'Drop task: Fix the shed'
+- assertVisible: 'Check these 2'
+- assertVisible: '1 entry not added'
+
+# 9.8 G8: re-adding the same line restores the typed title INSTANTLY (the
+# draft was kept) — no AI, no rename needed.
+- tapOn: 'Add as task: maybe fix the shed'
+- assertVisible: 'Check these 3'
+- assertVisible: 'Fix the shed'
+- tapOn: 'Drop task: Fix the shed'
 - assertVisible: 'Check these 2'
 - assertVisible: '1 entry not added'
 

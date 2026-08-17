@@ -154,8 +154,10 @@ export type AnalyticsEventMap = EnforceFlatProps<{
     duration_ms: number;
     provider: 'gemini' | 'fake';
   };
-  /** v1.5 D6 — an unclaimed line was promoted into a task box. */
-  brain_dump_line_promoted: { provider: 'gemini' | 'fake' };
+  /** v1.5 D6 → 9.8 G8/G9 — an unclaimed line was promoted into a task box:
+   *  a dropped draft restored, or an empty-title box for manual naming
+   *  (promotion is local now, no AI). */
+  brain_dump_line_promoted: { via: 'restored' | 'manual' };
   /** Story 6.2 — the info icon was tapped and the stack filtered to flagged cards. */
   review_mode_entered: { card_count: number };
   /** Story 6.2 — one review item confirmed (tick or edit-confirm; field name only). */
@@ -257,6 +259,8 @@ export type AnalyticsEventMap = EnforceFlatProps<{
   triage_card_saved: { edited_fields: number; confirmed_count: number };
   /** v1.5 D6b — Skip this one requeued a card. */
   triage_card_skipped: Record<string, never>;
+  /** 9.8 G11 — a card was binned straight from triage (no award, undoable). */
+  triage_card_deleted: Record<string, never>;
 }>;
 
 export type AnalyticsEventName = keyof AnalyticsEventMap;
