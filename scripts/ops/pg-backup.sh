@@ -12,7 +12,7 @@ set -uo pipefail
 BACKUP_DIR="$HOME/Backups/one-down-pg"
 RETENTION_DAYS=14
 # Docker Desktop's CLI lives outside launchd's minimal PATH.
-export PATH="/usr/local/bin:/opt/homebrew/bin:$PATH"
+export PATH="/Applications/Docker.app/Contents/Resources/bin:/usr/local/bin:/opt/homebrew/bin:$PATH"
 
 mkdir -p "$BACKUP_DIR"
 
