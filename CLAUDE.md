@@ -234,6 +234,7 @@ How it works here:
 - Stories are co-located: `component.tsx` + `component.stories.tsx` (CSF, types from `@storybook/react`).
 - **On-device**: `bun run storybook:android` (from `apps/mobile`) — entry-point swap via `STORYBOOK_ENABLED=true`; needs the dev-client build (`expo run:android` debug variant). Zero Storybook code enters normal bundles.
 - **Headless (CI)**: every story gets a Portable Stories crash-free test — `composeStories(stories)` from `@storybook/react`, rendered with `@testing-library/react-native`.
+- **Design canvas (web)**: `bun run canvas` → http://localhost:8084 — every story rendered live on a zoomable canvas, laid out as user journeys (`apps/canvas/src/journeys.ts`). Frames are iframes onto Metro's web target (`.rnstorybook/root.web.tsx`, `bun run storybook:web` on :8083), so they are the real components. See `apps/canvas/README.md`.
 - `apps/mobile/.rnstorybook/storybook.requires.ts` is generated (metro regenerates on start; `bun run storybook:generate` manually) but committed so typecheck works on fresh clones.
 - **RNTL v14 gotcha: `render()` is async** — always `await render(...)`. Never add `react-test-renderer` (RNTL 14 uses the new `test-renderer`).
 

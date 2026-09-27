@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* RGB channels (see tailwind.config.ts). Warm neutrals + One Down teal,
+   matching the app's own background-100 / primary tokens. */
+:root {
+  --bg-base: 244 241 236;
+  --bg-elevated: 255 255 255;
+  --bg-secondary: 236 232 225;
+  --bg-tertiary: 228 223 215;
+  --border-standard: 206 199 189;
+  --border-subtle: 225 219 210;
+  --text-primary: 44 39 35;
+  --text-secondary: 94 86 78;
+  --text-tertiary: 138 129 119;
+  --text-on-accent: 255 255 255;
+  --accent: 44 110 106;
+  --info: 46 106 179;
+  --success: 47 133 90;
+  --warning: 180 110 20;
+  --error: 180 35 24;
+  --error-bg: 253 236 234;
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  --bg-base: 24 22 20;
+  --bg-elevated: 38 35 32;
+  --bg-secondary: 48 44 40;
+  --bg-tertiary: 60 55 50;
+  --border-standard: 84 78 71;
+  --border-subtle: 64 59 54;
+  --text-primary: 240 236 230;
+  --text-secondary: 196 189 180;
+  --text-tertiary: 150 142 133;
+  --text-on-accent: 255 255 255;
+  --accent: 94 176 168;
+  --error-bg: 70 28 24;
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: rgb(var(--bg-base));
+  color: rgb(var(--text-primary));
+  font-family: theme('fontFamily.sans');
+}
