@@ -14,7 +14,9 @@
     "skipLibCheck": true,
     "noEmit": true,
     "types": ["vite/client", "node"],
-    "paths": { "@/*": ["./src/*"] }
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
-  "include": ["src", "vite.config.ts", "tailwind.config.ts"]
+  "include": ["scripts", "src", "tailwind.config.ts", "vite.config.ts"]
 }

@@ -1,64 +1,59 @@
-/// <reference types="@storybook/react-native/metro-env" />
 // Web root: renders stories for the design canvas (apps/canvas), whose frames
 // are iframes onto this page. Same Metro + NativeWind + babel pipeline as the
-// app, so a frame is the real component, not a copy.
+// app, and the same story tree as the native root's single-story mode, so a
+// frame is the real component, not a copy.
 //
 //   ?id=<story-id>          one story filling the frame (a screen)
 //   ?title=<meta-title>&w=  every story of one component side by side, each
 //                           `w` px wide (a component-library row); its size is
 //                           posted to the parent so the canvas can fit it
-//   (neither)               a clickable index of every story — also posted to
+//   &insets=<top>,<bottom>  device safe-area insets (dp) — screens get the
+//                           padding they get on the phone, plus a drawn status
+//                           bar and gesture handle in those areas
+//   &keyboard=1             raise the mock keyboard (also `parameters.canvas
+//                           .keyboard` on the story)
+//   (neither id nor title)  a clickable index of every story — also posted to
 //                           the parent, which is how the canvas lists stories
 //                           it has not placed on a journey yet
 //
 // Framed stories also forward canvas navigation the story itself cannot use
 // (a live iframe swallows every event over it): wheels with nothing left to
 // scroll, middle-button drags, and middle-held / pinch wheels for zooming.
-//
-// Framed stories also snapshot themselves (JPEG → parent) shortly after
-// mounting and whenever the canvas asks — the canvas shows those pictures
-// when zoomed out or off screen, so only nearby frames run a live bundle.
-import { composeStories, setProjectAnnotations } from '@storybook/react';
-import * as Font from 'expo-font';
+// They also snapshot themselves (JPEG → parent) shortly after mounting and
+// whenever the canvas asks — the canvas shows those pictures when zoomed out
+// or off screen, so only nearby frames run a live bundle.
 import { domToJpeg } from 'modern-screenshot';
-import { Component, useEffect, useState, type ComponentType, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, Text, View, type LayoutChangeEvent } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaFrameContext, SafeAreaInsetsContext } from 'react-native-safe-area-context';
 
-import { APP_FONTS } from '../src/constants/fonts';
+import {
+  ComponentRow,
+  DEFAULT_GROUP_ITEM_WIDTH,
+  RendererProviders,
+  ScreenFrame,
+} from './story-frames';
+import { collectStories, type StoryEntry } from './story-registry';
+import { setMockKeyboard, watchMockKeyboard } from './web-shims/keyboard';
 
-import * as previewAnnotations from './preview';
-
-setProjectAnnotations([previewAnnotations]);
+// NativeWind resolves `rem` to 14px on native but the browser's is 16px, so
+// every rem-based utility (leading-5, gap-2.5, the default spacing scale)
+// came out 14% larger on web. Match the device.
+document.documentElement.style.fontSize = '14px';
 
 /** Envelope for every message to the canvas — lets it ignore foreign frames. */
 const MESSAGE_SOURCE = 'one-down-story';
 /** Envelope the canvas uses for its requests back to a frame. */
 const CANVAS_SOURCE = 'one-down-canvas';
-const DEFAULT_GROUP_ITEM_WIDTH = 390;
 /** Long enough for fonts, images and entering animations to settle. */
 const FIRST_SNAPSHOT_DELAY_MS = 1500;
-
-type StoryEntry = { id: string; title: string; name: string; Story: ComponentType };
-
-function collectStories(): StoryEntry[] {
-  const req = require.context('../src', true, /\.stories\.tsx$/);
-  return req.keys().flatMap((key) => {
-    const mod = req(key);
-    const title: string = mod.default?.title ?? key;
-    // Story exports are PascalCase; lowercase ones are fixture helpers
-    // (makeTask, makeDraft…) that composeStories would otherwise wrap.
-    return Object.entries(composeStories(mod))
-      .filter(([exportName]) => /^[A-Z]/.test(exportName))
-      .map(([, story]) => ({
-        id: story.id,
-        title,
-        name: story.storyName ?? story.id,
-        Story: story as ComponentType,
-      }));
-  });
-}
+/**
+ * Gboard on a Pixel (API 35, gesture nav), measured on the emulator: it covers
+ * 336dp including the gesture area, but RN reports `endCoordinates.height`
+ * WITHOUT the navigation-bar inset (312dp) — mirrored below.
+ */
+const MOCK_KEYBOARD_HEIGHT = 336;
+const KEY_ROWS = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
 
 function postToCanvas(message: Record<string, unknown>) {
   if (window.parent !== window) {
@@ -166,76 +161,173 @@ function useCanvasInputForwarding(enabled: boolean) {
   }, [enabled]);
 }
 
-class StoryErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
-  state = { error: null as Error | null };
-  static getDerivedStateFromError(error: Error) {
-    return { error };
-  }
-  render() {
-    if (!this.state.error) return this.props.children;
-    return (
-      <View style={{ padding: 16, gap: 8 }}>
-        <Text style={{ color: '#b42318', fontWeight: '700' }}>Story crashed</Text>
-        <Text style={{ color: '#b42318', fontFamily: 'monospace', fontSize: 12 }}>
-          {String(this.state.error.stack ?? this.state.error)}
-        </Text>
-      </View>
-    );
-  }
-}
-
-function ScreenFrame({ entry }: { entry: StoryEntry }) {
-  const { Story } = entry;
+/**
+ * Fixed device insets instead of the browser's (always zero), so SafeAreaView
+ * and useSafeAreaInsets pad a screen exactly as on the phone.
+ */
+function DeviceSafeArea({
+  top,
+  bottom,
+  children,
+}: {
+  top: number;
+  bottom: number;
+  children: ReactNode;
+}) {
+  const [frame, setFrame] = useState({
+    x: 0,
+    y: 0,
+    width: window.innerWidth,
+    height: window.innerHeight,
+  });
+  useEffect(() => {
+    const onResize = () =>
+      setFrame({ x: 0, y: 0, width: window.innerWidth, height: window.innerHeight });
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  const insets = useMemo(() => ({ top, bottom, left: 0, right: 0 }), [top, bottom]);
   return (
-    <StoryErrorBoundary>
-      <View style={{ flex: 1 }}>
-        <Story />
-      </View>
-    </StoryErrorBoundary>
+    <SafeAreaFrameContext.Provider value={frame}>
+      <SafeAreaInsetsContext.Provider value={insets}>{children}</SafeAreaInsetsContext.Provider>
+    </SafeAreaFrameContext.Provider>
   );
 }
 
-function ComponentRow({
-  title,
-  entries,
-  itemWidth,
-}: {
-  title: string;
-  entries: StoryEntry[];
-  itemWidth: number;
-}) {
-  const onLayout = (event: LayoutChangeEvent) => {
-    const { width, height } = event.nativeEvent.layout;
-    postToCanvas({ type: 'size', key: `title:${title}`, width, height });
-  };
+/** Android status bar and gesture handle, drawn into the inset areas the app draws behind. */
+function SystemBars({ top, bottom }: { top: number; bottom: number }) {
+  const ink = '#1f1b16';
+  return (
+    <>
+      {top > 0 && (
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: top,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingHorizontal: 24,
+          }}
+        >
+          <Text style={{ fontFamily: 'Karla_500Medium', fontSize: 14, color: ink }}>9:41</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <View
+              style={{
+                width: 14,
+                height: 10,
+                borderRadius: 2,
+                backgroundColor: ink,
+                opacity: 0.85,
+              }}
+            />
+            <View
+              style={{
+                width: 22,
+                height: 11,
+                borderRadius: 3,
+                borderWidth: 1.5,
+                borderColor: ink,
+                padding: 1.5,
+              }}
+            >
+              <View style={{ flex: 1, width: '70%', borderRadius: 1, backgroundColor: ink }} />
+            </View>
+          </View>
+        </View>
+      )}
+      {bottom > 0 && (
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: bottom,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <View
+            style={{ width: 108, height: 4, borderRadius: 2, backgroundColor: ink, opacity: 0.4 }}
+          />
+        </View>
+      )}
+    </>
+  );
+}
+
+/**
+ * A Gboard-shaped keyboard over the frame's bottom, raising real keyboard
+ * events (web-shims/keyboard) so the story pads itself as on the device.
+ * Hides when the story dismisses the keyboard.
+ */
+function MockKeyboard({ navBarInset }: { navBarInset: number }) {
+  const [visible, setVisible] = useState(true);
+  useEffect(() => {
+    const stop = watchMockKeyboard(setVisible);
+    // Focus the story's first field, as tapping it on the phone would.
+    const field = document.querySelector<HTMLElement>('input, textarea');
+    field?.focus({ preventScroll: true });
+    setMockKeyboard({
+      screenX: 0,
+      screenY: window.innerHeight - MOCK_KEYBOARD_HEIGHT,
+      width: window.innerWidth,
+      height: MOCK_KEYBOARD_HEIGHT - navBarInset,
+    });
+    return () => {
+      stop();
+      setMockKeyboard(null);
+    };
+  }, [navBarInset]);
+  if (!visible) return null;
+  const key = {
+    flex: 1,
+    height: 42,
+    borderRadius: 6,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  } as const;
   return (
     <View
+      pointerEvents="none"
       style={{
-        flexDirection: 'row',
-        alignSelf: 'flex-start',
-        alignItems: 'flex-start',
-        gap: 32,
-        padding: 24,
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom: 0,
+        height: MOCK_KEYBOARD_HEIGHT,
+        backgroundColor: '#e8eaed',
+        paddingTop: 44,
+        paddingHorizontal: 4,
+        gap: 10,
       }}
-      onLayout={onLayout}
     >
-      {entries.map(({ id, name, Story }) => (
-        <View key={id} style={{ width: itemWidth, gap: 10 }}>
-          <Text
-            style={{
-              fontFamily: 'DMMono_500Medium',
-              fontSize: 12,
-              letterSpacing: 1,
-              color: '#8a8177',
-            }}
-          >
-            {name.toUpperCase()}
-          </Text>
-          <StoryErrorBoundary>
-            <Story />
-          </StoryErrorBoundary>
+      {KEY_ROWS.map((row, index) => (
+        <View
+          key={row}
+          style={{
+            flexDirection: 'row',
+            gap: 5,
+            paddingHorizontal: index === 1 ? 18 : index === 2 ? 44 : 0,
+          }}
+        >
+          {[...row].map((letter) => (
+            <View key={letter} style={key}>
+              <Text style={{ fontSize: 20, color: '#1f1f1f' }}>{letter}</Text>
+            </View>
+          ))}
         </View>
       ))}
+      <View style={{ flexDirection: 'row', gap: 5, paddingHorizontal: 44 }}>
+        <View style={[key, { flex: 5 }]} />
+      </View>
     </View>
   );
 }
@@ -277,22 +369,35 @@ function Route({ stories }: { stories: StoryEntry[] }) {
   const params = new URLSearchParams(window.location.search);
   const id = params.get('id');
   const title = params.get('title');
+  const [insetTop = 0, insetBottom = 0] = (params.get('insets') ?? '').split(',').map(Number);
   useCanvasSnapshots(Boolean(id || title));
   useCanvasInputForwarding(Boolean(id || title));
 
   if (id) {
     const entry = stories.find((story) => story.id === id);
-    return entry ? (
-      <ScreenFrame entry={entry} />
-    ) : (
-      <Text style={{ padding: 16 }}>No story with id “{id}”.</Text>
+    if (!entry) return <Text style={{ padding: 16 }}>No story with id “{id}”.</Text>;
+    const keyboard = entry.canvas.keyboard === true || params.get('keyboard') === '1';
+    // The keyboard covers the gesture area, as Gboard does.
+    const bottom = keyboard ? 0 : insetBottom;
+    return (
+      <DeviceSafeArea top={insetTop} bottom={bottom}>
+        <ScreenFrame entry={entry} />
+        <SystemBars top={insetTop} bottom={bottom} />
+        {keyboard && <MockKeyboard navBarInset={insetBottom} />}
+      </DeviceSafeArea>
     );
   }
   if (title) {
     const entries = stories.filter((story) => story.title === title);
     const itemWidth = Number(params.get('w')) || DEFAULT_GROUP_ITEM_WIDTH;
+    const onLayout = (event: LayoutChangeEvent) => {
+      const { width, height } = event.nativeEvent.layout;
+      postToCanvas({ type: 'size', key: `title:${title}`, width, height });
+    };
     return entries.length > 0 ? (
-      <ComponentRow title={title} entries={entries} itemWidth={itemWidth} />
+      <DeviceSafeArea top={0} bottom={0}>
+        <ComponentRow entries={entries} itemWidth={itemWidth} onLayout={onLayout} />
+      </DeviceSafeArea>
     ) : (
       <Text style={{ padding: 16 }}>No stories titled “{title}”.</Text>
     );
@@ -301,22 +406,10 @@ function Route({ stories }: { stories: StoryEntry[] }) {
 }
 
 export default function StoryRendererRoot() {
-  const [fontsReady, setFontsReady] = useState(false);
   const [stories] = useState(collectStories);
-
-  useEffect(() => {
-    void Font.loadAsync(APP_FONTS)
-      // oxlint-disable-next-line no-console
-      .catch((error: unknown) => console.warn('Font load failed', error))
-      .finally(() => setFontsReady(true));
-  }, []);
-
-  if (!fontsReady) return null;
   return (
-    <SafeAreaProvider>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <Route stories={stories} />
-      </GestureHandlerRootView>
-    </SafeAreaProvider>
+    <RendererProviders>
+      <Route stories={stories} />
+    </RendererProviders>
   );
 }
