@@ -57,11 +57,13 @@ import {
 import { cn } from '@/lib/utils';
 
 // One Down is portrait-only, 320–430pt wide (architecture: UI patterns).
+// Pixel 7 is the owner's phone — the same dp size and system-bar insets as
+// the Pixel 8 emulator the fidelity diffs run on (1080×2400 @ 420dpi).
 const DEVICE_PRESETS = {
-  pixel7: { width: 412, height: 915, label: 'Pixel 7' },
-  iphone: { width: 393, height: 852, label: 'iPhone 15' },
-  compact: { width: 360, height: 740, label: 'Compact Android' },
-  small: { width: 320, height: 568, label: 'Smallest (320pt)' },
+  pixel7: { width: 411, height: 914, insets: { top: 50, bottom: 24 }, label: 'Pixel 7' },
+  iphone: { width: 393, height: 852, insets: { top: 59, bottom: 34 }, label: 'iPhone 15' },
+  compact: { width: 360, height: 740, insets: { top: 24, bottom: 48 }, label: 'Compact Android' },
+  small: { width: 320, height: 568, insets: { top: 20, bottom: 0 }, label: 'Smallest (320pt)' },
 } as const;
 type DeviceMode = keyof typeof DEVICE_PRESETS;
 
@@ -91,7 +93,8 @@ function libraryRows(stories: StoryInfo[]): { title: string; count: number }[] {
   const placed = new Set(JOURNEYS.flatMap((journey) => journey.frames.map((frame) => frame.story)));
   const rows = new Map<string, number>();
   for (const story of stories) {
-    if (!placed.has(story.id)) rows.set(story.title, (rows.get(story.title) ?? 0) + 1);
+    if (placed.has(story.id) || story.canvas?.library === false) continue;
+    rows.set(story.title, (rows.get(story.title) ?? 0) + 1);
   }
   return [...rows].map(([title, count]) => ({ title, count }));
 }
@@ -582,7 +585,7 @@ export function CanvasPage() {
                               <FrameCaption
                                 label={frame.label ?? story?.name ?? frame.story}
                                 sub={story?.title ?? frame.story}
-                                href={screenUrl(frame.story)}
+                                href={screenUrl(frame.story, device.insets)}
                               />
                               <div
                                 className={cn(
@@ -603,7 +606,7 @@ export function CanvasPage() {
                                   </div>
                                 ) : (
                                   <StoryFrame
-                                    src={screenUrl(frame.story)}
+                                    src={screenUrl(frame.story, device.insets)}
                                     title={frame.label ?? frame.story}
                                     width={device.width}
                                     height={device.height}

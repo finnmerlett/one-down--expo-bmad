@@ -39,16 +39,40 @@ export const JOURNEYS: Journey[] = [
     ],
   },
   {
+    id: 'home',
+    title: 'Home',
+    description: 'The deck and its filters — every state home can be in.',
+    frames: [
+      {
+        story: 'screens-home--stack',
+        label: 'The deck',
+        note: 'Curated for the chosen context and size.',
+      },
+      {
+        story: 'screens-home--right-now-sheet',
+        label: '"Right now" sheet',
+        note: 'Pick what you have to hand.',
+      },
+      {
+        story: 'screens-home--filtered-out',
+        label: 'Nothing matches',
+        note: 'Tasks exist, but none fit the filters.',
+      },
+      { story: 'screens-home--all-clear', label: 'All clear' },
+      { story: 'screens-home--empty', label: 'New user' },
+    ],
+  },
+  {
     id: 'capture',
     title: 'Capture tasks',
     description: 'Get things out of your head: one at a time, or a whole brain dump.',
     frames: [
+      { story: 'screens-home--stack', label: 'Home' },
       {
-        story: 'app-shell-appshell--home-screen',
-        label: 'Home shell',
-        note: 'Standing bottom actions: add a task / brain dump.',
+        story: 'screens-home--quick-add',
+        label: 'Quick add',
+        note: 'One task, typed straight in.',
       },
-      { story: 'quick-add-sheet-quickaddsheet--open', label: 'Quick add' },
       { story: 'brain-dump-braindumpinput--idle', label: 'Brain dump' },
       { story: 'brain-dump-braindumpinput--parsing', label: 'AI parsing' },
       {
@@ -56,7 +80,11 @@ export const JOURNEYS: Journey[] = [
         label: 'Check these',
         note: 'Review what the AI guessed before it lands in the stack.',
       },
-      { story: 'card-stack-cardstack--three-tasks', label: 'Tasks in the stack' },
+      {
+        story: 'screens-home--triage-waiting',
+        label: 'Back home',
+        note: 'Unchecked guesses wait in triage.',
+      },
     ],
   },
   {
@@ -64,11 +92,11 @@ export const JOURNEYS: Journey[] = [
     title: 'Do a task',
     description: 'Pick the top card, open it, work through it, collect the stars.',
     frames: [
-      { story: 'card-stack-cardstack--three-tasks', label: 'The stack' },
+      { story: 'screens-home--stack', label: 'The deck' },
       {
-        story: 'card-stack-cardback--full-details',
+        story: 'screens-home--card-back-open',
         label: 'Card back',
-        note: 'Flip a card to see and edit its details.',
+        note: 'The pencil flips a card to edit it.',
       },
       { story: 'task-running-taskrunningview--with-subtasks', label: 'Working on it' },
       { story: 'task-running-stepseditor--editing-steps', label: 'Edit steps' },
@@ -81,9 +109,12 @@ export const JOURNEYS: Journey[] = [
     title: 'Stuck & avoided tasks',
     description: 'Task health: nudges for tasks you keep skipping or that went stale.',
     frames: [
-      { story: 'card-stack-taskcard--avoided-task', label: 'Avoided card' },
+      {
+        story: 'screens-home--avoided-task-nudge',
+        label: 'Avoided card',
+        note: 'Skipped past the threshold.',
+      },
       { story: 'card-stack-cardback--with-health-prompt', label: 'Health prompt' },
-      { story: 'card-stack-microtasknudge--idle', label: 'Micro-task nudge' },
       { story: 'card-stack-cardback--with-review-flags', label: 'Needs a check' },
       { story: 'triage-triagelist--all-reasons', label: 'Triage queue' },
       { story: 'triage-triagelist--all-caught-up', label: 'All caught up' },
@@ -94,12 +125,17 @@ export const JOURNEYS: Journey[] = [
     title: 'Manage the list',
     description: 'Every task at once: browse, multi-select, archive, restore from the bin.',
     frames: [
-      { story: 'task-list-tasklistview--with-values-and-bonus-row', label: 'Active tasks' },
-      { story: 'task-list-tasklistview--multi-select', label: 'Multi-select' },
-      { story: 'task-list-confirmdialog--archive-warning', label: 'Archive warning' },
-      { story: 'task-list-tasklistview--with-done-tasks', label: 'Done tasks' },
-      { story: 'task-list-tasklistview--recycle-bin', label: 'Recycle bin' },
-      { story: 'task-list-tasklistview--empty-bin', label: 'Empty bin' },
+      { story: 'screens-tasklist--active', label: 'Active tasks' },
+      {
+        story: 'screens-tasklist--multi-select',
+        label: 'Multi-select',
+        note: 'Long-press any row.',
+      },
+      { story: 'screens-tasklist--archive-warning', label: 'Archive warning' },
+      { story: 'screens-tasklist--recycle-bin', label: 'Recycle bin' },
+      { story: 'screens-tasklist--delete-confirm', label: 'Delete forever' },
+      { story: 'screens-tasklist--empty-bin', label: 'Empty bin' },
+      { story: 'screens-tasklist--empty', label: 'No tasks yet' },
     ],
   },
   {

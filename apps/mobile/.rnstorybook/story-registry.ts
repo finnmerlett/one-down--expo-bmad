@@ -14,6 +14,12 @@ setProjectAnnotations([previewAnnotations]);
 export interface CanvasParameters {
   /** Show the (mock, on web) on-screen keyboard over the story. */
   keyboard?: boolean;
+  /**
+   * `false` keeps a story out of the canvas's component library — for
+   * component stories a screen story now shows in context (they stay for
+   * tests and on-device Storybook).
+   */
+  library?: boolean;
 }
 
 export type StoryEntry = {

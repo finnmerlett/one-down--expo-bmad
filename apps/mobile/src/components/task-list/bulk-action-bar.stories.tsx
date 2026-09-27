@@ -6,6 +6,8 @@ import { BulkActionBar } from './bulk-action-bar';
 
 const meta = {
   title: 'task-list/BulkActionBar',
+  // Shown in context by the screens/TaskList screen stories; kept for tests.
+  parameters: { canvas: { library: false } },
   component: BulkActionBar,
   decorators: [
     (Story) => (

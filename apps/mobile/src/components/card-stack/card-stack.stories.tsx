@@ -5,6 +5,8 @@ import { makeTask } from './task-card.stories';
 
 const meta = {
   title: 'card-stack/CardStack',
+  // Shown in context by the screens/Home screen stories; kept for tests.
+  parameters: { canvas: { library: false } },
   component: CardStack,
   // Deterministic stand-in for the home layer's potentialStars closure.
   args: { getStarValue: (task) => (task.size === 'big_time' ? 20 : 5) },

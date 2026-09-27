@@ -7,6 +7,8 @@ import { TaskListView } from './task-list-view';
 
 const meta = {
   title: 'task-list/TaskListView',
+  // Shown in context by the screens/TaskList screen stories; kept for tests.
+  parameters: { canvas: { library: false } },
   component: TaskListView,
   decorators: [
     (Story) => (

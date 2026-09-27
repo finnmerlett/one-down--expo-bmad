@@ -35,10 +35,20 @@ const DIFF_SCALE = 0.5;
 const DIFF_TARGETS = [
   'screens-home--stack',
   'screens-home--empty',
-  'screens-home--quick-add-open:keyboard',
+  'screens-home--all-clear',
+  'screens-home--filtered-out',
+  'screens-home--right-now-sheet',
+  'screens-home--card-back-open',
+  'screens-home--quick-add:keyboard',
+  'screens-home--triage-waiting',
+  'screens-home--avoided-task-nudge',
   'screens-tasklist--active',
+  'screens-tasklist--empty',
   'screens-tasklist--multi-select',
+  'screens-tasklist--archive-warning',
   'screens-tasklist--recycle-bin',
+  'screens-tasklist--delete-confirm',
+  'screens-tasklist--empty-bin',
 ];
 
 const adb = (...args: string[]) =>
@@ -144,10 +154,13 @@ async function captureWeb(
   storyId: string,
   keyboard: boolean,
   metrics: DeviceMetrics,
-  timezone: string,
+  { locale, timezone }: { locale: string; timezone: string },
 ) {
   const page = await browser.newPage();
   await page.emulateTimezone(timezone);
+  // --lang alone does not reach Intl in headless Chrome; the CDP override does.
+  const cdp = await page.createCDPSession();
+  await cdp.send('Emulation.setLocaleOverride', { locale });
   await page.setViewport({
     width: Math.round(metrics.widthPx / metrics.scale),
     height: Math.round(metrics.heightPx / metrics.scale),
@@ -195,7 +208,7 @@ async function main() {
   try {
     for (const { id, keyboard } of targets) {
       const device = await captureDevice(id, keyboard, metrics);
-      const web = await captureWeb(browser, id, keyboard, metrics, timezone);
+      const web = await captureWeb(browser, id, keyboard, metrics, { locale, timezone });
       const [a, b] = await Promise.all([
         toRaw(device.png, width, height),
         toRaw(web, width, height),

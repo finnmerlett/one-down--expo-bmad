@@ -15,9 +15,18 @@ export interface StoryInfo {
   id: string;
   title: string;
   name: string;
+  /** The story's `parameters.canvas` (see .rnstorybook/story-registry.ts). */
+  canvas?: { keyboard?: boolean; library?: boolean };
 }
 
-export const screenUrl = (storyId: string) => `${RENDERER_URL}/?id=${encodeURIComponent(storyId)}`;
+/** Device safe-area insets in dp: the renderer pads screens and draws system bars there. */
+export interface Insets {
+  top: number;
+  bottom: number;
+}
+
+export const screenUrl = (storyId: string, insets?: Insets) =>
+  `${RENDERER_URL}/?id=${encodeURIComponent(storyId)}${insets ? `&insets=${insets.top},${insets.bottom}` : ''}`;
 
 export const componentRowUrl = (title: string, itemWidth: number) =>
   `${RENDERER_URL}/?title=${encodeURIComponent(title)}&w=${itemWidth}`;

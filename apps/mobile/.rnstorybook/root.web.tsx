@@ -336,7 +336,7 @@ function StoryIndex({ stories }: { stories: StoryEntry[] }) {
   useEffect(() => {
     postToCanvas({
       type: 'index',
-      stories: stories.map(({ id, title, name }) => ({ id, title, name })),
+      stories: stories.map(({ id, title, name, canvas }) => ({ id, title, name, canvas })),
     });
   }, [stories]);
 
