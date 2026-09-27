@@ -26,8 +26,10 @@ const PACKAGE = process.env.DEV_PACKAGE ?? 'com.onedown.mobile.dev';
 const RENDERER_URL = process.env.STORY_RENDERER_URL ?? 'http://localhost:8083';
 const CHROME =
   process.env.CHROME_PATH ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-/** Story settle time: fonts, images, entering animations. */
+/** Story settle time once mounted: fonts, images, entering animations. */
 const SETTLE_MS = 2500;
+/** How long a deep link may take to land (the emulator lags under load). */
+const MOUNT_TIMEOUT_MS = 30_000;
 /** Diffed at half device resolution — detail enough, and forgiving of subpixel AA. */
 const DIFF_SCALE = 0.5;
 
@@ -88,13 +90,21 @@ function readDeviceMetrics(): DeviceMetrics {
   };
 }
 
-/** Top edge (px) of the on-screen keyboard, from the window manager's IME inset. */
-function keyboardTopPx(metrics: DeviceMetrics): number | null {
-  const dump = adb('shell', 'dumpsys', 'window').toString();
-  const visible = dump.match(/type=ime frame=\[\d+,(\d+)\]\[\d+,\d+\][^\n]*visible=true/);
-  if (visible && Number(visible[1]) > 0) return Number(visible[1]);
-  const hint = dump.match(/mType=ime[^\n]*mInsetsHint=Insets\{[^}]*bottom=(\d+)\}/);
-  return hint && Number(hint[1]) > 0 ? metrics.heightPx - Number(hint[1]) : null;
+/**
+ * Top edge (px) of the on-screen keyboard once it is actually showing — null
+ * if it never opens. (The IME's insets *hint* is reported even while hidden,
+ * so only a visible frame counts.)
+ */
+async function keyboardTopPx(): Promise<number | null> {
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    const visible = adb('shell', 'dumpsys', 'window')
+      .toString()
+      .match(/type=ime frame=\[\d+,(\d+)\]\[\d+,\d+\][^\n]*visible=true/);
+    if (visible && Number(visible[1]) > 0) return Number(visible[1]);
+    await sleep(250);
+  }
+  return null;
 }
 
 /** Device locale and timezone, so web dates and numbers format the same. */
@@ -106,26 +116,67 @@ function readDeviceLocale(): { locale: string; timezone: string } {
   };
 }
 
-/** Tap the first text field on screen, as a user would to start typing. */
-function focusFirstField(): boolean {
-  adb('shell', 'uiautomator', 'dump', '/sdcard/canvas-diff.xml');
-  const xml = adb('shell', 'cat', '/sdcard/canvas-diff.xml').toString();
-  const field = xml.match(
-    /class="android\.widget\.EditText"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"/,
-  );
-  if (!field) return false;
-  const [x1, y1, x2, y2] = field.slice(1).map(Number) as [number, number, number, number];
-  adb(
-    'shell',
-    'input',
-    'tap',
-    String(Math.round((x1 + x2) / 2)),
-    String(Math.round((y1 + y2) / 2)),
-  );
-  return true;
+type Point = { x: number; y: number };
+
+/**
+ * Where to tap to start typing: the first text field, from uiautomator —
+ * or, when it can't dump (it never sees an idle screen while something
+ * animates), from the web render, whose layout matches the device's.
+ */
+function firstFieldCentre(fallback: Point | null): Point | null {
+  try {
+    adb('shell', 'uiautomator', 'dump', '/sdcard/canvas-diff.xml');
+    const xml = adb('shell', 'cat', '/sdcard/canvas-diff.xml').toString();
+    const field = xml.match(
+      /class="android\.widget\.EditText"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"/,
+    );
+    if (field) {
+      const [x1, y1, x2, y2] = field.slice(1).map(Number) as [number, number, number, number];
+      return { x: (x1 + x2) / 2, y: (y1 + y2) / 2 };
+    }
+  } catch {
+    // no idle state — fall through to the web-derived point
+  }
+  return fallback;
 }
 
-async function captureDevice(storyId: string, keyboard: boolean, metrics: DeviceMetrics) {
+/** Wait until the story opened with this nonce has rendered (root.tsx logs it). */
+async function waitForStory(nonce: string) {
+  const deadline = Date.now() + MOUNT_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    const log = adb('logcat', '-d', '-s', 'ReactNativeJS:I').toString();
+    if (log.includes(`canvas-story-mounted ${nonce}`)) return;
+    await sleep(300);
+  }
+  throw new Error(`story with nonce ${nonce} never rendered on ${SERIAL}`);
+}
+
+function imeVisible(): boolean {
+  return /type=ime frame=\[[^\n]*visible=true/.test(adb('shell', 'dumpsys', 'window').toString());
+}
+
+/**
+ * Close a keyboard left up by the previous story: a story mounted under a
+ * closing keyboard pads for it (KeyboardAvoidingView) and captures shifted.
+ * With the keyboard up, BACK only dismisses the keyboard — it can't close a
+ * modal the way it would otherwise.
+ */
+async function dismissKeyboard() {
+  if (!imeVisible()) return;
+  adb('shell', 'input', 'keyevent', '4');
+  const deadline = Date.now() + 5_000;
+  while (imeVisible() && Date.now() < deadline) await sleep(200);
+}
+
+async function captureDevice(
+  storyId: string,
+  keyboard: boolean,
+  metrics: DeviceMetrics,
+  webField: Point | null,
+) {
+  await dismissKeyboard();
+  const nonce = String(Date.now());
+  adb('logcat', '-c');
   // The nonce remounts the story even when it is already showing (and the
   // unmount drops any keyboard left up). No ESC: Android treats it as BACK,
   // which closes modals.
@@ -136,16 +187,22 @@ async function captureDevice(storyId: string, keyboard: boolean, metrics: Device
     '-a',
     'android.intent.action.VIEW',
     '-d',
-    `"onedown://story?id=${storyId}&n=${Date.now()}"`,
+    `"onedown://story?id=${storyId}&n=${nonce}"`,
     PACKAGE,
   );
+  await waitForStory(nonce);
   await sleep(SETTLE_MS);
   let keyboardTop: number | null = null;
   if (keyboard) {
+    const field = firstFieldCentre(webField);
+    if (field)
+      adb('shell', 'input', 'tap', String(Math.round(field.x)), String(Math.round(field.y)));
     // oxlint-disable-next-line no-console
-    if (!focusFirstField()) console.warn(`  ${storyId}: no text field to focus on the device`);
-    await sleep(1500);
-    keyboardTop = keyboardTopPx(metrics);
+    else console.warn(`  ${storyId}: no text field to focus on the device`);
+    keyboardTop = await keyboardTopPx();
+    // oxlint-disable-next-line no-console
+    if (keyboardTop === null) console.warn(`  ${storyId}: the device keyboard never opened`);
+    await sleep(800); // the story's own keyboard padding animates in
   }
   return { png: adb('exec-out', 'screencap', '-p'), keyboardTop };
 }
@@ -175,6 +232,32 @@ async function captureWeb(
   const png = Buffer.from(await page.screenshot({ type: 'png' }));
   await page.close();
   return png;
+}
+
+/** The first text field's centre in device px, from a keyboard-less web render. */
+async function webFieldCentre(
+  browser: Awaited<ReturnType<typeof puppeteer.launch>>,
+  storyId: string,
+  metrics: DeviceMetrics,
+): Promise<Point | null> {
+  const page = await browser.newPage();
+  await page.setViewport({
+    width: Math.round(metrics.widthPx / metrics.scale),
+    height: Math.round(metrics.heightPx / metrics.scale),
+    deviceScaleFactor: metrics.scale,
+  });
+  const insets = `${metrics.statusBarPx / metrics.scale},${metrics.navBarPx / metrics.scale}`;
+  await page.goto(`${RENDERER_URL}/?id=${encodeURIComponent(storyId)}&insets=${insets}`, {
+    waitUntil: 'load',
+  });
+  await sleep(SETTLE_MS);
+  const rect = await page.evaluate(() => {
+    const field = document.querySelector('input, textarea');
+    const box = field?.getBoundingClientRect();
+    return box ? { x: box.left + box.width / 2, y: box.top + box.height / 2 } : null;
+  });
+  await page.close();
+  return rect ? { x: rect.x * metrics.scale, y: rect.y * metrics.scale } : null;
 }
 
 /** Both captures at the same diff resolution, as raw RGBA. */
@@ -209,7 +292,8 @@ async function main() {
   const summary: Array<{ story: string; mismatchPct: number; file: string }> = [];
   try {
     for (const { id, keyboard } of targets) {
-      const device = await captureDevice(id, keyboard, metrics);
+      const webField = keyboard ? await webFieldCentre(browser, id, metrics) : null;
+      const device = await captureDevice(id, keyboard, metrics, webField);
       const web = await captureWeb(browser, id, keyboard, metrics, { locale, timezone });
       const [a, b] = await Promise.all([
         toRaw(device.png, width, height),

@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Linking from 'expo-linking';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -30,7 +30,21 @@ const StorybookUIRoot = view.getStorybookUI({
   },
 });
 
-function useStoryLink(): { id?: string; title?: string; url?: string } {
+/**
+ * Logs once the linked story has rendered (inside RendererProviders, so after
+ * fonts load). The diff harness waits for this line in logcat so it never
+ * captures the previous story — uiautomator can't tell: it never sees an
+ * idle screen while the card stack animates.
+ */
+function MountMarker({ nonce }: { nonce?: string }) {
+  useEffect(() => {
+    // oxlint-disable-next-line no-console
+    if (nonce) console.log(`canvas-story-mounted ${nonce}`);
+  }, [nonce]);
+  return null;
+}
+
+function useStoryLink(): { id?: string; title?: string; nonce?: string; url?: string } {
   const url = Linking.useLinkingURL();
   return useMemo(() => {
     if (!url) return {};
@@ -40,14 +54,14 @@ function useStoryLink(): { id?: string; title?: string; url?: string } {
       const value = queryParams?.[key];
       return typeof value === 'string' && value ? value : undefined;
     };
-    return { id: param('id'), title: param('title'), url };
+    return { id: param('id'), title: param('title'), nonce: param('n'), url };
   }, [url]);
 }
 
 export default function StorybookRoot() {
   // Keyed by the whole link, so re-opening one (e.g. with a fresh `&n=` nonce)
   // remounts the story from scratch.
-  const { id, title, url } = useStoryLink();
+  const { id, title, nonce, url } = useStoryLink();
   const stories = useMemo(() => (id || title ? collectStories() : []), [id, title]);
   if (!id && !title) return <StorybookUIRoot />;
 
@@ -56,6 +70,7 @@ export default function StorybookRoot() {
   return (
     <SafeAreaProvider>
       <RendererProviders>
+        <MountMarker nonce={nonce} />
         {entry ? (
           <ScreenFrame key={url} entry={entry} />
         ) : row.length > 0 ? (
