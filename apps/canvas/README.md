@@ -94,3 +94,11 @@ built like the catalogue ones.
   fallback font. Live frames are correct.
 - Web ≠ Android at the font-rasteriser level: judge layout, spacing, colour
   and flow on the canvas; pixel-level type rendering on the device.
+- A focused text field shows gluestack's focus border on web where Android
+  shows none (the 4–7% on keyboard states).
+- Check-queue cards run 1–2 dp shorter per field/chip row on web, which adds
+  up down a long card (~7%).
+- The dev build (`com.onedown.mobile.dev`) also registers `onedown://`, so
+  with both apps installed a deep link can land in the wrong one. Maestro's
+  welcome-back flow fails on an emulator that has both — uninstall the dev
+  build before `bun run test:e2e`.
