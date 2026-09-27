@@ -142,6 +142,7 @@ async function captureDevice(storyId: string, keyboard: boolean, metrics: Device
   await sleep(SETTLE_MS);
   let keyboardTop: number | null = null;
   if (keyboard) {
+    // oxlint-disable-next-line no-console
     if (!focusFirstField()) console.warn(`  ${storyId}: no text field to focus on the device`);
     await sleep(1500);
     keyboardTop = keyboardTopPx(metrics);
@@ -192,6 +193,7 @@ async function main() {
   const run = new Date().toISOString().replace(/[:.]/g, '-');
   const outDir = path.join(import.meta.dirname, '..', 'diff-output', run);
   mkdirSync(outDir, { recursive: true });
+  // oxlint-disable-next-line no-console
   console.log(
     `device ${SERIAL}: ${metrics.widthPx}×${metrics.heightPx}px @${metrics.scale}x, ` +
       `bars ${metrics.statusBarPx}/${metrics.navBarPx}px → ${outDir}`,
@@ -241,6 +243,7 @@ async function main() {
         .png()
         .toFile(file);
       summary.push({ story: id + (keyboard ? ':keyboard' : ''), mismatchPct, file });
+      // oxlint-disable-next-line no-console
       console.log(
         `  ${mismatchPct.toFixed(2).padStart(6)}%  ${id}${keyboard ? ' (keyboard' + (device.keyboardTop ? ` top ${device.keyboardTop}px` : ', no IME frame') + ')' : ''}`,
       );

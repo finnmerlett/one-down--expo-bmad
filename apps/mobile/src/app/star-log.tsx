@@ -1,23 +1,16 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { cssInterop } from 'nativewind';
 
-import { StarActivityLog, type StarLogFilter } from '@/components/star-log/star-activity-log';
-import { HStack } from '@/components/ui/hstack';
-import { ArrowLeftIcon, Icon } from '@/components/ui/icon';
-import { Pressable } from '@/components/ui/pressable';
-import { Text } from '@/components/ui/text';
+import type { StarLogFilter } from '@/components/star-log/star-activity-log';
+import { StarLogScreen } from '@/components/star-log/star-log-screen';
 import { useStarActivity } from '@/hooks/use-star-activity';
 import { startOfLocalDay } from '@/services/star-totals';
-
-// Third-party component — NativeWind only auto-interops react-native core.
-cssInterop(SafeAreaView, { className: 'style' });
 
 // Star activity log route (Story 4.3) — full-screen push from the top-bar
 // counter, mirroring the task-list pattern. Default filter: All time (AC3 —
 // the log shows ALL transactions on open).
-export default function StarLogScreen() {
+// Data + behaviour for the star log; everything visible is StarLogScreen.
+export default function StarLogRoute() {
   const router = useRouter();
   const entries = useStarActivity();
   const [filter, setFilter] = useState<StarLogFilter>('all_time');
@@ -28,20 +21,11 @@ export default function StarLogScreen() {
     filter === 'today' ? entries.filter((entry) => entry.createdAt.getTime() >= dayStart) : entries;
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right', 'bottom']} className="flex-1 bg-background-100">
-      <HStack className="items-center gap-2 px-3 py-2">
-        <Pressable
-          accessibilityRole="button"
-          aria-label="Back to home"
-          hitSlop={8}
-          onPress={() => router.back()}
-          className="h-11 w-11 items-center justify-center rounded-full active:bg-background-100"
-        >
-          <Icon as={ArrowLeftIcon} size="xl" className="text-typography-900" />
-        </Pressable>
-        <Text className="font-heading text-2xl text-typography-900">Star activity</Text>
-      </HStack>
-      <StarActivityLog entries={visibleEntries} filter={filter} onFilterChange={setFilter} />
-    </SafeAreaView>
+    <StarLogScreen
+      entries={visibleEntries}
+      filter={filter}
+      onFilterChange={setFilter}
+      onBack={() => router.back()}
+    />
   );
 }

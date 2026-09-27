@@ -69,6 +69,9 @@ export function TaskRunningView({
   onToggleSubtask,
   stepActions,
   stepEdits,
+  initialNotesOpen = false,
+  initialEditMode = false,
+  initialChangeOpen = false,
   ref,
 }: {
   task: TaskData;
@@ -82,6 +85,11 @@ export function TaskRunningView({
   stepActions?: StepActionsController;
   /** D4 edit-mode persistence. Omitted = no Edit chip. */
   stepEdits?: StepEditCallbacks;
+  /** Seeds for the view's own UI state (notes expanded, steps edit mode, the
+   *  change box open) — only the screen stories pass them; the app never does. */
+  initialNotesOpen?: boolean;
+  initialEditMode?: boolean;
+  initialChangeOpen?: boolean;
   ref?: Ref<TaskRunningViewHandle>;
 }) {
   const [keyboardUp, setKeyboardUp] = useState(false);
@@ -103,7 +111,7 @@ export function TaskRunningView({
   const [notesDraft, setNotesDraft] = useState<string | null>(null);
 
   // 9.8 B2: notes start collapsed — the chevron beside the label expands.
-  const [notesOpen, setNotesOpen] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(initialNotesOpen);
 
   // Catch-up drop on RAW equality only (Story 2.2): with mid-session debounced
   // writes landing via the live query, dropping the draft on ANY stored change
@@ -195,7 +203,7 @@ export function TaskRunningView({
   const moreWorking = working && stepActions?.kind === 'more';
 
   // ── Steps edit mode (05a/05b) ────────────────────────────────────────────
-  const [editMode, setEditMode] = useState(false);
+  const [editMode, setEditMode] = useState(initialEditMode);
   // A held row freezes the steps scroll so the drag owns the vertical axis.
   const [dragLocked, setDragLocked] = useState(false);
   const enterEditMode = () => {
@@ -209,7 +217,7 @@ export function TaskRunningView({
     if (editMode && !hasSteps) setEditMode(false);
   }, [editMode, hasSteps]);
 
-  const [changeOpen, setChangeOpen] = useState(false);
+  const [changeOpen, setChangeOpen] = useState(initialChangeOpen);
   const [changeText, setChangeText] = useState('');
   // More/Less (2026-08-11 item 6): collapsed shows a 3-step scroll window,
   // expanded the whole list that fits. Edit mode always gets full height —

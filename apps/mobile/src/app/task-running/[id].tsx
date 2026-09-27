@@ -1,18 +1,9 @@
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { cssInterop } from 'nativewind';
 
 import { showRewardToast, showUndoToast } from '@/components/feedback/reward-toast';
-import {
-  TaskRunningView,
-  type TaskRunningViewHandle,
-} from '@/components/task-running/task-running-view';
-import { Box } from '@/components/ui/box';
-import { HStack } from '@/components/ui/hstack';
-import { ArrowLeftIcon, EditIcon, Icon, StarIcon } from '@/components/ui/icon';
-import { Pressable } from '@/components/ui/pressable';
-import { Text } from '@/components/ui/text';
+import { TaskRunningScreen } from '@/components/task-running/task-running-screen';
+import type { TaskRunningViewHandle } from '@/components/task-running/task-running-view';
 import { useToast } from '@/components/ui/toast';
 import { useStarTotals } from '@/hooks/use-star-totals';
 import { useStepActions } from '@/hooks/use-step-actions';
@@ -32,15 +23,13 @@ import {
 import { completeTask, createNotesAutosaver, cutLooseTask, startTask } from '@/services/task-edits';
 import { undoTaskCompletion, undoTaskCutLoose } from '@/services/task-undo';
 
-// Third-party component — NativeWind only auto-interops react-native core.
-cssInterop(SafeAreaView, { className: 'style' });
-
 // Working screen (Story 2.1; renamed from "task running" 2026-07-27) —
 // focused execution view. Since 2026-07-27 a card TAP lands here directly
 // without starting the task: the pending → in_progress transition (and the
 // Continue chip it drives) fires on the first MEANINGFUL action — notes,
 // breakdown, subtasks — not on merely looking (see ensureStarted below).
-export default function TaskRunningScreen() {
+// Data + behaviour for the working screen; everything visible is TaskRunningScreen.
+export default function TaskRunningRoute() {
   const { id, breakdown: breakdownParam } = useLocalSearchParams<{
     id: string;
     breakdown?: string;
@@ -171,88 +160,48 @@ export default function TaskRunningScreen() {
   const banked = bankedForCount(task, subtasks.filter((subtask) => subtask.completed).length);
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right', 'bottom']} className="flex-1 bg-background-100">
-      <HStack className="items-center gap-2 px-3 py-1">
-        <Pressable
-          accessibilityRole="button"
-          aria-label="Pause and go back"
-          hitSlop={8}
-          onPress={close}
-          className="h-11 w-11 items-center justify-center rounded-full active:bg-background-100"
-        >
-          <Icon as={ArrowLeftIcon} size="xl" className="text-typography-900" />
-        </Pressable>
-        <Box className="flex-1" />
-        <HStack
-          accessible
-          accessibilityLabel={`Worth ${prize} stars when done${banked > 0 ? `, ${banked} banked` : ''}`}
-          className="items-center gap-[9px]"
-        >
-          <HStack className="h-8 items-center gap-1.5 rounded-full border border-tertiary-300 bg-tertiary-100 px-[13px]">
-            <Text className="text-xs text-tertiary-500">★</Text>
-            <Text className="font-mono text-sm leading-none text-tertiary-700">{prize}</Text>
-            <Text className="font-body-semibold text-xs text-tertiary-700">when done</Text>
-          </HStack>
-          {banked > 0 ? (
-            <HStack className="items-center gap-1">
-              <Icon as={StarIcon} size="2xs" className="text-tertiary-500" />
-              <Text className="font-mono text-sm leading-none text-tertiary-700">{banked}</Text>
-              <Text className="font-body-semibold text-xs text-tertiary-700">banked</Text>
-            </HStack>
-          ) : null}
-        </HStack>
-        <Box className="flex-1" />
-        {/* Edit entry (2026-07-27): full editing lives on the task detail —
-            this screen is for DOING, so it only ever patches notes. */}
-        <Pressable
-          accessibilityRole="button"
-          aria-label={`Edit task: ${task.title}`}
-          hitSlop={8}
-          onPress={() => router.push(`/task/${task.id}?flat=1`)}
-          className="h-11 w-11 items-center justify-center rounded-full active:bg-background-100"
-        >
-          <Icon as={EditIcon} size="lg" className="text-typography-700" />
-        </Pressable>
-      </HStack>
-      <TaskRunningView
-        ref={viewRef}
-        task={task}
-        onPatch={(patch) => {
+    <TaskRunningScreen
+      task={task}
+      prize={prize}
+      banked={banked}
+      onBack={close}
+      onEditPress={() => router.push(`/task/${task.id}?flat=1`)}
+      viewRef={viewRef}
+      onPatch={(patch) => {
+        ensureStarted();
+        saveNotes(patch.notes ?? null);
+      }}
+      onDone={handleDone}
+      onCutLoose={handleCutLoose}
+      subtasks={subtasks}
+      onToggleSubtask={(subtask) => {
+        ensureStarted();
+        toggleSubtask(subtask);
+      }}
+      stepActions={viewStepActions}
+      stepEdits={{
+        rename: (subtask, title) => {
           ensureStarted();
-          saveNotes(patch.notes ?? null);
-        }}
-        onDone={handleDone}
-        onCutLoose={handleCutLoose}
-        subtasks={subtasks}
-        onToggleSubtask={(subtask) => {
+          renameStep(subtask, title);
+        },
+        remove: (subtask) => {
           ensureStarted();
-          toggleSubtask(subtask);
-        }}
-        stepActions={viewStepActions}
-        stepEdits={{
-          rename: (subtask, title) => {
-            ensureStarted();
-            renameStep(subtask, title);
-          },
-          remove: (subtask) => {
-            ensureStarted();
-            removeSubtask(subtask);
-            // Undo re-inserts the row verbatim (banked stars re-bank too).
-            showUndoToast(toast, {
-              title: 'Step removed',
-              onUndo: () => restoreStep(subtask),
-            });
-          },
-          add: (title) => {
-            ensureStarted();
-            addStep(task.id, title);
-          },
-          reorder: (orderedIds, from, to) => {
-            ensureStarted();
-            reorderSteps(task.id, orderedIds, from, to);
-          },
-        }}
-      />
-    </SafeAreaView>
+          removeSubtask(subtask);
+          // Undo re-inserts the row verbatim (banked stars re-bank too).
+          showUndoToast(toast, {
+            title: 'Step removed',
+            onUndo: () => restoreStep(subtask),
+          });
+        },
+        add: (title) => {
+          ensureStarted();
+          addStep(task.id, title);
+        },
+        reorder: (orderedIds, from, to) => {
+          ensureStarted();
+          reorderSteps(task.id, orderedIds, from, to);
+        },
+      }}
+    />
   );
 }

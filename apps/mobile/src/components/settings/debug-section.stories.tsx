@@ -4,6 +4,8 @@ import { DebugSection } from './debug-section';
 
 const meta = {
   title: 'settings/DebugSection',
+  // Shown in context by the screens/Settings screen stories; kept for tests.
+  parameters: { canvas: { library: false } },
   component: DebugSection,
   args: {
     onCapture: () => Promise.resolve('a1b2c3d4-0000-4000-8000-1234567890ab'),

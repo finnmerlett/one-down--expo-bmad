@@ -7,6 +7,8 @@ import { makeSubtask } from './subtask-list.stories';
 
 const meta = {
   title: 'task-running/StepsEditor',
+  // Shown in context by the screens/TaskRunning screen stories; kept for tests.
+  parameters: { canvas: { library: false } },
   component: StepsEditor,
   args: {
     edits: {

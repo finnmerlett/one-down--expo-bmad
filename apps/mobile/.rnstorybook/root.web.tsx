@@ -40,6 +40,11 @@ import { setMockKeyboard, watchMockKeyboard } from './web-shims/keyboard';
 // every rem-based utility (leading-5, gap-2.5, the default spacing scale)
 // came out 14% larger on web. Match the device.
 document.documentElement.style.fontSize = '14px';
+// react-native-web renders a multiline TextInput as a fixed 2-row <textarea>;
+// Android sizes it to its content. field-sizing does exactly that (Chrome 123+).
+const textareaSizing = document.createElement('style');
+textareaSizing.textContent = 'textarea { field-sizing: content; }';
+document.head.appendChild(textareaSizing);
 
 /** Envelope for every message to the canvas — lets it ignore foreign frames. */
 const MESSAGE_SOURCE = 'one-down-story';

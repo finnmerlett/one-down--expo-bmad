@@ -4,6 +4,8 @@ import { AiNotesSection } from './ai-notes-section';
 
 const meta = {
   title: 'settings/AiNotesSection',
+  // Shown in context by the screens/Settings screen stories; kept for tests.
+  parameters: { canvas: { library: false } },
   component: AiNotesSection,
   args: {
     notes: '',

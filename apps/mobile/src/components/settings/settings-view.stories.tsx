@@ -7,6 +7,8 @@ import { SettingsView } from './settings-view';
 
 const meta = {
   title: 'settings/SettingsView',
+  // Shown in context by the screens/Settings screen stories; kept for tests.
+  parameters: { canvas: { library: false } },
   component: SettingsView,
   decorators: [
     (Story) => (

@@ -6,6 +6,8 @@ import { BrainDumpInput } from './brain-dump-input';
 
 const meta = {
   title: 'brain-dump/BrainDumpInput',
+  // Shown in context by the screens/BrainDump screen stories; kept for tests.
+  parameters: { canvas: { library: false } },
   component: BrainDumpInput,
   args: {
     onSubmit: () => undefined,

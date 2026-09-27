@@ -7,6 +7,8 @@ import { NotificationPreferencesSection } from './notification-preferences-secti
 
 const meta = {
   title: 'settings/NotificationPreferencesSection',
+  // Shown in context by the screens/Settings screen stories; kept for tests.
+  parameters: { canvas: { library: false } },
   component: NotificationPreferencesSection,
   decorators: [
     (Story) => (
