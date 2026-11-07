@@ -6,6 +6,8 @@ import { WelcomeBackSummary } from './welcome-back-summary';
 
 const meta = {
   title: 'welcome-back/WelcomeBackSummary',
+  // Shown in context by the screens/WelcomeBack screen stories; kept for tests.
+  parameters: { canvas: { library: false } },
   component: WelcomeBackSummary,
   decorators: [
     (Story) => (

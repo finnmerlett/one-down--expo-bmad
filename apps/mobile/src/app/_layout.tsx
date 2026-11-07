@@ -1,13 +1,5 @@
 import '../global.css';
 
-import { DMMono_400Regular, DMMono_500Medium } from '@expo-google-fonts/dm-mono';
-import { Gabarito_400Regular, Gabarito_500Medium } from '@expo-google-fonts/gabarito';
-import {
-  Karla_400Regular,
-  Karla_500Medium,
-  Karla_600SemiBold,
-  Karla_700Bold,
-} from '@expo-google-fonts/karla';
 import * as Font from 'expo-font';
 import { Stack } from 'expo-router';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -20,6 +12,7 @@ import { SyncManager } from '@/components/sync/sync-manager';
 import { Box } from '@/components/ui/box';
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
 import { Text } from '@/components/ui/text';
+import { APP_FONTS } from '@/constants/fonts';
 
 import migrations from '../../drizzle/migrations';
 import { useNotificationResync } from '../hooks/use-notification-resync';
@@ -60,10 +53,6 @@ function NotificationResync() {
 }
 
 export default function RootLayout() {
-  // v1.5 type stack (designs/v1.5-implementation-spec.md §1): Gabarito for
-  // titles, Karla for UI text, DM Mono for numbers & caps labels. Static
-  // weights = separate RN font families, all loaded up front.
-  //
   // Imperative loadAsync instead of the useFonts hook: on cold start under
   // this app's setup the hook's state update was lost (loaded stayed false
   // until a fast-refresh remount — 2026-08-05). The promise path releases the
@@ -72,16 +61,7 @@ export default function RootLayout() {
   const [fontsReady, setFontsReady] = useState(false);
   useEffect(() => {
     let cancelled = false;
-    const load = Font.loadAsync({
-      Gabarito_400Regular,
-      Gabarito_500Medium,
-      Karla_400Regular,
-      Karla_500Medium,
-      Karla_600SemiBold,
-      Karla_700Bold,
-      DMMono_400Regular,
-      DMMono_500Medium,
-    });
+    const load = Font.loadAsync(APP_FONTS);
     const timeout = new Promise((resolve) => setTimeout(resolve, 4000));
     void Promise.race([load, timeout])
       .catch((error: unknown) => {

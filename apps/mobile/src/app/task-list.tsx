@@ -1,18 +1,11 @@
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { cssInterop } from 'nativewind';
 
 import type { TaskData } from '@one-down/shared';
 
 import { showNoticeToast } from '@/components/feedback/notice-toast';
-import { BulkActionBar } from '@/components/task-list/bulk-action-bar';
-import { ConfirmDialog } from '@/components/task-list/confirm-dialog';
-import { TaskListView, type TaskListMode } from '@/components/task-list/task-list-view';
-import { HStack } from '@/components/ui/hstack';
-import { ArrowLeftIcon, Icon } from '@/components/ui/icon';
-import { Pressable } from '@/components/ui/pressable';
-import { Text } from '@/components/ui/text';
+import { TaskListScreen, type TaskListDialog } from '@/components/task-list/task-list-screen';
+import type { TaskListMode } from '@/components/task-list/task-list-view';
 import { useToast } from '@/components/ui/toast';
 import { useTasks } from '@/hooks/use-tasks';
 import { useTaskOffers } from '@/hooks/use-task-offers';
@@ -29,19 +22,12 @@ import {
 import { undoTaskCompletion } from '@/services/task-undo';
 import { useQuickAddStore } from '@/stores/quick-add-store';
 
-// Third-party component — NativeWind only auto-interops react-native core.
-cssInterop(SafeAreaView, { className: 'style' });
-
-const TABS: { key: TaskListMode; label: string }[] = [
-  { key: 'active', label: 'Active' },
-  { key: 'bin', label: 'Recycle bin' },
-];
-
 function pluralTasks(count: number): string {
   return `${count} ${count === 1 ? 'task' : 'tasks'}`;
 }
 
-export default function TaskListScreen() {
+// Data + behaviour for the task list; everything visible is TaskListScreen.
+export default function TaskListRoute() {
   const router = useRouter();
   const navigation = useNavigation();
   const toast = useToast();
@@ -55,7 +41,7 @@ export default function TaskListScreen() {
   // Story 7.1. `selectedIds === null` means not selecting.
   const [tab, setTab] = useState<TaskListMode>('active');
   const [selectedIds, setSelectedIds] = useState<Set<string> | null>(null);
-  const [dialog, setDialog] = useState<'archive' | 'delete' | null>(null);
+  const [dialog, setDialog] = useState<TaskListDialog>(null);
   const selecting = selectedIds !== null;
 
   // Hardware/gesture back exits multi-select BEFORE popping the screen (AC8)
@@ -182,100 +168,40 @@ export default function TaskListScreen() {
     });
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right', 'bottom']} className="flex-1 bg-background-100">
-      <HStack className="items-center gap-1 px-3 py-2">
-        <Pressable
-          accessibilityRole="button"
-          aria-label="Back to home"
-          hitSlop={8}
-          onPress={() => router.back()}
-          className="h-11 w-11 items-center justify-center rounded-full active:bg-background-100"
-        >
-          <Icon as={ArrowLeftIcon} size="xl" className="text-typography-900" />
-        </Pressable>
-        <Text className="font-heading text-2xl text-typography-900">Tasks</Text>
-      </HStack>
-      {/* Two-segment tab control (Story 7.1 → v1.5 frame 08: 36px pill track). */}
-      <HStack className="mb-3 self-center rounded-full bg-[rgba(44,39,35,0.06)] p-[3px]">
-        {TABS.map(({ key, label }) => {
-          const selected = tab === key;
-          return (
-            <Pressable
-              key={key}
-              accessibilityRole="button"
-              accessibilityLabel={`Tab: ${label}`}
-              accessibilityState={{ selected }}
-              onPress={() => {
-                setTab(key);
-                exitSelection();
-              }}
-              className={`h-[30px] items-center justify-center rounded-full px-5 ${
-                selected ? 'bg-background-0 shadow-segment' : 'active:bg-background-300/50'
-              }`}
-            >
-              <Text
-                className={
-                  selected
-                    ? 'font-body-bold text-primary-600'
-                    : 'font-body-medium text-typography-500'
-                }
-              >
-                {label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </HStack>
-      <TaskListView
-        tasks={tasks}
-        mode={tab}
-        selectedIds={selectedIds}
-        onToggleSelect={toggleSelect}
-        onLongPressTask={enterSelection}
-        onRestore={handleRestore}
-        onUndoComplete={handleUndoComplete}
-        getStarValue={taskValue}
-        getBadge={(task) => badges.get(task.id) ?? null}
-        // Viewing, not editing (2026-08-11 item 8): rows open the task's
-        // working screen in its looking state — status only flips on the
-        // first meaningful action. Editing lives behind the pencil there.
-        onTaskPress={(task) => router.push(`/task-running/${task.id}`)}
-        onAddPress={() => {
-          // The quick-add sheet is mounted on the home screen — open it via
-          // the global UI store, then pop back so it shows as home regains
-          // focus (Story 3.4 AC4).
-          useQuickAddStore.getState().open();
-          router.back();
-        }}
-      />
-      {selecting ? (
-        <BulkActionBar
-          count={selectedIds.size}
-          mode={tab}
-          onArchive={handleArchivePress}
-          onRestore={handleRestoreSelection}
-          onDelete={() => setDialog('delete')}
-          onCancel={exitSelection}
-        />
-      ) : null}
-      <ConfirmDialog
-        visible={dialog === 'archive'}
-        title="Remove stars?"
-        body="Archiving started or completed tasks removes the stars they earned. This can't be undone, even if you restore them later."
-        confirmLabel="Archive anyway"
-        cancelAccessibilityLabel="Cancel archive"
-        onConfirm={() => runArchive(selectedTasks(), true)}
-        onCancel={() => setDialog(null)}
-      />
-      <ConfirmDialog
-        visible={dialog === 'delete'}
-        title="Delete permanently?"
-        body="This can't be undone."
-        confirmLabel="Delete forever"
-        cancelAccessibilityLabel="Cancel delete"
-        onConfirm={handleDeleteConfirm}
-        onCancel={() => setDialog(null)}
-      />
-    </SafeAreaView>
+    <TaskListScreen
+      tasks={tasks}
+      tab={tab}
+      onTabChange={(next) => {
+        setTab(next);
+        exitSelection();
+      }}
+      selectedIds={selectedIds}
+      onToggleSelect={toggleSelect}
+      onLongPressTask={enterSelection}
+      onRestore={handleRestore}
+      onUndoComplete={handleUndoComplete}
+      getStarValue={taskValue}
+      getBadge={(task) => badges.get(task.id) ?? null}
+      // Viewing, not editing (2026-08-11 item 8): rows open the task's
+      // working screen in its looking state — status only flips on the
+      // first meaningful action. Editing lives behind the pencil there.
+      onTaskPress={(task) => router.push(`/task-running/${task.id}`)}
+      onAddPress={() => {
+        // The quick-add sheet is mounted on the home screen — open it via
+        // the global UI store, then pop back so it shows as home regains
+        // focus (Story 3.4 AC4).
+        useQuickAddStore.getState().open();
+        router.back();
+      }}
+      onBack={() => router.back()}
+      onArchive={handleArchivePress}
+      onRestoreSelection={handleRestoreSelection}
+      onDeletePress={() => setDialog('delete')}
+      onCancelSelection={exitSelection}
+      dialog={dialog}
+      onConfirmArchive={() => runArchive(selectedTasks(), true)}
+      onConfirmDelete={handleDeleteConfirm}
+      onDismissDialog={() => setDialog(null)}
+    />
   );
 }

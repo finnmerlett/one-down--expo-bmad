@@ -8,6 +8,8 @@ import { BottomActions } from './bottom-actions';
 
 const meta = {
   title: 'app-shell/AppShell',
+  // Shown in context by the screens/Home screen stories; kept for tests.
+  parameters: { canvas: { library: false } },
   component: AppShell,
 } satisfies Meta<typeof AppShell>;
 

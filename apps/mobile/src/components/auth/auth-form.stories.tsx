@@ -4,6 +4,8 @@ import { AuthForm } from './auth-form';
 
 const meta = {
   title: 'auth/AuthForm',
+  // Shown in context by the screens/Auth screen stories; kept for tests.
+  parameters: { canvas: { library: false } },
   component: AuthForm,
   args: {
     onSubmit: () => {},

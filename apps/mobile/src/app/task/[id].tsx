@@ -1,11 +1,9 @@
 import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { cssInterop } from 'nativewind';
 
-import { CardBack, type CardBackHandle } from '@/components/card-stack/card-back';
+import type { CardBackHandle } from '@/components/card-stack/card-back';
+import { TaskDetailScreen } from '@/components/card-stack/task-detail-screen';
 import { showRewardToast } from '@/components/feedback/reward-toast';
-import { Box } from '@/components/ui/box';
 import { useToast } from '@/components/ui/toast';
 import { useTasks } from '@/hooks/use-tasks';
 import { db } from '@/lib/local-db';
@@ -20,12 +18,10 @@ import {
 } from '@/services/task-edits';
 import { undoTaskCutLoose } from '@/services/task-undo';
 
-// Third-party component — NativeWind only auto-interops react-native core.
-cssInterop(SafeAreaView, { className: 'style' });
-
 // Isolated full-screen card back, reached from the task list (Story 1.5 AC).
 // Reuses CardBack directly — it is overlay-agnostic (1.4 design note).
-export default function TaskDetailScreen() {
+// Data + behaviour for the task detail; everything visible is TaskDetailScreen.
+export default function TaskDetailRoute() {
   // `flat=1` (2026-08-11 item 9): entered from the DOING screen — render as
   // a plain full-bleed editor. Without it (pencil on the stack card) the
   // editor keeps its floating-card chrome.
@@ -97,47 +93,39 @@ export default function TaskDetailScreen() {
   }
 
   return (
-    <SafeAreaView
-      edges={['top', 'left', 'right', 'bottom']}
-      className={frameless ? 'flex-1 bg-background-0' : 'flex-1 bg-background-100'}
-    >
-      <Box className={frameless ? 'flex-1' : 'flex-1 p-3'}>
-        <CardBack
-          frameless={frameless}
-          ref={cardBackRef}
-          task={task}
-          onPatch={(patch) => applyTaskPatch(task, patch)}
-          onConfirm={(item) => confirmReviewItem(task, item)}
-          onConfirmAll={(items) => confirmReviewItems(task, items)}
-          onKeep={() => keepTask(task)}
-          onClose={close}
-          onStart={() => {
-            if (startingRef.current) return;
-            startingRef.current = true;
-            startTask(task, 'list_detail');
-            router.push(`/task-running/${task.id}`);
-          }}
-          onCutLoose={() => {
-            if (cutLoosingRef.current) return;
-            cutLoosingRef.current = true;
-            cutLooseTask(task, 'list_detail');
-            // Toast renders at the provider root — it survives the pop and
-            // shows the persisted award amount (Story 4.1). Undo re-reads
-            // status from the DB (2026-07-27), so the snapshot is safe.
-            void awardCutLooseStars(db, task).then((stars) => {
-              showRewardToast(toast, {
-                title: 'Released',
-                stars,
-                onUndo: () => void undoTaskCutLoose(db, task),
-              });
-            });
-            // Explicit pop for responsiveness; the not-browsable self-pop
-            // above is the backstop.
-            close();
-          }}
-          backLabel={frameless ? 'Back to task' : 'Back to task list'}
-        />
-      </Box>
-    </SafeAreaView>
+    <TaskDetailScreen
+      frameless={frameless}
+      cardBackRef={cardBackRef}
+      task={task}
+      onPatch={(patch) => applyTaskPatch(task, patch)}
+      onConfirm={(item) => confirmReviewItem(task, item)}
+      onConfirmAll={(items) => confirmReviewItems(task, items)}
+      onKeep={() => keepTask(task)}
+      onClose={close}
+      onStart={() => {
+        if (startingRef.current) return;
+        startingRef.current = true;
+        startTask(task, 'list_detail');
+        router.push(`/task-running/${task.id}`);
+      }}
+      onCutLoose={() => {
+        if (cutLoosingRef.current) return;
+        cutLoosingRef.current = true;
+        cutLooseTask(task, 'list_detail');
+        // Toast renders at the provider root — it survives the pop and
+        // shows the persisted award amount (Story 4.1). Undo re-reads
+        // status from the DB (2026-07-27), so the snapshot is safe.
+        void awardCutLooseStars(db, task).then((stars) => {
+          showRewardToast(toast, {
+            title: 'Released',
+            stars,
+            onUndo: () => void undoTaskCutLoose(db, task),
+          });
+        });
+        // Explicit pop for responsiveness; the not-browsable self-pop
+        // above is the backstop.
+        close();
+      }}
+    />
   );
 }

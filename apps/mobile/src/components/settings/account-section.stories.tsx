@@ -4,6 +4,8 @@ import { AccountSection } from './account-section';
 
 const meta = {
   title: 'settings/AccountSection',
+  // Shown in context by the screens/Settings screen stories; kept for tests.
+  parameters: { canvas: { library: false } },
   component: AccountSection,
   args: {
     onSignIn: () => {},

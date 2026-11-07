@@ -9,6 +9,8 @@ import { FakeBillingSheet } from './fake-billing-sheet';
 
 const meta = {
   title: 'premium/FakeBillingSheet',
+  // Shown in context by the screens/Premium screen stories; kept for tests.
+  parameters: { canvas: { library: false } },
   component: FakeBillingSheet,
 } satisfies Meta<typeof FakeBillingSheet>;
 

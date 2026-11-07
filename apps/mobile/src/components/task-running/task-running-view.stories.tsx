@@ -29,6 +29,8 @@ export function makeStepActions(
 
 const meta = {
   title: 'task-running/TaskRunningView',
+  // Shown in context by the screens/TaskRunning screen stories; kept for tests.
+  parameters: { canvas: { library: false } },
   component: TaskRunningView,
   decorators: [
     (Story) => (

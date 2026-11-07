@@ -341,3 +341,6 @@ export const config = {
   light: vars(palette),
   dark: vars(darkPalette),
 };
+
+/** The raw palettes, for the web provider to publish on :root (see index.web.tsx). */
+export const palettes = { light: palette, dark: darkPalette };

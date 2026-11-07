@@ -1,3 +1,4 @@
+import { remapProps } from 'nativewind';
 import { useRef } from 'react';
 import { SectionList, type SectionListData } from 'react-native';
 
@@ -14,6 +15,12 @@ import { deadlineCopy, SIZE_LABELS } from '@/components/card-stack/task-card';
 import { CONTEXT_ICONS } from '@/components/stack-filters/context-icons';
 import { EmptyState } from '@/components/empty-state/empty-state';
 import type { StarBadge } from '@/services/star-calculator';
+
+// NativeWind registers ScrollView/FlatList/VirtualizedList but not
+// SectionList. Native only worked because RN's SectionList forwards the prop
+// down to VirtualizedList; react-native-web's uses its own internal list, so
+// contentContainerClassName was dropped there (edge-to-edge rows on web).
+remapProps(SectionList, { className: 'style', contentContainerClassName: 'contentContainerStyle' });
 
 const DAY_MS = 86_400_000;
 

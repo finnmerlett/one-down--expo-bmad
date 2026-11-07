@@ -4,6 +4,8 @@ import { SessionSection } from './session-section';
 
 const meta = {
   title: 'settings/SessionSection',
+  // Shown in context by the screens/Settings screen stories; kept for tests.
+  parameters: { canvas: { library: false } },
   component: SessionSection,
   args: {
     onToggle: () => {},

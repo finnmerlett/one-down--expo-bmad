@@ -22,6 +22,8 @@ export function makeSubtask(overrides: Partial<SubtaskData> = {}): SubtaskData {
 
 const meta = {
   title: 'task-running/SubtaskList',
+  // Shown in context by the screens/TaskRunning screen stories; kept for tests.
+  parameters: { canvas: { library: false } },
   component: SubtaskList,
   args: {
     onToggle: () => undefined,

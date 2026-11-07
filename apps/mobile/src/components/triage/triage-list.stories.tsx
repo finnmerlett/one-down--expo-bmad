@@ -7,6 +7,8 @@ import { TriageList } from './triage-list';
 
 const meta = {
   title: 'triage/TriageList',
+  // Shown in context by the screens/Triage screen stories; kept for tests.
+  parameters: { canvas: { library: false } },
   component: TriageList,
   decorators: [
     (Story) => (

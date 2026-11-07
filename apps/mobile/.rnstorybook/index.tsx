@@ -4,21 +4,14 @@
 // (unbounded SVG icons then crash Android with a too-large bitmap).
 import '../src/global.css';
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { registerRootComponent } from 'expo';
 
-import { view } from './storybook.requires';
-
-const StorybookUIRoot = view.getStorybookUI({
-  shouldPersistSelection: true,
-  storage: {
-    getItem: AsyncStorage.getItem,
-    setItem: AsyncStorage.setItem,
-  },
-});
+// Platform-resolved: root.tsx is the on-device Storybook UI, root.web.tsx the
+// one-story-per-URL renderer the design canvas (apps/canvas) frames.
+import StorybookRoot from './root';
 
 // This file replaces expo-router/entry when STORYBOOK_ENABLED=true (metro
 // entry swap), so it must register the root component itself.
-registerRootComponent(StorybookUIRoot);
+registerRootComponent(StorybookRoot);
 
-export default StorybookUIRoot;
+export default StorybookRoot;

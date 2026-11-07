@@ -8,6 +8,8 @@ import { ConfirmDialog } from './confirm-dialog';
 
 const meta = {
   title: 'task-list/ConfirmDialog',
+  // Shown in context by the screens/TaskList screen stories; kept for tests.
+  parameters: { canvas: { library: false } },
   component: ConfirmDialog,
   args: {
     visible: true,

@@ -1,24 +1,13 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { cssInterop } from 'nativewind';
 
-import {
-  PremiumFeaturesView,
-  type PurchaseStatus,
-} from '@/components/premium/premium-features-view';
-import { HStack } from '@/components/ui/hstack';
-import { ArrowLeftIcon, Icon } from '@/components/ui/icon';
-import { Pressable } from '@/components/ui/pressable';
-import { Text } from '@/components/ui/text';
-import { VStack } from '@/components/ui/vstack';
+import type { PurchaseStatus } from '@/components/premium/premium-features-view';
+import { PremiumScreen } from '@/components/premium/premium-screen';
 import { useIsPremium } from '@/hooks/use-is-premium';
 import { purchasePremium, restorePurchases } from '@/services/entitlements/entitlements-service';
 
-// Third-party component — NativeWind only auto-interops react-native core.
-cssInterop(SafeAreaView, { className: 'style' });
-
-export default function PremiumScreen() {
+// Data + behaviour for the premium page; everything visible is PremiumScreen.
+export default function PremiumRoute() {
   const router = useRouter();
   const isPremium = useIsPremium();
 
@@ -65,44 +54,14 @@ export default function PremiumScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right', 'bottom']} className="flex-1 bg-background-100">
-      <HStack className="items-center gap-1 px-3 py-2">
-        <Pressable
-          accessibilityRole="button"
-          aria-label="Back"
-          hitSlop={8}
-          onPress={() => router.back()}
-          className="h-11 w-11 items-center justify-center rounded-full active:bg-background-100"
-        >
-          <Icon as={ArrowLeftIcon} size="xl" className="text-typography-900" />
-        </Pressable>
-      </HStack>
-      <PremiumFeaturesView
-        purchaseStatus={purchaseStatus}
-        onSubscribe={handleSubscribe}
-        footer={
-          isPremium ? undefined : (
-            <VStack className="items-center gap-1 pt-2">
-              <Pressable
-                accessibilityRole="button"
-                aria-label="Restore purchases"
-                hitSlop={8}
-                onPress={handleRestore}
-                className="min-h-11 items-center justify-center"
-              >
-                <Text className="font-body-bold text-sm text-primary-600">
-                  {restoring ? 'Restoring…' : 'Restore purchases'}
-                </Text>
-              </Pressable>
-              {restoreNote ? (
-                <Text className="font-body text-sm text-typography-500">
-                  No previous purchase found.
-                </Text>
-              ) : null}
-            </VStack>
-          )
-        }
-      />
-    </SafeAreaView>
+    <PremiumScreen
+      onBack={() => router.back()}
+      isPremium={isPremium}
+      purchaseStatus={purchaseStatus}
+      onSubscribe={handleSubscribe}
+      restoring={restoring}
+      restoreNote={restoreNote}
+      onRestore={handleRestore}
+    />
   );
 }

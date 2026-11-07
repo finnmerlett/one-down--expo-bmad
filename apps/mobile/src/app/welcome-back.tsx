@@ -1,23 +1,19 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { cssInterop } from 'nativewind';
 
-import { WelcomeBackSummary } from '@/components/welcome-back/welcome-back-summary';
+import { WelcomeBackScreen } from '@/components/welcome-back/welcome-back-screen';
 import { useTasks } from '@/hooks/use-tasks';
 import { track } from '@/lib/analytics/track';
 import { buildWelcomeBackSummary } from '@/services/welcome-back';
 import { useAppStore } from '@/stores/app-store';
 
-// Third-party component — NativeWind only auto-interops react-native core.
-cssInterop(SafeAreaView, { className: 'style' });
-
 /**
  * Welcome-back screen (Story 7.3, AC1/AC2): a factual, guilt-free summary
  * shown once per return before the card stack. Reached by the absence check
  * (hooks/use-absence-check.ts) or the onedown://welcome-back deep link.
+ * Data + behaviour only; everything visible is WelcomeBackScreen.
  */
-export default function WelcomeBackScreen() {
+export default function WelcomeBackRoute() {
   const router = useRouter();
   const tasks = useTasks();
   const lastActiveAt = useAppStore((state) => state.lastActiveAt);
@@ -59,20 +55,18 @@ export default function WelcomeBackScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right', 'bottom']} className="flex-1 bg-background-100">
-      <WelcomeBackSummary
-        summary={summary}
-        onTriage={() => {
-          track('welcome_back_cta_tapped', { cta: 'triage' });
-          // Replace, not push — backing out of triage should land on the
-          // deck, not re-show this summary.
-          router.replace('/triage');
-        }}
-        onDeck={() => {
-          track('welcome_back_cta_tapped', { cta: 'main_deck' });
-          leave();
-        }}
-      />
-    </SafeAreaView>
+    <WelcomeBackScreen
+      summary={summary}
+      onTriage={() => {
+        track('welcome_back_cta_tapped', { cta: 'triage' });
+        // Replace, not push — backing out of triage should land on the
+        // deck, not re-show this summary.
+        router.replace('/triage');
+      }}
+      onDeck={() => {
+        track('welcome_back_cta_tapped', { cta: 'main_deck' });
+        leave();
+      }}
+    />
   );
 }

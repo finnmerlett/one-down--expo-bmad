@@ -20,6 +20,8 @@ export function makeDraft(overrides: Partial<ParsedTaskDraft> = {}): ParsedTaskD
 
 const meta = {
   title: 'brain-dump/BrainDumpCheck',
+  // Shown in context by the screens/BrainDump screen stories; kept for tests.
+  parameters: { canvas: { library: false } },
   component: BrainDumpCheck,
   args: {
     onRename: () => undefined,

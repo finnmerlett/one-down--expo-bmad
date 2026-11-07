@@ -19,6 +19,8 @@ function makeEntry(overrides: Partial<StarActivityData> & { id: string }): StarA
 
 const meta = {
   title: 'star-log/StarActivityLog',
+  // Shown in context by the screens/StarLog screen stories; kept for tests.
+  parameters: { canvas: { library: false } },
   component: StarActivityLog,
   decorators: [
     (Story) => (

@@ -223,7 +223,7 @@ export function BlueprintCard({
               onPress={onDelete}
               className="h-8 w-8 flex-none items-center justify-center rounded-full pt-1"
             >
-              <Icon as={TrashIcon} size="sm" style={{ color: INK_LABEL }} />
+              <Icon as={TrashIcon} size="sm" className="text-[#8FB4E0]" />
             </Pressable>
           ) : null}
         </HStack>

@@ -1,11 +1,14 @@
+import { createIcon, Svg } from '@gluestack-ui/core/icon/creator';
 import { Path } from 'react-native-svg';
-
-import { createIcon } from '@/components/ui/icon';
 
 // Lucide `Sparkles` glyph via the gluestack createIcon helper — the icon
 // catalogue in ui/icon has no sparkle, and per the UX spec the marker is an
-// invitation (sparkle), never a lock.
+// invitation (sparkle), never a lock. Built exactly like the catalogue icons
+// (raw creator + Svg root): the ui/icon createIcon wrapper re-applies
+// className, which web never maps to size/color props, so the glyph drew
+// black at the default size there.
 export const SparklesIcon = createIcon({
+  Root: Svg,
   viewBox: '0 0 24 24',
   path: (
     <>

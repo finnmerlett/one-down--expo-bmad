@@ -6,6 +6,8 @@ import { PremiumFeaturesView } from './premium-features-view';
 
 const meta = {
   title: 'premium/PremiumFeaturesView',
+  // Shown in context by the screens/Premium screen stories; kept for tests.
+  parameters: { canvas: { library: false } },
   component: PremiumFeaturesView,
   decorators: [
     (Story) => (
