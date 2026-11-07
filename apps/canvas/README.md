@@ -18,7 +18,9 @@ bun run canvas        # story renderer on :8083 + canvas on :8084
 ```
 
 Open http://localhost:8084. The first frames appear once Metro finishes its
-first web bundle (~15 s cold).
+first web bundle (~15 s cold). Frames show screenshots taken in headless
+Chrome (`CHROME_PATH` overrides the default Chrome location), which are cached
+in `.shot-cache/`, so later starts are quick.
 
 ## Controls
 
@@ -31,22 +33,25 @@ first web bundle (~15 s cold).
 | `V` / `H` / `S` / `I`             | Select, Pan tool (left-drag pans), Sticky note, Add image |
 | Space + left-drag                 | Pan                                                       |
 | Arrow keys                        | Step frame to frame                                       |
+| Click a frame                     | Load it live (one at a time)                              |
+| `Esc` or click the canvas         | Put the live frame back to its screenshot                 |
 
-Over a live screen (Select tool at 80%+ zoom), a scroll the story can use
+Over the live frame, a scroll the story can use
 itself (a list with room to scroll) scrolls the story. Anything else is
 forwarded to the canvas, so panning never gets stuck on a frame.
 
 ## How it fits together
 
-| Piece           | Where                                                     | What it does                                                                                                                                                                                     |
-| --------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Screen stories  | `apps/mobile/src/components/**/<x>-screen.stories.tsx`    | `title: 'screens/<Name>'`. Each route is a thin data wrapper around a props-only `<Name>Screen`; its stories render the whole screen in each state, with local UI state so frames are clickable. |
-| Story renderer  | `apps/mobile/.rnstorybook/root.web.tsx`                   | Web-only root behind the Storybook entry swap. `?id=<story>` renders one story. `?title=<component>&w=` renders all of a component's stories in a row. No params gives the index.                |
-| Native renderer | `apps/mobile/.rnstorybook/root.tsx`                       | On the dev build, `onedown://story?id=<story>` shows one story exactly as a canvas frame does — the device half of the fidelity diffs.                                                           |
-| Journeys        | `src/journeys.ts`                                         | Which stories make up each user flow, in order. Stories not placed here fill the component library below.                                                                                        |
-| Frames          | `src/components/story-frame.tsx`                          | Live iframe only while on screen and zoom ≥ 35%. Otherwise the snapshot the renderer posted (each live frame costs ~50 MB and ~0.9 s).                                                           |
-| Annotations     | `src/lib/server/*` + `vite.config.ts`                     | Sticky notes and dropped images, saved to `canvas-data/annotations.json` and `public/canvas-images/` (commit them).                                                                              |
-| Web shims       | `apps/mobile/.rnstorybook/web-shims/` + `metro.config.js` | react-native-web's no-op `Keyboard` / `KeyboardAvoidingView`, made real so the mock keyboard pads screens as Android does.                                                                       |
+| Piece           | Where                                                     | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| --------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Screen stories  | `apps/mobile/src/components/**/<x>-screen.stories.tsx`    | `title: 'screens/<Name>'`. Each route is a thin data wrapper around a props-only `<Name>Screen`; its stories render the whole screen in each state, with local UI state so frames are clickable.                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Story renderer  | `apps/mobile/.rnstorybook/root.web.tsx`                   | Web-only root behind the Storybook entry swap. `?id=<story>` renders one story. `?title=<component>&w=` renders all of a component's stories in a row. No params gives the index.                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Native renderer | `apps/mobile/.rnstorybook/root.tsx`                       | On the dev build, `onedown://story?id=<story>` shows one story exactly as a canvas frame does — the device half of the fidelity diffs.                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Journeys        | `src/journeys.ts`                                         | Which stories make up each user flow, in order. Stories not placed here fill the component library below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Frames          | `src/components/story-frame.tsx`                          | A screenshot until clicked, then a live iframe. Each live frame costs ~50 MB and ~0.9 s of the canvas main thread, so only one runs at a time.                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Screenshots     | `src/lib/server/screenshots.ts` + `vite.config.ts`        | Headless Chrome renders each frame (screens at 3x, component rows at 2x). Each frame has its own version: the time of the newest change to a file its story imports, found by following static imports from the story files (`src/lib/server/story-deps.ts`). A component row takes the newest of its stories. Editing a component refetches only the frames that import it, frames in view first and the rest two at a time (`src/lib/shot-queue.ts`). `global.css`, the Tailwind, babel and Metro config, `package.json`, the theme provider and anything under `.rnstorybook/` refresh every frame. |
+| Annotations     | `src/lib/server/*` + `vite.config.ts`                     | Sticky notes and dropped images, saved to `canvas-data/annotations.json` and `public/canvas-images/` (commit them).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Web shims       | `apps/mobile/.rnstorybook/web-shims/` + `metro.config.js` | react-native-web's no-op `Keyboard` / `KeyboardAvoidingView`, made real so the mock keyboard pads screens as Android does.                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 
 ## Adding a screen state
 
@@ -90,8 +95,6 @@ built like the catalogue ones.
 
 ## Known gaps
 
-- Snapshots draw text inside inputs (for example card-back titles) in a
-  fallback font. Live frames are correct.
 - Web ≠ Android at the font-rasteriser level: judge layout, spacing, colour
   and flow on the canvas; pixel-level type rendering on the device.
 - A focused text field shows gluestack's focus border on web where Android

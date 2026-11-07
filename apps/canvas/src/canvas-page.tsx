@@ -3,6 +3,7 @@
 // but every frame is a live One Down story from the Metro web renderer.
 import {
   ArrowRight,
+  CircleHelp,
   ExternalLink,
   Hand,
   Image as ImageIcon,
@@ -40,7 +41,9 @@ import {
   framePointToPage,
   indexUrl,
   screenUrl,
+  shotUrl,
   useRendererMessages,
+  useShotVersions,
   useStoryIndex,
   type StoryInfo,
 } from '@/lib/story-renderer';
@@ -69,11 +72,22 @@ type DeviceMode = keyof typeof DEVICE_PRESETS;
 
 const MIN_SCALE = 0.1;
 const MAX_SCALE = 2;
+/**
+ * The zoom at which a Pixel 7 frame matches the phone held up to Finn's
+ * monitor (measured 2026-11-07). Other device presets come out within a few
+ * percent of their real size, and a different monitor needs a new measurement.
+ */
+const REAL_SIZE_SCALE = 0.6936;
 const INITIAL_SCALE = 0.6;
 const INITIAL_PAN_X = 96;
 const INITIAL_PAN_Y = 48;
-/** Frames take pointer input from this zoom up; below it the canvas pans/zooms over them. */
-const INTERACTIVE_SCALE = 0.8;
+/**
+ * Screenshot density. Screens get 3x so they stay sharp zoomed in on a retina
+ * display. Component rows are several screens wide, and Chrome caps a capture
+ * at 16384 px a side, so they get 2x.
+ */
+const SCREEN_SHOT_SCALE = 3;
+const ROW_SHOT_SCALE = 2;
 /** Placeholder until a component row reports its measured size. */
 const ROW_FALLBACK_HEIGHT = 360;
 const NOTICE_MS = 3000;
@@ -115,6 +129,16 @@ export function CanvasPage() {
 
   const [storyIndex, onIndexMessage] = useStoryIndex();
   const [rowSizes, setRowSizes] = useState<Record<string, { width: number; height: number }>>({});
+  const setRowSize = useCallback((key: string, width: number, height: number) => {
+    setRowSizes((prev) => {
+      const current = prev[key];
+      if (current?.width === width && current?.height === height) return prev;
+      return { ...prev, [key]: { width, height } };
+    });
+  }, []);
+  const shotVersions = useShotVersions();
+  /** The one frame running a live iframe, by its renderer URL. */
+  const [liveFrame, setLiveFrame] = useState<string | null>(null);
   const transformRef = useRef<ReactZoomPanPinchRef | null>(null);
   // Scroll pans, middle-drag pans, middle-held scroll (or pinch) zooms.
   const navigation = useCanvasNavigation({
@@ -134,16 +158,12 @@ export function CanvasPage() {
             navigation.middleMove(message.screenX, message.screenY);
           else navigation.middleUp();
         } else if (message.type === 'size') {
-          setRowSizes((prev) => {
-            const current = prev[message.key];
-            if (current?.width === message.width && current?.height === message.height) return prev;
-            return { ...prev, [message.key]: { width: message.width, height: message.height } };
-          });
+          setRowSize(message.key, message.width, message.height);
         } else {
           onIndexMessage(message);
         }
       },
-      [onIndexMessage, navigation],
+      [onIndexMessage, navigation, setRowSize],
     ),
   );
   const storiesById = useMemo(
@@ -195,6 +215,21 @@ export function CanvasPage() {
   const isPanEnabled = activeTool === 'pan' || spacePressed;
   const handleZoomIn = () => transformRef.current?.zoomIn(0.2, 200);
   const handleZoomOut = () => transformRef.current?.zoomOut(0.2, 200);
+  /** Zoom to REAL_SIZE_SCALE, keeping the point in the middle of the window where it is. */
+  const handleRealSize = () => {
+    const ref = transformRef.current;
+    if (!ref) return;
+    const { positionX, positionY, scale } = ref.state;
+    const centreX = window.innerWidth / 2;
+    const centreY = window.innerHeight / 2;
+    const ratio = REAL_SIZE_SCALE / scale;
+    ref.setTransform(
+      centreX - (centreX - positionX) * ratio,
+      centreY - (centreY - positionY) * ratio,
+      REAL_SIZE_SCALE,
+      200,
+    );
+  };
   const handleResetView = () =>
     transformRef.current?.setTransform(INITIAL_PAN_X, INITIAL_PAN_Y, INITIAL_SCALE, 350);
 
@@ -260,6 +295,8 @@ export function CanvasPage() {
 
   /** In sticky mode a click on the canvas (not on floating UI or an annotation) places a note. */
   const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // A click anywhere but a frame puts the live frame back to its screenshot.
+    if (!(e.target as HTMLElement).closest('[data-story-frame]')) setLiveFrame(null);
     if (activeTool !== 'sticky' || spacePressed || !annotationsReady || !contentRef.current) return;
     const target = e.target as HTMLElement;
     if (target.closest('.panningDisabled') || target.closest('[data-annotation]')) return;
@@ -337,6 +374,7 @@ export function CanvasPage() {
       if (ANNOTATIONS_EDITABLE && annotationsReady && key === 'i') return setIsImageModalOpen(true);
       if (key === 'escape') {
         setOpenFlyout(null);
+        setLiveFrame(null);
         if (activeTool === 'sticky') setActiveTool('select');
         return;
       }
@@ -360,8 +398,7 @@ export function CanvasPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [focused, rowLengths, panToFrame, toggleStickyTool, activeTool, annotationsReady]);
 
-  const iframesInteractive =
-    transformState.scale >= INTERACTIVE_SCALE && activeTool === 'select' && !spacePressed;
+  const iframesInteractive = activeTool === 'select' && !spacePressed;
   const cursorClass = isPanEnabled
     ? 'cursor-grab'
     : activeTool === 'sticky'
@@ -501,6 +538,12 @@ export function CanvasPage() {
             {Math.round(transformState.scale * 100)}%
           </div>
           <ToolbarButton icon={ZoomOut} onClick={handleZoomOut} tooltip="Zoom out" />
+          <ToolbarButton
+            label="1:1"
+            onClick={handleRealSize}
+            tooltip="Real size"
+            active={Math.abs(transformState.scale - REAL_SIZE_SCALE) < 0.005}
+          />
           <ToolbarButton icon={Maximize} onClick={handleResetView} tooltip="Reset view" />
         </div>
       </div>
@@ -607,11 +650,27 @@ export function CanvasPage() {
                                 ) : (
                                   <StoryFrame
                                     src={screenUrl(frame.story, device.insets)}
+                                    shot={
+                                      shotVersions === null
+                                        ? null
+                                        : shotUrl(
+                                            screenUrl(frame.story, device.insets),
+                                            {
+                                              viewportWidth: device.width,
+                                              viewportHeight: device.height,
+                                              scale: SCREEN_SHOT_SCALE,
+                                            },
+                                            shotVersions,
+                                          )
+                                    }
                                     title={frame.label ?? frame.story}
                                     width={device.width}
                                     height={device.height}
-                                    scale={transformState.scale}
+                                    live={liveFrame === screenUrl(frame.story, device.insets)}
                                     interactive={iframesInteractive}
+                                    onActivate={() =>
+                                      setLiveFrame(screenUrl(frame.story, device.insets))
+                                    }
                                   />
                                 )}
                               </div>
@@ -650,7 +709,10 @@ export function CanvasPage() {
                       {library.map(({ title, count }, index) => {
                         const key = `title:${title}`;
                         const size = rowSizes[key];
-                        const width = size?.width ?? count * (device.width + 32) + 48;
+                        // ComponentRow: 24 px padding each side, 32 px gaps.
+                        const estimatedWidth = count * (device.width + 32) + 16;
+                        const width = size?.width ?? estimatedWidth;
+                        const src = componentRowUrl(title, device.width);
                         return (
                           <div
                             key={title}
@@ -669,12 +731,30 @@ export function CanvasPage() {
                               )}
                             >
                               <StoryFrame
-                                src={componentRowUrl(title, device.width)}
+                                src={src}
+                                shot={
+                                  shotVersions === null
+                                    ? null
+                                    : shotUrl(
+                                        src,
+                                        {
+                                          viewportWidth: estimatedWidth,
+                                          viewportHeight: ROW_FALLBACK_HEIGHT,
+                                          scale: ROW_SHOT_SCALE,
+                                          row: true,
+                                        },
+                                        shotVersions,
+                                      )
+                                }
                                 title={title}
                                 width={width}
                                 height={size?.height ?? ROW_FALLBACK_HEIGHT}
-                                scale={transformState.scale}
+                                live={liveFrame === src}
                                 interactive={iframesInteractive}
+                                onActivate={() => setLiveFrame(src)}
+                                onShotLoad={(w, h) =>
+                                  setRowSize(key, w / ROW_SHOT_SCALE, h / ROW_SHOT_SCALE)
+                                }
                               />
                             </div>
                           </div>
@@ -712,50 +792,115 @@ export function CanvasPage() {
         />
       )}
 
-      <div className="panningDisabled wheelDisabled fixed bottom-4 right-4 z-50 flex items-center gap-3 border border-border-subtle bg-bg-elevated/90 px-3 py-2 text-xs text-text-tertiary backdrop-blur-sm">
-        <span
-          role="status"
-          aria-live="polite"
-          className={cn('font-medium text-warning', !notice && 'sr-only')}
-        >
-          {notice ?? ''}
-        </span>
-        <span hidden={Boolean(notice)}>
-          {`V Select • H Pan${ANNOTATIONS_EDITABLE ? ' • S Sticky • I Image' : ''} • Scroll or middle-drag to pan • Middle-hold + scroll (or pinch) to zoom • Arrows to step through frames • ${
-            iframesInteractive
-              ? 'Screens are live — click into them'
-              : `Zoom to ${INTERACTIVE_SCALE * 100}%+ in Select to use screens`
-          }`}
-        </span>
-        {annotationsLoadProblem !== null ? (
-          <span className="font-medium text-warning">
-            {annotationsLoadProblem === 'network'
-              ? 'Annotations failed to load. Reload to edit.'
-              : 'Annotations file is invalid. Fix or delete apps/canvas/canvas-data/annotations.json, then reload.'}
-          </span>
-        ) : (
-          saveState !== 'idle' && (
+      <div className="panningDisabled wheelDisabled fixed bottom-4 right-4 z-50 flex items-center gap-2 text-xs">
+        {(notice !== null || annotationsLoadProblem !== null || saveState !== 'idle') && (
+          <div className="flex h-8 items-center gap-3 rounded-full border border-border-subtle bg-bg-elevated/90 px-3.5 backdrop-blur-sm">
             <span
               role="status"
-              className={cn(
-                'font-medium tabular-nums',
-                saveState === 'error'
-                  ? 'text-warning'
-                  : saveState === 'saved'
-                    ? 'text-success'
-                    : 'text-text-secondary',
-              )}
+              aria-live="polite"
+              className={cn('font-medium text-warning', !notice && 'sr-only')}
             >
-              {saveState === 'saving'
-                ? 'Saving…'
-                : saveState === 'saved'
-                  ? 'Saved'
-                  : 'Unsaved changes'}
+              {notice ?? ''}
             </span>
-          )
+            {annotationsLoadProblem !== null ? (
+              <span className="font-medium text-warning">
+                {annotationsLoadProblem === 'network'
+                  ? 'Annotations failed to load. Reload to edit.'
+                  : 'Annotations file is invalid. Fix or delete apps/canvas/canvas-data/annotations.json, then reload.'}
+              </span>
+            ) : (
+              saveState !== 'idle' && (
+                <span
+                  role="status"
+                  className={cn(
+                    'font-medium tabular-nums',
+                    saveState === 'error'
+                      ? 'text-warning'
+                      : saveState === 'saved'
+                        ? 'text-success'
+                        : 'text-text-secondary',
+                  )}
+                >
+                  {saveState === 'saving'
+                    ? 'Saving…'
+                    : saveState === 'saved'
+                      ? 'Saved'
+                      : 'Unsaved changes'}
+                </span>
+              )
+            )}
+          </div>
         )}
+        <ControlsHint>
+          {`V Select • H Pan${ANNOTATIONS_EDITABLE ? ' • S Sticky • I Image' : ''} • Scroll or middle-drag to pan • Middle-hold + scroll (or pinch) to zoom • Arrows to step through frames • ${
+            liveFrame ? 'Esc or click the canvas to stop interacting' : 'Click a screen to interact'
+          }`}
+        </ControlsHint>
       </div>
     </div>
+  );
+}
+
+/** How long the controls hint stays open once the pointer isn't over it. */
+const HINT_COLLAPSE_MS = 5_000;
+
+/**
+ * The controls hint in the bottom-right corner. It starts open, folds into a
+ * ? circle after HINT_COLLAPSE_MS without the pointer over it, and a click
+ * opens or closes it.
+ */
+function ControlsHint({ children }: { children: React.ReactNode }) {
+  const [expanded, setExpanded] = useState(true);
+  const hovered = useRef(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  const scheduleCollapse = useCallback(() => {
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      if (!hovered.current) setExpanded(false);
+    }, HINT_COLLAPSE_MS);
+  }, []);
+
+  useEffect(() => {
+    scheduleCollapse();
+    return () => clearTimeout(timer.current);
+  }, [scheduleCollapse]);
+
+  return (
+    <button
+      type="button"
+      aria-expanded={expanded}
+      aria-label={expanded ? 'Hide controls' : 'Show controls'}
+      // Open, the corners match the sidebar (rounded-lg). Closed, 16px is half
+      // the 32px height, so the hint is a circle. Both are fixed lengths, so
+      // the radius animates (rounded-full's 9999px would not).
+      className={cn(
+        'flex h-8 items-center overflow-hidden border border-border-subtle bg-bg-elevated/90 text-text-tertiary backdrop-blur-sm transition-[border-radius,color] duration-300 ease-in-out hover:text-text-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+        expanded ? 'rounded-lg' : 'rounded-2xl',
+      )}
+      onMouseEnter={() => {
+        hovered.current = true;
+        clearTimeout(timer.current);
+      }}
+      onMouseLeave={() => {
+        hovered.current = false;
+        if (expanded) scheduleCollapse();
+      }}
+      onClick={() => {
+        clearTimeout(timer.current);
+        setExpanded((open) => !open);
+      }}
+    >
+      <span
+        className="overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-300 ease-in-out"
+        style={{ maxWidth: expanded ? 1200 : 0, opacity: expanded ? 1 : 0 }}
+      >
+        <span className="block pl-3.5 pr-1">{children}</span>
+      </span>
+      <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center">
+        <CircleHelp className="h-4 w-4" />
+      </span>
+    </button>
   );
 }
 
@@ -864,11 +1009,14 @@ function FlyoutItem({
 
 function ToolbarButton({
   icon: Icon,
+  label,
   onClick,
   tooltip,
   active = false,
 }: {
-  icon: React.ComponentType<{ className?: string }>;
+  /** An icon, or `label` for a short text button. */
+  icon?: React.ComponentType<{ className?: string }>;
+  label?: string;
   onClick?: () => void;
   tooltip: string;
   active?: boolean;
@@ -890,7 +1038,11 @@ function ToolbarButton({
           active && 'bg-accent/10 text-accent',
         )}
       >
-        <Icon className="h-5 w-5" />
+        {Icon ? (
+          <Icon className="h-5 w-5" />
+        ) : (
+          <span className="block h-5 w-5 text-center text-xs font-semibold leading-5">{label}</span>
+        )}
       </button>
       {isHovered && (
         <div className="pointer-events-none absolute left-full top-1/2 z-50 ml-[18px] -translate-y-1/2 whitespace-nowrap rounded-lg bg-gray-800 px-3 py-2.5 text-sm text-white shadow-lg">

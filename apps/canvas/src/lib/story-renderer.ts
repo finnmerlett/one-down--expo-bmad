@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
+
+import { shotVersionFor, type ShotVersions } from './shot-versions';
 
 /**
  * Talks to the web story renderer (apps/mobile/.rnstorybook/root.web.tsx),
@@ -36,8 +38,6 @@ export const indexUrl = () => `${RENDERER_URL}/`;
 export type RendererMessage =
   | { source: typeof MESSAGE_SOURCE; type: 'index'; stories: StoryInfo[] }
   | { source: typeof MESSAGE_SOURCE; type: 'size'; key: string; width: number; height: number }
-  /** `key` is the frame's query string (`?id=…` / `?title=…&w=…`). */
-  | { source: typeof MESSAGE_SOURCE; type: 'snapshot'; key: string; dataUrl: string }
   /** A wheel the story could not use itself; client coords are the frame's own. */
   | {
       source: typeof MESSAGE_SOURCE;
@@ -98,27 +98,53 @@ export function framePointToPage(
   return { x: rect.left + clientX * scale, y: rect.top + clientY * scale };
 }
 
-/** Ask a live frame for a fresh snapshot (it answers with a 'snapshot' message). */
-export function requestSnapshot(frame: Window) {
-  frame.postMessage({ source: 'one-down-canvas', type: 'snapshot-request' }, RENDERER_ORIGIN);
+/** Size and density of a frame screenshot. Rows are cropped to their measured size. */
+export interface ShotOptions {
+  viewportWidth: number;
+  viewportHeight: number;
+  scale: number;
+  row?: boolean;
 }
 
-/** Last snapshot per frame key — survives frame unmounts and device switches. */
-const snapshots = new Map<string, string>();
+/** A frame screenshot from the canvas dev server (src/lib/server/screenshots.ts). */
+export function shotUrl(rendererUrl: string, options: ShotOptions, versions: ShotVersions) {
+  const query = new URL(rendererUrl).search;
+  const params = new URLSearchParams({
+    q: query,
+    vw: String(options.viewportWidth),
+    vh: String(options.viewportHeight),
+    dpr: String(options.scale),
+    v: String(shotVersionFor(versions, query)),
+  });
+  if (options.row) params.set('row', '1');
+  return `/api/shots/image?${params}`;
+}
 
-export function useFrameSnapshot(key: string): string | undefined {
-  const [snapshot, setSnapshot] = useState(() => snapshots.get(key));
-  useRendererMessages(
-    useCallback(
-      (message: RendererMessage) => {
-        if (message.type !== 'snapshot' || message.key !== key) return;
-        snapshots.set(key, message.dataUrl);
-        setSnapshot(message.dataUrl);
-      },
-      [key],
-    ),
+/**
+ * Per-frame source versions for screenshots. The server pushes new ones over
+ * Vite's HMR socket when a source change reaches some frames; only the frames
+ * whose version moved get a new shot URL and refetch.
+ */
+let shotVersions: ShotVersions | null = null;
+const versionListeners = new Set<() => void>();
+function setShotVersions(versions: ShotVersions) {
+  shotVersions = versions;
+  for (const listener of versionListeners) listener();
+}
+void fetch('/api/shots/versions')
+  .then((response) => response.json() as Promise<ShotVersions>)
+  .then(setShotVersions)
+  .catch(() => setShotVersions({ global: Date.now(), stories: {}, titles: {} }));
+import.meta.hot?.on('canvas:shots', setShotVersions);
+
+export function useShotVersions(): ShotVersions | null {
+  return useSyncExternalStore(
+    (listener) => {
+      versionListeners.add(listener);
+      return () => versionListeners.delete(listener);
+    },
+    () => shotVersions,
   );
-  return snapshot;
 }
 
 export type IndexState =
@@ -147,37 +173,4 @@ export function useStoryIndex(): [IndexState, (message: RendererMessage) => void
     if (message.type === 'index') setState({ status: 'ready', stories: message.stories });
   };
   return [state, onMessage];
-}
-
-/**
- * Every iframe boots its own copy of the app bundle, and same-site iframes
- * share one main thread — mounting dozens at once freezes the page. Frames
- * queue here once they scroll into view and mount a few at a time.
- */
-const MAX_CONCURRENT_LOADS = 2;
-let activeLoads = 0;
-const waiting: Array<{ cancelled: boolean; grant: () => void }> = [];
-
-/** Queue for a load slot; returns a cancel function (safe to call after the grant). */
-export function requestLoadSlot(onGranted: () => void): () => void {
-  const ticket = { cancelled: false, grant: onGranted };
-  if (activeLoads < MAX_CONCURRENT_LOADS) {
-    activeLoads += 1;
-    onGranted();
-  } else {
-    waiting.push(ticket);
-  }
-  return () => {
-    ticket.cancelled = true;
-  };
-}
-
-export function releaseLoadSlot() {
-  activeLoads = Math.max(0, activeLoads - 1);
-  let next = waiting.shift();
-  while (next?.cancelled) next = waiting.shift();
-  if (next) {
-    activeLoads += 1;
-    next.grant();
-  }
 }

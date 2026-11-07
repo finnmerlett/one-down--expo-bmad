@@ -19,10 +19,8 @@
 // Framed stories also forward canvas navigation the story itself cannot use
 // (a live iframe swallows every event over it): wheels with nothing left to
 // scroll, middle-button drags, and middle-held / pinch wheels for zooming.
-// They also snapshot themselves (JPEG → parent) shortly after mounting and
-// whenever the canvas asks — the canvas shows those pictures when zoomed out
-// or off screen, so only nearby frames run a live bundle.
-import { domToJpeg } from 'modern-screenshot';
+// The canvas shows screenshots of these pages taken in headless Chrome
+// (apps/canvas/src/lib/server/screenshots.ts) and loads one live on click.
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, Text, View, type LayoutChangeEvent } from 'react-native';
 import { SafeAreaFrameContext, SafeAreaInsetsContext } from 'react-native-safe-area-context';
@@ -48,10 +46,6 @@ document.head.appendChild(textareaSizing);
 
 /** Envelope for every message to the canvas — lets it ignore foreign frames. */
 const MESSAGE_SOURCE = 'one-down-story';
-/** Envelope the canvas uses for its requests back to a frame. */
-const CANVAS_SOURCE = 'one-down-canvas';
-/** Long enough for fonts, images and entering animations to settle. */
-const FIRST_SNAPSHOT_DELAY_MS = 1500;
 /**
  * Gboard on a Pixel (API 35, gesture nav), measured on the emulator: it covers
  * 336dp including the gesture area, but RN reports `endCoordinates.height`
@@ -64,37 +58,6 @@ function postToCanvas(message: Record<string, unknown>) {
   if (window.parent !== window) {
     window.parent.postMessage({ source: MESSAGE_SOURCE, ...message }, '*');
   }
-}
-
-async function postSnapshot() {
-  try {
-    // Faces still loading when the capture embeds them come out in the serif
-    // fallback — wait until every @font-face expo-font inserted has loaded.
-    await document.fonts.ready;
-    const target = document.getElementById('root') ?? document.body;
-    const dataUrl = await domToJpeg(target, { quality: 0.85, backgroundColor: '#ffffff' });
-    postToCanvas({ type: 'snapshot', key: window.location.search, dataUrl });
-  } catch (error) {
-    // oxlint-disable-next-line no-console
-    console.warn('Canvas snapshot failed', error);
-  }
-}
-
-/** Snapshot once the story settles, then again on every canvas request. */
-function useCanvasSnapshots(enabled: boolean) {
-  useEffect(() => {
-    if (!enabled || window.parent === window) return;
-    const timer = setTimeout(() => void postSnapshot(), FIRST_SNAPSHOT_DELAY_MS);
-    const onMessage = (event: MessageEvent) => {
-      const data = event.data as { source?: unknown; type?: unknown } | null;
-      if (data?.source === CANVAS_SOURCE && data.type === 'snapshot-request') void postSnapshot();
-    };
-    window.addEventListener('message', onMessage);
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener('message', onMessage);
-    };
-  }, [enabled]);
 }
 
 /** Would this wheel scroll something inside the story (a list, a textarea)? */
@@ -375,7 +338,6 @@ function Route({ stories }: { stories: StoryEntry[] }) {
   const id = params.get('id');
   const title = params.get('title');
   const [insetTop = 0, insetBottom = 0] = (params.get('insets') ?? '').split(',').map(Number);
-  useCanvasSnapshots(Boolean(id || title));
   useCanvasInputForwarding(Boolean(id || title));
 
   if (id) {
@@ -397,6 +359,11 @@ function Route({ stories }: { stories: StoryEntry[] }) {
     const itemWidth = Number(params.get('w')) || DEFAULT_GROUP_ITEM_WIDTH;
     const onLayout = (event: LayoutChangeEvent) => {
       const { width, height } = event.nativeEvent.layout;
+      // The canvas screenshot service crops component rows to this.
+      (window as { __canvasRowSize?: { width: number; height: number } }).__canvasRowSize = {
+        width,
+        height,
+      };
       postToCanvas({ type: 'size', key: `title:${title}`, width, height });
     };
     return entries.length > 0 ? (
